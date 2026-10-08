@@ -180,61 +180,62 @@ class MainActivity : Activity() {
             title: String,
             subtitle: String,
             iconBg: Int,
+            iconColor: Int,
             action: () -> Unit
         ): LinearLayout {
             val card = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(dp(12), dp(10), dp(10), dp(10))
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(12), dp(8), dp(12))
                 background = rounded(Color.WHITE, 18)
                 elevation = dp(2).toFloat()
                 setOnClickListener { action() }
             }
 
-            val top = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
+            card.addView(TextView(this).apply {
+                text = icon
+                textSize = 25f
+                gravity = Gravity.CENTER
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(iconColor)
+                background = rounded(iconBg, 14)
+            }, LinearLayout.LayoutParams(dp(64), dp(64)))
+
+            val labels = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), 0, dp(5), 0)
+                minimumWidth = dp(105)
             }
 
-            top.addView(TextView(this).apply {
-                text = icon
-                textSize = 23f
-                gravity = Gravity.CENTER
-                setTextColor(blue)
-                background = rounded(iconBg, 14)
-            }, LinearLayout.LayoutParams(dp(54), dp(54)))
-
-            top.addView(Space(this), LinearLayout.LayoutParams(0, 1, 1f))
-
-            top.addView(TextView(this).apply {
-                text = "›"
-                textSize = 27f
-                setTextColor(Color.rgb(90, 100, 112))
-                gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(24), dp(54)))
-
-            card.addView(top, LinearLayout.LayoutParams(-1, dp(54)))
-
-            card.addView(TextView(this).apply {
+            labels.addView(TextView(this).apply {
                 text = title
-                textSize = 15f
+                textSize = 16f
                 setTypeface(null, android.graphics.Typeface.BOLD)
                 setTextColor(Color.rgb(25, 34, 47))
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(dp(2), dp(8), dp(2), 0)
+                includeFontPadding = false
             }, LinearLayout.LayoutParams(-1, -2))
 
-            card.addView(TextView(this).apply {
+            labels.addView(TextView(this).apply {
                 text = subtitle
-                textSize = 11f
+                textSize = 13f
                 setTextColor(Color.rgb(111, 120, 132))
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(dp(2), dp(3), dp(2), 0)
+                includeFontPadding = false
+                setPadding(0, dp(5), 0, 0)
             }, LinearLayout.LayoutParams(-1, -2))
+
+            card.addView(labels, LinearLayout.LayoutParams(0, -1, 1f))
+
+            card.addView(TextView(this).apply {
+                text = "›"
+                textSize = 30f
+                setTextColor(Color.rgb(90, 100, 112))
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(dp(28), dp(70)))
 
             return card
         }
@@ -242,6 +243,10 @@ class MainActivity : Activity() {
         fun grid(
             left: Triple<String, String, String>,
             right: Triple<String, String, String>,
+            leftBg: Int,
+            rightBg: Int,
+            leftColor: Int,
+            rightColor: Int,
             leftAction: () -> Unit,
             rightAction: () -> Unit
         ) {
@@ -249,12 +254,12 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.HORIZONTAL
             }
             row.addView(
-                card(left.first, left.second, left.third, Color.rgb(229, 239, 255), leftAction),
-                LinearLayout.LayoutParams(0, dp(142), 1f).apply { rightMargin = dp(6) }
+                card(left.first, left.second, left.third, leftBg, leftColor, leftAction),
+                LinearLayout.LayoutParams(0, dp(132), 1f).apply { rightMargin = dp(7) }
             )
             row.addView(
-                card(right.first, right.second, right.third, Color.rgb(232, 250, 242), rightAction),
-                LinearLayout.LayoutParams(0, dp(142), 1f).apply { leftMargin = dp(6) }
+                card(right.first, right.second, right.third, rightBg, rightColor, rightAction),
+                LinearLayout.LayoutParams(0, dp(132), 1f).apply { leftMargin = dp(7) }
             )
             page.addView(row)
         }
@@ -263,12 +268,16 @@ class MainActivity : Activity() {
         grid(
             Triple("⌂", "Склади", "Список складів та залишки"),
             Triple("●", "МВО", "Матеріально відповідальні особи"),
+            Color.rgb(224, 236, 255), Color.rgb(224, 248, 238),
+            Color.rgb(20, 91, 176), Color.rgb(0, 160, 94),
             { showWarehouses() },
             { showPersons() }
         )
         grid(
             Triple("▣", "Картки обліку", "Облік по позиціях"),
             Triple("◆", "Номенклатура", "Довідник майна"),
+            Color.rgb(255, 238, 211), Color.rgb(242, 232, 255),
+            Color.rgb(205, 111, 0), Color.rgb(103, 42, 194),
             { showCards() },
             { showMaterials() }
         )
@@ -277,12 +286,16 @@ class MainActivity : Activity() {
         grid(
             Triple("+", "Надходження", "Приймання майна"),
             Triple("↥", "Видача", "Видача зі складу"),
+            Color.rgb(220, 248, 235), Color.rgb(255, 226, 229),
+            Color.rgb(0, 165, 92), Color.rgb(194, 35, 48),
             { showMovement("RECEIPT", "Надходження") },
             { showMovement("ISSUE", "Видача") }
         )
         grid(
             Triple("↔", "Переміщення", "Між складами"),
             Triple("▣", "Списання", "Списання майна"),
+            Color.rgb(224, 238, 255), Color.rgb(255, 226, 229),
+            Color.rgb(21, 91, 176), Color.rgb(194, 35, 48),
             { showMovement("TRANSFER", "Переміщення") },
             { showMovement("WRITE_OFF", "Списання") }
         )
@@ -291,6 +304,8 @@ class MainActivity : Activity() {
         grid(
             Triple("▤", "Журнал руху", "Всі операції"),
             Triple("▥", "Звіти", "Аналіз та звітність"),
+            Color.rgb(255, 246, 196), Color.rgb(242, 232, 255),
+            Color.rgb(184, 145, 0), Color.rgb(91, 39, 191),
             { showJournal() },
             { showCards() }
         )
