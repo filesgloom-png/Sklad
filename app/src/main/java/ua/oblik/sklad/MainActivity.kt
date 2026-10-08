@@ -109,8 +109,11 @@ class MainActivity : Activity() {
         addAction(root, "Керувати комірками") { chooseWarehouseForLocations() }
         val rows = db.warehouseRows()
         rows.forEach {
+            val id = it[0].toLong()
             val address = if (it[2].isBlank()) "Адресу не вказано" else it[2]
-            addRow(root, "№${it[0]}  ${it[1]}", "${address} • МВО: ${it[3]}")
+            addManageRow(root, "№$id  ${it[1]}", "${address} • МВО: ${it[3]}") {
+                showWarehouseActions(id, it[1], it[2], it[3])
+            }
         }
         if (rows.isEmpty()) addRow(root, "Складів ще немає", "Додайте перший склад перед проведенням руху.")
         setContentView(root)
@@ -144,7 +147,12 @@ class MainActivity : Activity() {
             }
         }
         val rows = db.locationRows(warehouseId)
-        rows.forEach { addRow(root, "№${it[0]}  ${it[1]}", it.getOrNull(2) ?: "") }
+        rows.forEach {
+            val id = it[0].toLong()
+            addManageRow(root, "№$id  ${it[1]}", it.getOrNull(2) ?: "") {
+                showLocationActions(warehouseId, warehouseName, id, it[1], it.getOrNull(2) ?: "")
+            }
+        }
         if (rows.isEmpty()) addRow(root, "Комірок ще немає", "Додайте місце зберігання для цього складу.")
         setContentView(root)
     }
@@ -162,7 +170,12 @@ class MainActivity : Activity() {
             }
         }
         val rows = db.list("responsible_persons")
-        rows.forEach { addRow(root, it[1], it.getOrNull(2) ?: "") }
+        rows.forEach {
+            val id = it[0].toLong()
+            addManageRow(root, it[1], it.getOrNull(2) ?: "") {
+                showPersonActions(id, it[1], it.getOrNull(2) ?: "")
+            }
+        }
         if (rows.isEmpty()) addRow(root, "МВО ще немає", "Додайте відповідальну особу перед призначенням на склад.")
         setContentView(root)
     }
@@ -184,9 +197,11 @@ class MainActivity : Activity() {
         }
         val rows = db.list("materials")
         rows.forEach { row ->
-            val id = row[0].toLongOrNull() ?: 0
+            val id = row[0].toLongOrNull() ?: return@forEach
             val balance = db.materialBalance(id)
-            addRow(root, "${row[3]}  •  ${row[4]}", "NSN: ${row[1]}  |  Загальний залишок: ${formatQty(balance)}")
+            addManageRow(root, "${row[3]}  •  ${row[4]}", "NSN: ${row[1]}  |  Загальний залишок: ${formatQty(balance)}") {
+                showMaterialActions(id, row)
+            }
         }
         if (rows.isEmpty()) addRow(root, "Номенклатура порожня", "Додайте матеріали перед створенням документів.")
         setContentView(root)
@@ -305,8 +320,7 @@ class MainActivity : Activity() {
                     showError("Недостатньо залишку на складі-відправнику. Доступно: ${formatQty(current)}.")
                     return@formDialog
                 }
-                db.insertMovement(materialId, "TRANSFER_OUT", qty, fromWarehouse, toWarehouse, documentNo, date, v[3])
-                db.insertMovement(materialId, "TRANSFER_IN", qty, fromWarehouse, toWarehouse, documentNo, date, v[3])
+                db.insertTransfer(materialId, qty, fromWarehouse, toWarehouse ?: return@formDialog, documentNo, date, v[3])
             } else {
                 val current = db.warehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
@@ -358,6 +372,73 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
+    private fun showWarehouseActions(id: Long, name: String, address: String, responsible: String) {
+        AlertDialog.Builder(this).setTitle(name)
+            .setItems(arrayOf("Редагувати", "Видалити")) { _, which ->
+                if (which == 0) editWarehouse(id, name, address, responsible) else {
+                    if (db.warehouseHasMovements(id)) showError("Склад має документи руху і не може бути видалений.")
+                    else if (db.warehouseHasLocations(id)) showError("Спочатку видаліть комірки цього складу.")
+                    else { db.deleteWarehouse(id); showWarehouses() }
+                }
+            }.show()
+    }
+
+    private fun editWarehouse(id: Long, name: String, address: String, responsible: String) {
+        val persons = db.list("responsible_persons")
+        val labels = mutableListOf("Без призначеного МВО")
+        labels += persons.map { it[1] }
+        val current = persons.indexOfFirst { it[1] == responsible } + 1
+        AlertDialog.Builder(this).setTitle("МВО складу")
+            .setSingleChoiceItems(labels.toTypedArray(), current.coerceAtLeast(0)) { dialog, selected ->
+                val rid = if (selected == 0) null else persons[selected - 1][0].toLongOrNull()
+                dialog.dismiss()
+                formDialog("Редагувати склад", listOf("Назва", "Адреса", "Примітка")) { v ->
+                    if (v[0].isBlank()) showError("Назва складу не може бути порожньою.")
+                    else { db.updateWarehouse(id, v[0], v[1], v[2], rid); showWarehouses() }
+                }
+            }.show()
+    }
+
+    private fun showPersonActions(id: Long, name: String, position: String) {
+        AlertDialog.Builder(this).setTitle(name)
+            .setItems(arrayOf("Редагувати", "Видалити")) { _, which ->
+                if (which == 0) {
+                    formDialog("Редагувати МВО", listOf("ПІБ", "Посада", "Телефон")) { v ->
+                        if (v[0].isBlank()) showError("ПІБ не може бути порожнім.")
+                        else { db.updatePerson(id, v[0], v[1], v[2]); showPersons() }
+                    }
+                } else if (db.personAssigned(id)) showError("МВО призначена на склад і не може бути видалена.")
+                else { db.deletePerson(id); showPersons() }
+            }.show()
+    }
+
+    private fun showLocationActions(warehouseId: Long, warehouseName: String, id: Long, name: String, note: String) {
+        AlertDialog.Builder(this).setTitle(name)
+            .setItems(arrayOf("Редагувати", "Видалити")) { _, which ->
+                if (which == 0) {
+                    formDialog("Редагувати комірку", listOf("Назва", "Примітка")) { v ->
+                        if (v[0].isBlank()) showError("Назва комірки не може бути порожньою.")
+                        else { db.updateLocation(id, v[0], v[1]); showLocations(warehouseId, warehouseName) }
+                    }
+                } else { db.deleteLocation(id); showLocations(warehouseId, warehouseName) }
+            }.show()
+    }
+
+    private fun showMaterialActions(id: Long, row: Array<String>) {
+        AlertDialog.Builder(this).setTitle(row[3])
+            .setItems(arrayOf("Редагувати", "Видалити")) { _, which ->
+                if (which == 0) {
+                    formDialog("Редагувати матеріал", listOf("NSN", "Номенклатурний номер", "Назва", "Одиниця", "Партія", "Ціна")) { v ->
+                        val price = v[5].replace(',', '.').toDoubleOrNull()
+                        if (v[2].isBlank() || v[3].isBlank()) showError("Заповніть назву та одиницю виміру.")
+                        else if (price == null || price < 0) showError("Ціна має бути числом не менше 0.")
+                        else { db.updateMaterial(id, v[0], v[1], v[2], v[3], v[4], price); showMaterials() }
+                    }
+                } else if (db.materialHasMovements(id)) showError("Матеріал має документи руху і не може бути видалений.")
+                else { db.deleteMaterial(id); showMaterials() }
+            }.show()
+    }
+
     private fun typeLabel(type: String): String = when (type) {
         "RECEIPT" -> "Надходження"
         "ISSUE" -> "Видача"
@@ -369,8 +450,13 @@ class MainActivity : Activity() {
 
     private fun today(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
 
-    private fun validDate(value: String): Boolean =
-        Regex("\\d{4}-\\d{2}-\\d{2}").matches(value)
+    private fun validDate(value: String): Boolean = try {
+        val parser = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }
+        val parsed = parser.parse(value) ?: return false
+        parser.format(parsed) == value
+    } catch (_: Exception) {
+        false
+    }
 
     private fun formatQty(value: Double): String =
         String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
@@ -388,6 +474,25 @@ class MainActivity : Activity() {
             this.text = text
             setOnClickListener { action() }
         }, LinearLayout.LayoutParams(-1, 58).apply { bottomMargin = 12 })
+    }
+
+    private fun addManageRow(root: LinearLayout, title: String, subtitle: String, action: () -> Unit) {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(16, 14, 16, 10)
+            setBackgroundColor(Color.rgb(245, 245, 245))
+        }
+        box.addView(TextView(this).apply { text = title; textSize = 17f })
+        box.addView(TextView(this).apply {
+            text = subtitle
+            textSize = 14f
+            setPadding(0, 6, 0, 8)
+        })
+        box.addView(Button(this).apply {
+            text = "⚙ Керувати"
+            setOnClickListener { action() }
+        }, LinearLayout.LayoutParams(-1, 50))
+        root.addView(box, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 8 })
     }
 
     private fun addRow(root: LinearLayout, title: String, subtitle: String) {
