@@ -2,6 +2,7 @@ package ua.oblik.sklad
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.database.sqlite.SQLiteException
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
@@ -112,7 +113,7 @@ class MainActivity : Activity() {
             val id = it[0].toLong()
             val address = if (it[2].isBlank()) "Адресу не вказано" else it[2]
             addManageRow(root, "№$id  ${it[1]}", "${address} • МВО: ${it[3]}") {
-                showWarehouseActions(id, it[1], it[2], it[3])
+                showWarehouseActions(id, it[1], it[2], it[4].toLongOrNull())
             }
         }
         if (rows.isEmpty()) addRow(root, "Складів ще немає", "Додайте перший склад перед проведенням руху.")
@@ -172,8 +173,8 @@ class MainActivity : Activity() {
         val rows = db.list("responsible_persons")
         rows.forEach {
             val id = it[0].toLong()
-            addManageRow(root, it[1], it.getOrNull(2) ?: "") {
-                showPersonActions(id, it[1], it.getOrNull(2) ?: "")
+            addManageRow(root, it[1], "${it.getOrNull(2) ?: ""}${if (it.getOrNull(3).orEmpty().isNotBlank()) " • ${it[3]}" else ""}") {
+                showPersonActions(id, it[1], it.getOrNull(2) ?: "", it.getOrNull(3) ?: "")
             }
         }
         if (rows.isEmpty()) addRow(root, "МВО ще немає", "Додайте відповідальну особу перед призначенням на склад.")
@@ -187,7 +188,7 @@ class MainActivity : Activity() {
                 val price = v[5].replace(',', '.').toDoubleOrNull()
                 if (v[2].isBlank() || v[3].isBlank()) {
                     showError("Заповніть назву та одиницю виміру.")
-                } else if (price == null || price < 0) {
+                } else if (price == null || !price.isFinite() || price < 0) {
                     showError("Ціна має бути числом не менше 0.")
                 } else {
                     db.insertMaterial(v[0], v[1], v[2], v[3], v[4], price)
@@ -271,13 +272,13 @@ class MainActivity : Activity() {
                         if (fromIndex == toIndex) {
                             showError("Склад-відправник і склад-отримувач мають бути різними.")
                         } else {
-                            showMovementForm(
-                                materialId,
-                                "TRANSFER",
-                                title,
-                                warehouses[fromIndex][0].toLong(),
-                                warehouses[toIndex][0].toLong()
-                            )
+                            val fromWarehouse = warehouses[fromIndex][0].toLong()
+                            val toWarehouse = warehouses[toIndex][0].toLong()
+                            chooseLocation(fromWarehouse, "Комірка-відправник", true) { fromLocation ->
+                                chooseLocation(toWarehouse, "Комірка-отримувач", true) { toLocation ->
+                                    showMovementForm(materialId, "TRANSFER", title, fromWarehouse, toWarehouse, fromLocation, toLocation)
+                                }
+                            }
                         }
                     }
                     .show()
@@ -285,21 +286,35 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun chooseLocation(warehouseId: Long, title: String, allowNone: Boolean, onSelected: (Long?) -> Unit) {
+        val locations = db.locationRows(warehouseId)
+        if (locations.isEmpty()) { onSelected(null); return }
+        val labels = mutableListOf<String>()
+        if (allowNone) labels += "Без комірки"
+        labels += locations.map { it[1] }
+        AlertDialog.Builder(this).setTitle(title).setItems(labels.toTypedArray()) { _, which ->
+            onSelected(if (allowNone && which == 0) null else locations[if (allowNone) which - 1 else which][0].toLong())
+        }.show()
+    }
+
     private fun showMovementForm(
         materialId: Long,
         type: String,
         title: String,
         fromWarehouse: Long,
-        toWarehouse: Long?
+        toWarehouse: Long?,
+        fromLocation: Long?,
+        toLocation: Long?
     ) {
         formDialog(
             title,
-            listOf("Кількість", "Номер документа", "Дата (РРРР-ММ-ДД)", "Примітка")
+            listOf("Кількість", "Номер документа", "Дата (РРРР-ММ-ДД)", "Примітка"),
+            initialValues = listOf("", "", today(), "")
         ) { v ->
             val qty = v[0].replace(',', '.').toDoubleOrNull()
             val documentNo = v[1]
             val date = v[2].ifBlank { today() }
-            if (qty == null || qty <= 0) {
+            if (qty == null || !qty.isFinite() || qty <= 0) {
                 showError("Кількість має бути числом більше 0.")
                 return@formDialog
             }
@@ -313,21 +328,21 @@ class MainActivity : Activity() {
             }
 
             if (type == "RECEIPT") {
-                db.insertMovement(materialId, type, qty, null, fromWarehouse, documentNo, date, v[3])
+                db.insertMovement(materialId, type, qty, null, fromWarehouse, null, toLocation, documentNo, date, v[3])
             } else if (type == "TRANSFER") {
                 val current = db.warehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
                     showError("Недостатньо залишку на складі-відправнику. Доступно: ${formatQty(current)}.")
                     return@formDialog
                 }
-                db.insertTransfer(materialId, qty, fromWarehouse, toWarehouse ?: return@formDialog, documentNo, date, v[3])
+                db.insertTransfer(materialId, qty, fromWarehouse, toWarehouse ?: return@formDialog, fromLocation, toLocation, documentNo, date, v[3])
             } else {
                 val current = db.warehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
                     showError("Недостатньо залишку на складі. Доступно: ${formatQty(current)}.")
                     return@formDialog
                 }
-                db.insertMovement(materialId, type, qty, fromWarehouse, null, documentNo, date, v[3])
+                db.insertMovement(materialId, type, qty, fromWarehouse, null, fromLocation, null, documentNo, date, v[3])
             }
             showMovement(type, title)
         }
@@ -372,10 +387,10 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
-    private fun showWarehouseActions(id: Long, name: String, address: String, responsible: String) {
+    private fun showWarehouseActions(id: Long, name: String, address: String, responsibleId: Long?) {
         AlertDialog.Builder(this).setTitle(name)
             .setItems(arrayOf("Редагувати", "Видалити")) { _, which ->
-                if (which == 0) editWarehouse(id, name, address, responsible) else {
+                if (which == 0) editWarehouse(id, name, address, responsibleId) else {
                     if (db.warehouseHasMovements(id)) showError("Склад має документи руху і не може бути видалений.")
                     else if (db.warehouseHasLocations(id)) showError("Спочатку видаліть комірки цього складу.")
                     else { db.deleteWarehouse(id); showWarehouses() }
@@ -383,27 +398,27 @@ class MainActivity : Activity() {
             }.show()
     }
 
-    private fun editWarehouse(id: Long, name: String, address: String, responsible: String) {
+    private fun editWarehouse(id: Long, name: String, address: String, responsibleId: Long?) {
         val persons = db.list("responsible_persons")
         val labels = mutableListOf("Без призначеного МВО")
         labels += persons.map { it[1] }
-        val current = persons.indexOfFirst { it[1] == responsible } + 1
+        val current = persons.indexOfFirst { it[0].toLongOrNull() == responsibleId } + 1
         AlertDialog.Builder(this).setTitle("МВО складу")
             .setSingleChoiceItems(labels.toTypedArray(), current.coerceAtLeast(0)) { dialog, selected ->
                 val rid = if (selected == 0) null else persons[selected - 1][0].toLongOrNull()
                 dialog.dismiss()
-                formDialog("Редагувати склад", listOf("Назва", "Адреса", "Примітка")) { v ->
+                formDialog("Редагувати склад", listOf("Назва", "Адреса", "Примітка"), initialValues = listOf(name, address, "")) { v ->
                     if (v[0].isBlank()) showError("Назва складу не може бути порожньою.")
                     else { db.updateWarehouse(id, v[0], v[1], v[2], rid); showWarehouses() }
                 }
             }.show()
     }
 
-    private fun showPersonActions(id: Long, name: String, position: String) {
+    private fun showPersonActions(id: Long, name: String, position: String, phone: String) {
         AlertDialog.Builder(this).setTitle(name)
             .setItems(arrayOf("Редагувати", "Видалити")) { _, which ->
                 if (which == 0) {
-                    formDialog("Редагувати МВО", listOf("ПІБ", "Посада", "Телефон")) { v ->
+                    formDialog("Редагувати МВО", listOf("ПІБ", "Посада", "Телефон"), initialValues = listOf(name, position, phone)) { v ->
                         if (v[0].isBlank()) showError("ПІБ не може бути порожнім.")
                         else { db.updatePerson(id, v[0], v[1], v[2]); showPersons() }
                     }
@@ -416,7 +431,7 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this).setTitle(name)
             .setItems(arrayOf("Редагувати", "Видалити")) { _, which ->
                 if (which == 0) {
-                    formDialog("Редагувати комірку", listOf("Назва", "Примітка")) { v ->
+                    formDialog("Редагувати комірку", listOf("Назва", "Примітка"), initialValues = listOf(name, note)) { v ->
                         if (v[0].isBlank()) showError("Назва комірки не може бути порожньою.")
                         else { db.updateLocation(id, v[0], v[1]); showLocations(warehouseId, warehouseName) }
                     }
@@ -428,10 +443,10 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this).setTitle(row[3])
             .setItems(arrayOf("Редагувати", "Видалити")) { _, which ->
                 if (which == 0) {
-                    formDialog("Редагувати матеріал", listOf("NSN", "Номенклатурний номер", "Назва", "Одиниця", "Партія", "Ціна")) { v ->
+                    formDialog("Редагувати матеріал", listOf("NSN", "Номенклатурний номер", "Назва", "Одиниця", "Партія", "Ціна"), initialValues = row.sliceArray(1..6).toList()) { v ->
                         val price = v[5].replace(',', '.').toDoubleOrNull()
                         if (v[2].isBlank() || v[3].isBlank()) showError("Заповніть назву та одиницю виміру.")
-                        else if (price == null || price < 0) showError("Ціна має бути числом не менше 0.")
+                        else if (price == null || !price.isFinite() || price < 0) showError("Ціна має бути кінцевим числом не менше 0.")
                         else { db.updateMaterial(id, v[0], v[1], v[2], v[3], v[4], price); showMaterials() }
                     }
                 } else if (db.materialHasMovements(id)) showError("Матеріал має документи руху і не може бути видалений.")
@@ -456,6 +471,10 @@ class MainActivity : Activity() {
         parser.format(parsed) == value
     } catch (_: Exception) {
         false
+    }
+
+    private fun safeDb(action: () -> Unit) {
+        try { action() } catch (e: SQLiteException) { showError("Не вдалося виконати операцію: ${e.message ?: "помилка бази даних"}.") }
     }
 
     private fun formatQty(value: Double): String =
@@ -510,14 +529,15 @@ class MainActivity : Activity() {
         root.addView(box, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 8 })
     }
 
-    private fun formDialog(title: String, labels: List<String>, onSave: (List<String>) -> Unit) {
+    private fun formDialog(title: String, labels: List<String>, initialValues: List<String> = emptyList(), onSave: (List<String>) -> Unit) {
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(28, 8, 28, 0)
         }
-        val fields = labels.map { label ->
+        val fields = labels.mapIndexed { index, label ->
             EditText(this).apply {
                 hint = label
+                if (index < initialValues.size) setText(initialValues[index])
                 setSingleLine(true)
                 layout.addView(this, LinearLayout.LayoutParams(-1, 58))
             }
