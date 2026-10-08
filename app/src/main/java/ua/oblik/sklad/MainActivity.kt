@@ -425,16 +425,16 @@ class MainActivity : Activity() {
                 }
             }
             iconHolder.addView(DashboardIconView(this, icon, tint), FrameLayout.LayoutParams(-1, -1))
-            card.addView(iconHolder, LinearLayout.LayoutParams(dp(44), dp(44)))
+            card.addView(iconHolder, LinearLayout.LayoutParams(dp(42), dp(42)))
 
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(6), 0, dp(1), 0)
+                setPadding(dp(5), 0, 0, 0)
             }
             labels.addView(TextView(this).apply {
                 text = titleText
-                textSize = 13f
+                textSize = 12.5f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.WHITE)
                 maxLines = 2
@@ -443,7 +443,7 @@ class MainActivity : Activity() {
             })
             labels.addView(TextView(this).apply {
                 text = subtitle
-                textSize = 9.5f
+                textSize = 9f
                 setTextColor(Color.rgb(193, 201, 202))
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -456,7 +456,7 @@ class MainActivity : Activity() {
                 textSize = 21f
                 setTextColor(Color.rgb(225, 195, 111))
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(16), dp(44)))
+            }, LinearLayout.LayoutParams(dp(14), dp(42)))
             return card
         }
 
@@ -559,7 +559,7 @@ class MainActivity : Activity() {
         nav.addView(navItem("boxes", "Майно", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(50), 1f))
         nav.addView(navItem("transfer", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(50), 1f))
         nav.addView(navItem("journal", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(50), 1f))
-        nav.addView(navItem("settings", "Налаштування", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(50), 1f))
+        nav.addView(navItem("settings", "Налашт.", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(50), 1f))
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(58)).apply {
             leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(5)
         })
