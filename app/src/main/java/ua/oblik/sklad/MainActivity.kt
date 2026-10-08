@@ -339,7 +339,12 @@ class MainActivity : Activity() {
                     showError("Недостатньо залишку на складі-відправнику. Доступно: ${formatQty(current)}.")
                     return@formDialog
                 }
-                safeDb { db.insertTransfer(materialId, qty, fromWarehouse, toWarehouse ?: return@formDialog, fromLocation, toLocation, documentNo, date, v[3]) }
+                safeDb { val targetWarehouse = toWarehouse
+                if (targetWarehouse == null) {
+                    showError("Не обрано склад-отримувач.")
+                    return@safeDb
+                }
+                db.insertTransfer(materialId, qty, fromWarehouse, targetWarehouse, fromLocation, toLocation, documentNo, date, v[3]) }
             } else {
                 val current = db.warehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
