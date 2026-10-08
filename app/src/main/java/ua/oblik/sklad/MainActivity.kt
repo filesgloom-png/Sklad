@@ -501,6 +501,8 @@ class MainActivity : Activity() {
             .setPositiveButton("Знайти") { _, _ -> onSearch(input.text.toString().trim()) }.show()
     }
 
+    private fun databaseFile(): File = applicationContext.getDatabasePath("oblik_sklad.db")
+
     private fun exportBackup() {
         startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             type = "application/octet-stream"
@@ -514,7 +516,7 @@ class MainActivity : Activity() {
             .setNegativeButton("Скасувати", null)
             .setPositiveButton("Продовжити") { _, _ ->
                 startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    type = "application/octet-stream"
+                    type = "*/*"
                     addCategory(Intent.CATEGORY_OPENABLE)
                 }, BACKUP_OPEN)
             }.show()
@@ -522,27 +524,55 @@ class MainActivity : Activity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != RESULT_OK || data?.data == null) return
+        if (resultCode != RESULT_OK || data?.data == null) {
+            if (requestCode == BACKUP_CREATE || requestCode == BACKUP_OPEN) {
+                db = AppDb(this)
+            }
+            return
+        }
         val uri = data.data ?: return
         try {
-            if (requestCode == BACKUP_CREATE) {
-                contentResolver.openOutputStream(uri)?.use { output ->
-                    File(db.getDatabasePath("oblik_sklad.db").path).inputStream().use { input -> input.copyTo(output) }
-                } ?: throw IllegalStateException("Не вдалося створити резервну копію.")
-                Toast.makeText(this, "Резервну копію створено.", Toast.LENGTH_LONG).show()
-            } else if (requestCode == BACKUP_OPEN) {
-                val temp = File(cacheDir, "oblik_sklad_import.db")
-                contentResolver.openInputStream(uri)?.use { input -> temp.outputStream().use { output -> input.copyTo(output) } }
-                    ?: throw IllegalStateException("Не вдалося прочитати резервну копію.")
-                db.close()
-                val target = db.getDatabasePath("oblik_sklad.db")
-                temp.copyTo(target, overwrite = true)
-                temp.delete()
-                db = AppDb(this)
-                showHome()
-                Toast.makeText(this, "Резервну копію імпортовано.", Toast.LENGTH_LONG).show()
+            when (requestCode) {
+                BACKUP_CREATE -> {
+                    db.writableDatabase.rawQuery("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() }
+                    db.close()
+                    contentResolver.openOutputStream(uri)?.use { output ->
+                        databaseFile().inputStream().use { input -> input.copyTo(output) }
+                    } ?: throw IllegalStateException("Не вдалося створити резервну копію.")
+                    db = AppDb(this)
+                    Toast.makeText(this, "Резервну копію створено.", Toast.LENGTH_LONG).show()
+                }
+                BACKUP_OPEN -> {
+                    val temp = File.createTempFile("oblik-sklad-import-", ".db", cacheDir)
+                    try {
+                        contentResolver.openInputStream(uri)?.use { input ->
+                            temp.outputStream().use { output -> input.copyTo(output) }
+                        } ?: throw IllegalStateException("Не вдалося прочитати резервну копію.")
+
+                        android.database.sqlite.SQLiteDatabase.openDatabase(
+                            temp.absolutePath,
+                            null,
+                            android.database.sqlite.SQLiteDatabase.OPEN_READONLY
+                        ).use { imported ->
+                            imported.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='materials'", null).use { cursor ->
+                                if (!cursor.moveToFirst()) {
+                                    throw IllegalArgumentException("Вибраний файл не є резервною копією «Облік-Склад».")
+                                }
+                            }
+                        }
+
+                        db.close()
+                        temp.copyTo(databaseFile(), overwrite = true)
+                        db = AppDb(this)
+                        showHome()
+                        Toast.makeText(this, "Резервну копію імпортовано.", Toast.LENGTH_LONG).show()
+                    } finally {
+                        temp.delete()
+                    }
+                }
             }
         } catch (e: Exception) {
+            db = AppDb(this)
             showError("Помилка резервної копії: ${e.message ?: "невідома помилка"}.")
         }
     }
