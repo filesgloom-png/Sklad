@@ -15,6 +15,10 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
+import java.io.ByteArrayInputStream
+import java.util.Base64
+import java.util.zip.ZipInputStream
+
 import android.widget.*
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -25,6 +29,81 @@ class MainActivity : Activity() {
     private val surface = Color.rgb(246, 248, 251)
     private val textPrimary = Color.rgb(28, 35, 43)
     private val textSecondary = Color.rgb(96, 108, 120)
+
+    private class ReferencePhotoCardLayout(
+        context: android.content.Context,
+        private val photoName: String
+    ) : LinearLayout(context) {
+        private val photoPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { alpha = 120 }
+        private val shadePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        init {
+            setWillNotDraw(false)
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val bitmap = loadPhoto()
+            if (bitmap != null && width > 0 && height > 0) {
+                val save = canvas.save()
+                val radius = dpLocal(16).toFloat()
+                canvas.clipRoundRect(0f, 0f, width.toFloat(), height.toFloat(), radius, radius, android.graphics.Region.Op.INTERSECT)
+
+                val scale = maxOf(width.toFloat() / bitmap.width, height.toFloat() / bitmap.height)
+                val bw = bitmap.width * scale
+                val bh = bitmap.height * scale
+                val left = width - bw
+                val top = (height - bh) / 2f
+                val src = android.graphics.Rect(0, 0, bitmap.width, bitmap.height)
+                val dst = android.graphics.RectF(left, top, width.toFloat(), top + bh)
+                canvas.drawBitmap(bitmap, src, dst, photoPaint)
+
+                shadePaint.shader = android.graphics.LinearGradient(
+                    0f, 0f, width.toFloat(), 0f,
+                    Color.argb(205, 7, 14, 14),
+                    Color.argb(55, 7, 14, 14),
+                    android.graphics.Shader.TileMode.CLAMP
+                )
+                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), shadePaint)
+                shadePaint.shader = null
+                canvas.restoreToCount(save)
+            }
+        }
+
+        private fun dpLocal(v: Int): Int = (v * resources.displayMetrics.density).toInt()
+
+        private fun loadPhoto(): Bitmap? {
+            return try {
+                val cache = PhotoCache.get(context, photoName)
+                cache
+            } catch (_: Exception) { null }
+        }
+    }
+
+    private object PhotoCache {
+        private val bitmaps = mutableMapOf<String, Bitmap>()
+        private var zipBytes: ByteArray? = null
+
+        fun get(context: android.content.Context, name: String): Bitmap? {
+            bitmaps[name]?.let { return it }
+            if (zipBytes == null) {
+                val text = context.assets.open("reference_photos.zip.b64").bufferedReader().use { it.readText() }
+                zipBytes = Base64.getDecoder().decode(text)
+            }
+            ZipInputStream(ByteArrayInputStream(zipBytes!!)).use { zis ->
+                while (true) {
+                    val entry = zis.nextEntry ?: break
+                    if (entry.name == "$name.jpg") {
+                        val bytes = zis.readBytes()
+                        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        if (bitmap != null) bitmaps[name] = bitmap
+                        return bitmap
+                    }
+                }
+            }
+            return null
+        }
+    }
 
     private class DashboardIconView(
         context: android.content.Context,
@@ -286,7 +365,7 @@ class MainActivity : Activity() {
             text = "Облік речового майна"
             textSize = 16f
             setTextColor(Color.rgb(174, 184, 190))
-            setPadding(0, dp(3), 0, 0)
+            setPadding(0, dp(2), 0, 0)
         })
         header.addView(titleBox, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(TextView(this).apply {
@@ -394,10 +473,23 @@ class MainActivity : Activity() {
             tint: Int,
             action: () -> Unit
         ): LinearLayout {
-            val card = LinearLayout(this).apply {
+            val photoName = when (icon) {
+                "home" -> "warehouses"
+                "person" -> "mvo"
+                "clipboard" -> "cards"
+                "cube" -> "nomenclature"
+                "plus" -> "receipt"
+                "issue" -> "issue"
+                "transfer" -> "transfer"
+                "trash" -> "writeoff"
+                "journal" -> "journal"
+                "chart" -> "reports"
+                else -> null
+            }
+            val card = ReferencePhotoCardLayout(this, photoName ?: "warehouses").apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(8), dp(8), dp(5), dp(8))
+                setPadding(dp(7), dp(5), dp(4), dp(5))
                 background = GradientDrawable(
                     GradientDrawable.Orientation.LEFT_RIGHT,
                     intArrayOf(
@@ -420,21 +512,21 @@ class MainActivity : Activity() {
                         Color.argb(55, Color.red(accent), Color.green(accent), Color.blue(accent))
                     )
                 ).apply {
-                    cornerRadius = dp(15).toFloat()
+                    cornerRadius = dp(13).toFloat()
                     setStroke(dp(1), Color.argb(170, Color.red(accent), Color.green(accent), Color.blue(accent)))
                 }
             }
             iconHolder.addView(DashboardIconView(this, icon, tint), FrameLayout.LayoutParams(-1, -1))
-            card.addView(iconHolder, LinearLayout.LayoutParams(dp(60), dp(60)))
+            card.addView(iconHolder, LinearLayout.LayoutParams(dp(48), dp(48)))
 
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(12), 0, dp(2), 0)
+                setPadding(dp(8), 0, dp(2), 0)
             }
             labels.addView(TextView(this).apply {
                 text = titleText
-                textSize = 16f
+                textSize = 14f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.WHITE)
                 maxLines = 2
@@ -443,7 +535,7 @@ class MainActivity : Activity() {
             })
             labels.addView(TextView(this).apply {
                 text = subtitle
-                textSize = 12f
+                textSize = 10f
                 setTextColor(Color.rgb(193, 201, 202))
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -453,10 +545,10 @@ class MainActivity : Activity() {
             card.addView(labels, LinearLayout.LayoutParams(0, -1, 1f))
             card.addView(TextView(this).apply {
                 text = "›"
-                textSize = 30f
+                textSize = 24f
                 setTextColor(Color.rgb(225, 195, 111))
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(25), dp(60)))
+            }, LinearLayout.LayoutParams(dp(18), dp(48)))
             return card
         }
 
@@ -471,11 +563,11 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             row.addView(
                 darkCard(left.first, left.second, left.third, leftAccent, Color.WHITE, leftAction),
-                LinearLayout.LayoutParams(0, dp(110), 1f).apply { rightMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(78), 1f).apply { rightMargin = dp(4) }
             )
             row.addView(
                 darkCard(right.first, right.second, right.third, rightAccent, Color.WHITE, rightAction),
-                LinearLayout.LayoutParams(0, dp(110), 1f).apply { leftMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(78), 1f).apply { leftMargin = dp(4) }
             )
             page.addView(row)
         }
