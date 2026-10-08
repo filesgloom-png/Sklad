@@ -127,9 +127,9 @@ class MainActivity : Activity() {
         val personCount = db.list("responsible_persons").size
         val materialCount = db.list("materials").size
         listOf(
-            "⌂" to "Склади" to warehouseCount.toString(),
-            "♟" to "МВО" to personCount.toString(),
-            "▦" to "Позиції" to materialCount.toString()
+            Triple("⌂", "Склади", warehouseCount.toString()),
+            Triple("♟", "МВО", personCount.toString()),
+            Triple("▦", "Позиції", materialCount.toString())
         ).forEachIndexed { index, item ->
             val box = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
