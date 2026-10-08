@@ -5,7 +5,11 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null, 2) {
+class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null, 3) {
+    override fun onConfigure(db: SQLiteDatabase) {
+        super.onConfigure(db)
+        db.setForeignKeyConstraintsEnabled(true)
+    }
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""
             CREATE TABLE warehouses(
@@ -126,7 +130,7 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         documentNo: String,
         date: String,
         note: String
-    ) = writableDatabase.insert("movements", null, ContentValues().apply {
+    ) = writableDatabase.insertOrThrow("movements", null, ContentValues().apply {
         put("material_id", materialId)
         put("type", type)
         put("quantity", quantity)
@@ -136,6 +140,50 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         put("movement_date", date)
         put("note", note)
     })
+
+    fun insertTransfer(materialId: Long, quantity: Double, fromWarehouse: Long, toWarehouse: Long, documentNo: String, date: String, note: String) {
+        writableDatabase.beginTransaction()
+        try {
+            insertMovement(materialId, "TRANSFER_OUT", quantity, fromWarehouse, toWarehouse, documentNo, date, note)
+            insertMovement(materialId, "TRANSFER_IN", quantity, fromWarehouse, toWarehouse, documentNo, date, note)
+            writableDatabase.setTransactionSuccessful()
+        } finally {
+            writableDatabase.endTransaction()
+        }
+    }
+
+    fun updateWarehouse(id: Long, name: String, address: String, note: String, responsiblePersonId: Long?) =
+        writableDatabase.update("warehouses", ContentValues().apply {
+            put("name", name); put("address", address); put("note", note)
+            if (responsiblePersonId == null) putNull("responsible_person_id") else put("responsible_person_id", responsiblePersonId)
+        }, "id=?", arrayOf(id.toString()))
+
+    fun updatePerson(id: Long, name: String, position: String, phone: String) =
+        writableDatabase.update("responsible_persons", ContentValues().apply {
+            put("full_name", name); put("position", position); put("phone", phone)
+        }, "id=?", arrayOf(id.toString()))
+
+    fun updateLocation(id: Long, name: String, note: String) =
+        writableDatabase.update("storage_locations", ContentValues().apply {
+            put("name", name); put("note", note)
+        }, "id=?", arrayOf(id.toString()))
+
+    fun updateMaterial(id: Long, nsn: String, nomenclature: String, name: String, unit: String, batch: String, price: Double) =
+        writableDatabase.update("materials", ContentValues().apply {
+            put("nsn", nsn); put("nomenclature_no", nomenclature); put("name", name)
+            put("unit", unit); put("batch", batch); put("price", price)
+        }, "id=?", arrayOf(id.toString()))
+
+    fun deleteWarehouse(id: Long): Boolean = writableDatabase.delete("warehouses", "id=?", arrayOf(id.toString())) > 0
+    fun deletePerson(id: Long): Boolean = writableDatabase.delete("responsible_persons", "id=?", arrayOf(id.toString())) > 0
+    fun deleteLocation(id: Long): Boolean = writableDatabase.delete("storage_locations", "id=?", arrayOf(id.toString())) > 0
+    fun deleteMaterial(id: Long): Boolean = writableDatabase.delete("materials", "id=?", arrayOf(id.toString())) > 0
+
+    fun warehouseHasMovements(id: Long): Boolean = exists("SELECT 1 FROM movements WHERE from_warehouse_id=? OR to_warehouse_id=? LIMIT 1", arrayOf(id.toString(), id.toString()))
+    fun warehouseHasLocations(id: Long): Boolean = exists("SELECT 1 FROM storage_locations WHERE warehouse_id=? LIMIT 1", arrayOf(id.toString()))
+    fun personAssigned(id: Long): Boolean = exists("SELECT 1 FROM warehouses WHERE responsible_person_id=? LIMIT 1", arrayOf(id.toString()))
+    fun materialHasMovements(id: Long): Boolean = exists("SELECT 1 FROM movements WHERE material_id=? LIMIT 1", arrayOf(id.toString()))
+    private fun exists(sql: String, args: Array<String>): Boolean = readableDatabase.rawQuery(sql, args).use { it.moveToFirst() }
 
     fun list(table: String): List<Array<String>> {
         val result = mutableListOf<Array<String>>()
