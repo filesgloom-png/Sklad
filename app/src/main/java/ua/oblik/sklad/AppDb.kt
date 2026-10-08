@@ -275,6 +275,31 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         return balance
     }
 
+    fun locationBalance(materialId: Long, locationId: Long): Double {
+        var balance = 0.0
+        val sql = """
+            SELECT type, quantity,
+                   COALESCE(from_location_id, -1),
+                   COALESCE(to_location_id, -1)
+            FROM movements
+            WHERE material_id=?
+              AND (from_location_id=? OR to_location_id=?)
+        """.trimIndent()
+        readableDatabase.rawQuery(sql, arrayOf(materialId.toString(), locationId.toString(), locationId.toString())).use { cursor ->
+            while (cursor.moveToNext()) {
+                val type = cursor.getString(0)
+                val qty = cursor.getDouble(1)
+                val from = cursor.getLong(2)
+                val to = cursor.getLong(3)
+                when (type) {
+                    "RECEIPT", "TRANSFER_IN" -> if (to == locationId) balance += qty
+                    "ISSUE", "WRITE_OFF", "TRANSFER_OUT" -> if (from == locationId) balance -= qty
+                }
+            }
+        }
+        return balance
+    }
+
     fun warehouseBalance(materialId: Long, warehouseId: Long): Double {
         var balance = 0.0
         val sql = """
