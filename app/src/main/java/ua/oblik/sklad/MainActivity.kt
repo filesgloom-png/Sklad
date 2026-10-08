@@ -148,6 +148,21 @@ class MainActivity : Activity() {
                     canvas.drawRoundRect(cx - s * .25f, cy - s * .20f, cx + s * .32f, cy + s, 4f, 4f, paint)
                     canvas.drawRoundRect(cx + s * .50f, cy - s, cx + s, cy + s, 4f, 4f, paint)
                 }
+                "settings" -> {
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = s * .22f
+                    canvas.drawCircle(cx, cy, s * .65f, paint)
+                    paint.strokeWidth = s * .30f
+                    canvas.drawCircle(cx, cy, s * .20f, paint)
+                    for (i in 0 until 8) {
+                        val a = Math.toRadians(i * 45.0)
+                        val x1 = cx + kotlin.math.cos(a).toFloat() * s * .82f
+                        val y1 = cy + kotlin.math.sin(a).toFloat() * s * .82f
+                        val x2 = cx + kotlin.math.cos(a).toFloat() * s * 1.08f
+                        val y2 = cy + kotlin.math.sin(a).toFloat() * s * 1.08f
+                        canvas.drawLine(x1, y1, x2, y2, paint)
+                    }
+                }
                 else -> {
                     paint.style = Paint.Style.STROKE
                     canvas.drawCircle(cx, cy, s * .75f, paint)
