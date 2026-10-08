@@ -452,7 +452,12 @@ class MainActivity : Activity() {
                         if (v[0].isBlank()) showError("Назва комірки не може бути порожньою.")
                         else { db.updateLocation(id, v[0], v[1]); showLocations(warehouseId, warehouseName) }
                     }
-                } else { db.deleteLocation(id); showLocations(warehouseId, warehouseName) }
+                } else if (db.locationHasMovements(id)) {
+                    showError("Комірка має документи руху і не може бути видалена.")
+                } else {
+                    db.deleteLocation(id)
+                    showLocations(warehouseId, warehouseName)
+                }
             }.show()
     }
 
