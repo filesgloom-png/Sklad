@@ -4,6 +4,9 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.database.sqlite.SQLiteException
 import android.graphics.Color
+import android.net.Uri
+import java.io.File
+import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.*
@@ -74,7 +77,9 @@ class MainActivity : Activity() {
             "🔀 Переміщення" to { showMovement("TRANSFER", "Переміщення") },
             "🗑 Списання" to { showMovement("WRITE_OFF", "Списання") },
             "🗂 Картки обліку" to { showCards() },
-            "📜 Журнал руху" to { showJournal() }
+            "📜 Журнал руху" to { showJournal() },
+            "💾 Резервна копія" to { exportBackup() },
+            "📥 Імпорт резервної копії" to { importBackup() }
         )
         buttons.forEach { (label, action) ->
             root.addView(Button(this).apply {
@@ -181,8 +186,9 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
-    private fun showMaterials() {
+    private fun showMaterials(query: String = "") {
         val root = base("Номенклатура")
+        addAction(root, "🔎 Пошук / фільтр") { searchDialog("Пошук номенклатури", query) { q -> showMaterials(q) } }
         addAction(root, "Додати матеріал") {
             formDialog("Новий матеріал", listOf("NSN", "Номенклатурний номер", "Назва", "Одиниця", "Партія", "Ціна")) { v ->
                 val price = v[5].replace(',', '.').toDoubleOrNull()
@@ -196,7 +202,9 @@ class MainActivity : Activity() {
                 }
             }
         }
-        val rows = db.list("materials")
+        val rows = db.list("materials").filter { row ->
+            query.isBlank() || row[1].contains(query, true) || row[2].contains(query, true) || row[3].contains(query, true) || row[4].contains(query, true) || row[5].contains(query, true)
+        }
         rows.forEach { row ->
             val id = row[0].toLongOrNull() ?: return@forEach
             val balance = db.materialBalance(id)
@@ -204,7 +212,7 @@ class MainActivity : Activity() {
                 showMaterialActions(id, row)
             }
         }
-        if (rows.isEmpty()) addRow(root, "Номенклатура порожня", "Додайте матеріали перед створенням документів.")
+        if (rows.isEmpty()) addRow(root, if (query.isBlank()) "Номенклатура порожня" else "Нічого не знайдено", if (query.isBlank()) "Додайте матеріали перед створенням документів." else "Змініть пошуковий запит.")
         setContentView(root)
     }
 
@@ -387,9 +395,10 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
-    private fun showJournal() {
+    private fun showJournal(query: String = "") {
         val root = base("Журнал руху")
-        val rows = db.movementRows()
+        addAction(root, "🔎 Пошук / фільтр") { searchDialog("Пошук у журналі", query) { q -> showJournal(q) } }
+        val rows = db.movementRows().filter { row -> query.isBlank() || row.any { value -> value.contains(query, true) } }
         rows.forEach {
             val route = if (it[2].startsWith("TRANSFER")) " • ${it[5]} → ${it[6]}"
             else if (it[2] == "RECEIPT") " • ${it[6]}"
@@ -400,7 +409,7 @@ class MainActivity : Activity() {
                 "${typeLabel(it[2])} • ${formatQty(it[3].toDoubleOrNull() ?: 0.0)} • Документ ${it[4]}${route}${if (it[9].isNotBlank()) " • ${it[9]}" else ""}"
             )
         }
-        if (rows.isEmpty()) addRow(root, "Журнал порожній", "Документи руху з’являться після першої операції.")
+        if (rows.isEmpty()) addRow(root, if (query.isBlank()) "Журнал порожній" else "Нічого не знайдено", if (query.isBlank()) "Документи руху з’являться після першої операції." else "Змініть пошуковий запит.")
         setContentView(root)
     }
 
@@ -474,6 +483,68 @@ class MainActivity : Activity() {
                 } else if (db.materialHasMovements(id)) showError("Матеріал має документи руху і не може бути видалений.")
                 else { db.deleteMaterial(id); showMaterials() }
             }.show()
+    }
+
+    private val BACKUP_CREATE = 4101
+    private val BACKUP_OPEN = 4102
+
+    private fun searchDialog(title: String, current: String, onSearch: (String) -> Unit) {
+        val input = EditText(this).apply {
+            hint = "Назва, NSN, документ, склад..."
+            setSingleLine(true)
+            setText(current)
+            setSelection(text.length)
+        }
+        AlertDialog.Builder(this).setTitle(title).setView(input)
+            .setNegativeButton("Скасувати", null)
+            .setNeutralButton("Очистити") { _, _ -> onSearch("") }
+            .setPositiveButton("Знайти") { _, _ -> onSearch(input.text.toString().trim()) }.show()
+    }
+
+    private fun exportBackup() {
+        startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            type = "application/octet-stream"
+            putExtra(Intent.EXTRA_TITLE, "oblik-sklad-backup-${today()}.db")
+        }, BACKUP_CREATE)
+    }
+
+    private fun importBackup() {
+        AlertDialog.Builder(this).setTitle("Імпорт резервної копії")
+            .setMessage("Поточна локальна база буде замінена вибраною копією. Продовжити?")
+            .setNegativeButton("Скасувати", null)
+            .setPositiveButton("Продовжити") { _, _ ->
+                startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    type = "application/octet-stream"
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                }, BACKUP_OPEN)
+            }.show()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK || data?.data == null) return
+        val uri = data.data ?: return
+        try {
+            if (requestCode == BACKUP_CREATE) {
+                contentResolver.openOutputStream(uri)?.use { output ->
+                    File(db.getDatabasePath("oblik_sklad.db").path).inputStream().use { input -> input.copyTo(output) }
+                } ?: throw IllegalStateException("Не вдалося створити резервну копію.")
+                Toast.makeText(this, "Резервну копію створено.", Toast.LENGTH_LONG).show()
+            } else if (requestCode == BACKUP_OPEN) {
+                val temp = File(cacheDir, "oblik_sklad_import.db")
+                contentResolver.openInputStream(uri)?.use { input -> temp.outputStream().use { output -> input.copyTo(output) } }
+                    ?: throw IllegalStateException("Не вдалося прочитати резервну копію.")
+                db.close()
+                val target = db.getDatabasePath("oblik_sklad.db")
+                temp.copyTo(target, overwrite = true)
+                temp.delete()
+                db = AppDb(this)
+                showHome()
+                Toast.makeText(this, "Резервну копію імпортовано.", Toast.LENGTH_LONG).show()
+            }
+        } catch (e: Exception) {
+            showError("Помилка резервної копії: ${e.message ?: "невідома помилка"}.")
+        }
     }
 
     private fun typeLabel(type: String): String = when (type) {
