@@ -26,6 +26,62 @@ class MainActivity : Activity() {
     private val textPrimary = Color.rgb(28, 35, 43)
     private val textSecondary = Color.rgb(96, 108, 120)
 
+    private class WarehouseBackdropView(context: android.content.Context) : View(context) {
+        private val p = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val w = width.toFloat()
+            val h = height.toFloat()
+
+            p.style = Paint.Style.FILL
+            p.shader = android.graphics.LinearGradient(
+                0f, 0f, w, h,
+                Color.rgb(8, 20, 22), Color.rgb(6, 14, 16),
+                android.graphics.Shader.TileMode.CLAMP
+            )
+            canvas.drawRect(0f, 0f, w, h, p)
+            p.shader = null
+
+            // Subtle warehouse perspective: ceiling lights, shelves and boxes.
+            p.strokeWidth = 1.2f
+            p.style = Paint.Style.STROKE
+            p.color = Color.argb(32, 220, 205, 155)
+            val horizon = h * 0.29f
+            canvas.drawLine(w * .50f, horizon, w * .12f, 0f, p)
+            canvas.drawLine(w * .50f, horizon, w * .88f, 0f, p)
+            canvas.drawLine(w * .50f, horizon, w * .50f, 0f, p)
+
+            p.style = Paint.Style.FILL
+            p.color = Color.argb(26, 226, 196, 111)
+            canvas.drawRect(w * .34f, h * .025f, w * .47f, h * .032f, p)
+            canvas.drawRect(w * .53f, h * .055f, w * .68f, h * .062f, p)
+
+            fun shelf(x: Float, top: Float, width: Float, rows: Int) {
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = 2f
+                p.color = Color.argb(24, 190, 202, 198)
+                canvas.drawRect(x, top, x + width, top + rows * 48f, p)
+                for (r in 1 until rows) canvas.drawLine(x, top + r * 48f, x + width, top + r * 48f, p)
+                p.style = Paint.Style.FILL
+                for (r in 0 until rows) {
+                    val y = top + r * 48f + 7f
+                    p.color = Color.argb(22, 126, 143, 137)
+                    canvas.drawRect(x + 8f, y, x + width * .42f, y + 25f, p)
+                    p.color = Color.argb(17, 203, 174, 94)
+                    canvas.drawRect(x + width * .48f, y + 3f, x + width - 9f, y + 21f, p)
+                }
+            }
+            shelf(w * .01f, h * .17f, w * .19f, 7)
+            shelf(w * .80f, h * .17f, w * .19f, 7)
+
+            p.color = Color.argb(20, 226, 195, 111)
+            canvas.drawCircle(w * .50f, horizon + 12f, 26f, p)
+            p.color = Color.argb(16, 255, 255, 255)
+            canvas.drawRect(w * .48f, horizon + 8f, w * .52f, h * .75f, p)
+        }
+    }
+
     private class DashboardIconView(
         context: android.content.Context,
         private val kind: String,
@@ -229,8 +285,7 @@ class MainActivity : Activity() {
         window.navigationBarColor = Color.rgb(7, 18, 21)
         window.decorView.systemUiVisibility = 0
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+        val root = FrameLayout(this).apply {
             setBackgroundColor(Color.rgb(7, 18, 21))
         }
         root.setOnApplyWindowInsetsListener { view, insets ->
@@ -238,6 +293,7 @@ class MainActivity : Activity() {
             view.setPadding(0, bars.top, 0, bars.bottom)
             insets
         }
+        root.addView(WarehouseBackdropView(this), FrameLayout.LayoutParams(-1, -1))
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
@@ -390,9 +446,9 @@ class MainActivity : Activity() {
                 setPadding(dp(8), dp(7), dp(5), dp(7))
                 background = GradientDrawable(
                     GradientDrawable.Orientation.LEFT_RIGHT,
-                    intArrayOf(Color.rgb(31, 40, 39), Color.rgb(17, 25, 25))
+                    intArrayOf(Color.rgb(38, 48, 46), Color.rgb(16, 24, 24))
                 ).apply {
-                    cornerRadius = dp(15).toFloat()
+                    cornerRadius = dp(14).toFloat()
                     setStroke(dp(1), Color.argb(175, Color.red(accent), Color.green(accent), Color.blue(accent)))
                 }
                 elevation = dp(2).toFloat()
@@ -458,11 +514,11 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             row.addView(
                 darkCard(left.first, left.second, left.third, leftAccent, Color.WHITE, leftAction),
-                LinearLayout.LayoutParams(0, dp(94), 1f).apply { rightMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(96), 1f).apply { rightMargin = dp(4) }
             )
             row.addView(
                 darkCard(right.first, right.second, right.third, rightAccent, Color.WHITE, rightAction),
-                LinearLayout.LayoutParams(0, dp(94), 1f).apply { leftMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(96), 1f).apply { leftMargin = dp(4) }
             )
             page.addView(row)
         }
@@ -504,7 +560,14 @@ class MainActivity : Activity() {
         )
 
         scroll.addView(page)
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        val foreground = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        foreground.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        foreground.addView(nav, LinearLayout.LayoutParams(-1, dp(67)).apply {
+            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(8)
+        })
+        root.addView(foreground, FrameLayout.LayoutParams(-1, -1))
 
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
