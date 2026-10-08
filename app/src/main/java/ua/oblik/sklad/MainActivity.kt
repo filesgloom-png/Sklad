@@ -229,11 +229,11 @@ class MainActivity : Activity() {
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
-            setPadding(0, 0, 0, dp(8))
+            setPadding(0, 0, 0, dp(4))
         }
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(22), dp(20), dp(8))
+            setPadding(dp(18), dp(14), dp(18), dp(6))
         }
 
         val header = LinearLayout(this).apply {
@@ -243,15 +243,15 @@ class MainActivity : Activity() {
         val titleBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         titleBox.addView(TextView(this).apply {
             text = "Облік-Склад"
-            textSize = 31f
+            textSize = 28f
             setTypeface(null, android.graphics.Typeface.BOLD)
             setTextColor(Color.rgb(16, 29, 48))
         })
         titleBox.addView(TextView(this).apply {
             text = "Облік речового майна"
-            textSize = 16f
+            textSize = 15f
             setTextColor(textSecondary)
-            setPadding(0, dp(4), 0, 0)
+            setPadding(0, dp(2), 0, 0)
         })
         header.addView(titleBox, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(TextView(this).apply {
@@ -260,7 +260,7 @@ class MainActivity : Activity() {
             setTypeface(null, android.graphics.Typeface.BOLD)
             setTextColor(Color.rgb(190, 32, 44))
             gravity = Gravity.CENTER
-            setPadding(dp(15), dp(10), dp(15), dp(10))
+            setPadding(dp(12), dp(8), dp(12), dp(8))
             background = rounded(Color.rgb(255, 226, 229), 24)
         })
         page.addView(header)
@@ -268,7 +268,7 @@ class MainActivity : Activity() {
         val stats = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(0, dp(22), 0, dp(22))
+            setPadding(0, dp(12), 0, dp(12))
             background = rounded(Color.WHITE, 22)
             elevation = dp(2).toFloat()
         }
@@ -305,10 +305,10 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setPadding(0, dp(3), 0, 0)
             })
-            stats.addView(box, LinearLayout.LayoutParams(0, dp(112), 1f))
+            stats.addView(box, LinearLayout.LayoutParams(0, dp(82), 1f))
             if (index < 2) stats.addView(View(this).apply {
                 setBackgroundColor(Color.rgb(225, 228, 234))
-            }, LinearLayout.LayoutParams(dp(1), dp(76)))
+            }, LinearLayout.LayoutParams(dp(1), dp(58)))
         }
         page.addView(stats)
 
@@ -318,7 +318,7 @@ class MainActivity : Activity() {
                 textSize = 17f
                 setTypeface(null, android.graphics.Typeface.BOLD)
                 setTextColor(Color.rgb(101, 109, 121))
-                setPadding(dp(3), dp(18), 0, dp(10))
+                setPadding(dp(2), dp(12), 0, dp(7))
             })
         }
 
@@ -333,7 +333,7 @@ class MainActivity : Activity() {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(12), dp(12), dp(8), dp(12))
+                setPadding(dp(8), dp(8), dp(5), dp(8))
                 background = rounded(Color.WHITE, 18)
                 elevation = dp(2).toFloat()
                 setOnClickListener { action() }
@@ -343,18 +343,18 @@ class MainActivity : Activity() {
                 background = rounded(iconBg, 14)
             }
             iconHolder.addView(DashboardIconView(this, icon, iconColor), FrameLayout.LayoutParams(-1, -1))
-            card.addView(iconHolder, LinearLayout.LayoutParams(dp(64), dp(64)))
+            card.addView(iconHolder, LinearLayout.LayoutParams(dp(56), dp(56)))
 
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(12), 0, dp(5), 0)
-                minimumWidth = dp(105)
+                setPadding(dp(9), 0, dp(3), 0)
+                minimumWidth = dp(88)
             }
 
             labels.addView(TextView(this).apply {
                 text = title
-                textSize = 16f
+                textSize = 15f
                 setTypeface(null, android.graphics.Typeface.BOLD)
                 setTextColor(Color.rgb(25, 34, 47))
                 maxLines = 2
@@ -364,22 +364,22 @@ class MainActivity : Activity() {
 
             labels.addView(TextView(this).apply {
                 text = subtitle
-                textSize = 13f
+                textSize = 12f
                 setTextColor(Color.rgb(111, 120, 132))
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 includeFontPadding = false
-                setPadding(0, dp(5), 0, 0)
+                setPadding(0, dp(3), 0, 0)
             }, LinearLayout.LayoutParams(-1, -2))
 
             card.addView(labels, LinearLayout.LayoutParams(0, -1, 1f))
 
             card.addView(TextView(this).apply {
                 text = "›"
-                textSize = 30f
+                textSize = 26f
                 setTextColor(Color.rgb(90, 100, 112))
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(28), dp(70)))
+            }, LinearLayout.LayoutParams(dp(22), dp(56)))
 
             return card
         }
@@ -399,11 +399,11 @@ class MainActivity : Activity() {
             }
             row.addView(
                 card(left.first, left.second, left.third, leftBg, leftColor, leftAction),
-                LinearLayout.LayoutParams(0, dp(132), 1f).apply { rightMargin = dp(7) }
+                LinearLayout.LayoutParams(0, dp(108), 1f).apply { rightMargin = dp(5) }
             )
             row.addView(
                 card(right.first, right.second, right.third, rightBg, rightColor, rightAction),
-                LinearLayout.LayoutParams(0, dp(132), 1f).apply { leftMargin = dp(7) }
+                LinearLayout.LayoutParams(0, dp(108), 1f).apply { leftMargin = dp(5) }
             )
             page.addView(row)
         }
