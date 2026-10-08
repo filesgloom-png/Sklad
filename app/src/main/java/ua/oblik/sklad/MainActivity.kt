@@ -3,7 +3,12 @@ package ua.oblik.sklad
 import android.app.Activity
 import android.app.AlertDialog
 import android.database.sqlite.SQLiteException
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import java.io.File
@@ -21,6 +26,135 @@ class MainActivity : Activity() {
     private val surface = Color.rgb(246, 248, 251)
     private val textPrimary = Color.rgb(28, 35, 43)
     private val textSecondary = Color.rgb(96, 108, 120)
+
+    private class DashboardIconView(
+        context: android.content.Context,
+        private val kind: String,
+        private val tint: Int
+    ) : View(context) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            strokeWidth = 3.2f
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+            color = tint
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val w = width.toFloat()
+            val h = height.toFloat()
+            val cx = w / 2f
+            val cy = h / 2f
+            val s = minOf(w, h) * 0.31f
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = s * 0.11f
+
+            when (kind) {
+                "home" -> {
+                    val p = Path().apply {
+                        moveTo(cx - s, cy - s * 0.05f)
+                        lineTo(cx, cy - s)
+                        lineTo(cx + s, cy - s * 0.05f)
+                        lineTo(cx + s, cy + s)
+                        lineTo(cx - s, cy + s)
+                        close()
+                    }
+                    canvas.drawPath(p, paint)
+                    canvas.drawRect(cx - s * .28f, cy + s * .15f, cx + s * .28f, cy + s, paint)
+                }
+                "person" -> {
+                    paint.style = Paint.Style.FILL
+                    canvas.drawCircle(cx, cy - s * .52f, s * .32f, paint)
+                    canvas.drawOval(cx - s * .78f, cy - s * .02f, cx + s * .78f, cy + s * .88f, paint)
+                }
+                "boxes" -> {
+                    paint.style = Paint.Style.FILL
+                    canvas.drawRoundRect(cx - s, cy - s * .35f, cx - s * .08f, cy + s * .55f, 5f, 5f, paint)
+                    canvas.drawRoundRect(cx + s * .08f, cy - s * .35f, cx + s, cy + s * .55f, 5f, 5f, paint)
+                    canvas.drawRoundRect(cx - s * .45f, cy - s * .92f, cx + s * .45f, cy - s * .02f, 5f, 5f, paint)
+                    paint.color = Color.WHITE
+                    canvas.drawCircle(cx, cy - s * .48f, s * .10f, paint)
+                    paint.color = tint
+                }
+                "clipboard" -> {
+                    canvas.drawRoundRect(cx - s * .72f, cy - s, cx + s * .72f, cy + s, 7f, 7f, paint)
+                    canvas.drawRoundRect(cx - s * .30f, cy - s * 1.18f, cx + s * .30f, cy - s * .78f, 5f, 5f, paint)
+                    canvas.drawLine(cx - s * .35f, cy - s * .30f, cx + s * .38f, cy - s * .30f, paint)
+                    canvas.drawLine(cx - s * .35f, cy + s * .12f, cx + s * .38f, cy + s * .12f, paint)
+                    canvas.drawLine(cx - s * .35f, cy + s * .54f, cx + s * .15f, cy + s * .54f, paint)
+                }
+                "cube" -> {
+                    val p = Path().apply {
+                        moveTo(cx, cy - s)
+                        lineTo(cx + s * .86f, cy - s * .5f)
+                        lineTo(cx + s * .86f, cy + s * .38f)
+                        lineTo(cx, cy + s * .88f)
+                        lineTo(cx - s * .86f, cy + s * .38f)
+                        lineTo(cx - s * .86f, cy - s * .5f)
+                        close()
+                    }
+                    canvas.drawPath(p, paint)
+                    canvas.drawLine(cx, cy - s, cx, cy + s * .88f, paint)
+                    canvas.drawLine(cx - s * .86f, cy - s * .5f, cx, cy, paint)
+                    canvas.drawLine(cx + s * .86f, cy - s * .5f, cx, cy, paint)
+                }
+                "plus" -> {
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = s * .22f
+                    canvas.drawLine(cx - s, cy, cx + s, cy, paint)
+                    canvas.drawLine(cx, cy - s, cx, cy + s, paint)
+                }
+                "issue" -> {
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = s * .16f
+                    canvas.drawLine(cx, cy + s, cx, cy - s * .82f, paint)
+                    canvas.drawLine(cx - s * .42f, cy - s * .38f, cx, cy - s * .82f, paint)
+                    canvas.drawLine(cx + s * .42f, cy - s * .38f, cx, cy - s * .82f, paint)
+                    canvas.drawLine(cx - s * .65f, cy + s, cx + s * .65f, cy + s, paint)
+                }
+                "transfer" -> {
+                    paint.strokeWidth = s * .16f
+                    canvas.drawLine(cx - s, cy - s * .35f, cx + s * .55f, cy - s * .35f, paint)
+                    canvas.drawLine(cx + s * .15f, cy - s * .75f, cx + s * .55f, cy - s * .35f, paint)
+                    canvas.drawLine(cx + s * .55f, cy - s * .35f, cx + s * .15f, cy + s * .05f, paint)
+                    canvas.drawLine(cx + s, cy + s * .35f, cx - s * .55f, cy + s * .35f, paint)
+                    canvas.drawLine(cx - s * .15f, cy - s * .05f, cx - s * .55f, cy + s * .35f, paint)
+                    canvas.drawLine(cx - s * .55f, cy + s * .35f, cx - s * .15f, cy + s * .75f, paint)
+                }
+                "trash" -> {
+                    paint.style = Paint.Style.STROKE
+                    canvas.drawRoundRect(cx - s * .62f, cy - s * .55f, cx + s * .62f, cy + s, 5f, 5f, paint)
+                    canvas.drawLine(cx - s * .82f, cy - s * .78f, cx + s * .82f, cy - s * .78f, paint)
+                    canvas.drawLine(cx - s * .30f, cy - s * 1.08f, cx + s * .30f, cy - s * 1.08f, paint)
+                    canvas.drawLine(cx - s * .25f, cy - s * .25f, cx - s * .25f, cy + s * .65f, paint)
+                    canvas.drawLine(cx, cy - s * .25f, cx, cy + s * .65f, paint)
+                    canvas.drawLine(cx + s * .25f, cy - s * .25f, cx + s * .25f, cy + s * .65f, paint)
+                }
+                "journal" -> {
+                    paint.style = Paint.Style.FILL
+                    canvas.drawRoundRect(cx - s * .72f, cy - s, cx + s * .72f, cy + s, 7f, 7f, paint)
+                    paint.color = Color.WHITE
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = s * .11f
+                    canvas.drawLine(cx - s * .38f, cy - s * .42f, cx + s * .35f, cy - s * .42f, paint)
+                    canvas.drawLine(cx - s * .38f, cy, cx + s * .35f, cy, paint)
+                    canvas.drawLine(cx - s * .38f, cy + s * .42f, cx + s * .20f, cy + s * .42f, paint)
+                    paint.color = tint
+                }
+                "chart" -> {
+                    paint.style = Paint.Style.FILL
+                    canvas.drawRoundRect(cx - s, cy + s * .25f, cx - s * .42f, cy + s, 4f, 4f, paint)
+                    canvas.drawRoundRect(cx - s * .25f, cy - s * .20f, cx + s * .32f, cy + s, 4f, 4f, paint)
+                    canvas.drawRoundRect(cx + s * .50f, cy - s, cx + s, cy + s, 4f, 4f, paint)
+                }
+                else -> {
+                    paint.style = Paint.Style.STROKE
+                    canvas.drawCircle(cx, cy, s * .75f, paint)
+                }
+            }
+        }
+    }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
