@@ -75,58 +75,258 @@ class MainActivity : Activity() {
     private fun showHome() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(24), dp(20), dp(20))
-            setBackgroundColor(surface)
+            setBackgroundColor(Color.rgb(247, 249, 253))
         }
-        root.addView(TextView(this).apply {
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            setPadding(0, 0, 0, dp(8))
+        }
+        val page = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(22), dp(20), dp(8))
+        }
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val titleBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        titleBox.addView(TextView(this).apply {
             text = "Облік-Склад"
-            textSize = 32f
+            textSize = 31f
             setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(textPrimary)
+            setTextColor(Color.rgb(16, 29, 48))
         })
-        root.addView(TextView(this).apply {
-            text = "Облік речового майна  •  офлайн"
+        titleBox.addView(TextView(this).apply {
+            text = "Облік речового майна"
             textSize = 16f
             setTextColor(textSecondary)
-            setPadding(0, dp(5), 0, dp(20))
+            setPadding(0, dp(4), 0, 0)
         })
-        root.addView(TextView(this).apply {
-            text = "ОСНОВНІ РОЗДІЛИ"
-            textSize = 12f
+        header.addView(titleBox, LinearLayout.LayoutParams(0, -2, 1f))
+        header.addView(TextView(this).apply {
+            text = "●  Офлайн"
+            textSize = 15f
             setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(blue)
-            setPadding(dp(4), 0, 0, dp(8))
+            setTextColor(Color.rgb(190, 32, 44))
+            gravity = Gravity.CENTER
+            setPadding(dp(15), dp(10), dp(15), dp(10))
+            background = rounded(Color.rgb(255, 226, 229), 24)
         })
-        val buttons = listOf(
-            "📦 Склади" to { showWarehouses() },
-            "👤 МВО" to { showPersons() },
-            "📍 Комірки" to { chooseWarehouseForLocations() },
-            "📋 Номенклатура" to { showMaterials() },
-            "➕ Надходження" to { showMovement("RECEIPT", "Надходження") },
-            "📤 Видача" to { showMovement("ISSUE", "Видача") },
-            "🔀 Переміщення" to { showMovement("TRANSFER", "Переміщення") },
-            "🗑 Списання" to { showMovement("WRITE_OFF", "Списання") },
-            "🗂 Картки обліку" to { showCards() },
-            "📜 Журнал руху" to { showJournal() },
-            "💾 Резервна копія" to { exportBackup() },
-            "📥 Імпорт резервної копії" to { importBackup() }
-        )
-        buttons.forEach { (label, action) ->
-            root.addView(Button(this).apply {
-                text = label
-                textSize = 16f
-                setTextColor(textPrimary)
-                setAllCaps(false)
-                gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                minHeight = 0
-                minimumHeight = 0
-                setPadding(dp(18), 0, dp(18), 0)
-                background = rounded(Color.WHITE, 16)
+        page.addView(header)
+
+        val stats = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(0, dp(22), 0, dp(22))
+            background = rounded(Color.WHITE, 22)
+            elevation = dp(2).toFloat()
+        }
+        val warehouseCount = db.warehouseRows().size
+        val personCount = db.list("responsible_persons").size
+        val materialCount = db.list("materials").size
+        listOf(
+            "⌂" to "Склади" to warehouseCount.toString(),
+            "♟" to "МВО" to personCount.toString(),
+            "▦" to "Позиції" to materialCount.toString()
+        ).forEachIndexed { index, item ->
+            val box = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+            }
+            box.addView(TextView(this).apply {
+                text = item.first
+                textSize = 25f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(Color.rgb(18, 91, 177))
+                gravity = Gravity.CENTER
+            })
+            box.addView(TextView(this).apply {
+                text = item.second
+                textSize = 15f
+                setTextColor(Color.rgb(91, 99, 111))
+                gravity = Gravity.CENTER
+                setPadding(0, dp(3), 0, 0)
+            })
+            box.addView(TextView(this).apply {
+                text = item.third
+                textSize = 20f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(Color.rgb(20, 29, 43))
+                gravity = Gravity.CENTER
+                setPadding(0, dp(3), 0, 0)
+            })
+            stats.addView(box, LinearLayout.LayoutParams(0, dp(112), 1f))
+            if (index < 2) stats.addView(View(this).apply {
+                setBackgroundColor(Color.rgb(225, 228, 234))
+            }, LinearLayout.LayoutParams(dp(1), dp(76)))
+        }
+        page.addView(stats)
+
+        fun sectionTitle(text: String) {
+            page.addView(TextView(this).apply {
+                this.text = text
+                textSize = 17f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(Color.rgb(101, 109, 121))
+                setPadding(dp(3), dp(18), 0, dp(10))
+            })
+        }
+
+        fun card(
+            icon: String,
+            title: String,
+            subtitle: String,
+            iconBg: Int,
+            action: () -> Unit
+        ): LinearLayout {
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(14), dp(12), dp(10), dp(12))
+                background = rounded(Color.WHITE, 18)
                 elevation = dp(2).toFloat()
                 setOnClickListener { action() }
-            }, LinearLayout.LayoutParams(-1, dp(56)).apply { bottomMargin = dp(10) })
+            }
+            card.addView(TextView(this).apply {
+                text = icon
+                textSize = 27f
+                gravity = Gravity.CENTER
+                setTextColor(blue)
+                background = rounded(iconBg, 15)
+            }, LinearLayout.LayoutParams(dp(78), dp(78)))
+            val labels = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(14), 0, dp(5), 0)
+            }
+            labels.addView(TextView(this).apply {
+                text = title
+                textSize = 17f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(Color.rgb(25, 34, 47))
+            })
+            labels.addView(TextView(this).apply {
+                text = subtitle
+                textSize = 14f
+                setTextColor(Color.rgb(111, 120, 132))
+                setPadding(0, dp(5), 0, 0)
+            })
+            card.addView(labels, LinearLayout.LayoutParams(0, -2, 1f))
+            card.addView(TextView(this).apply {
+                text = "›"
+                textSize = 31f
+                setTextColor(Color.rgb(90, 100, 112))
+                gravity = Gravity.CENTER
+            }, LinearLayout.LayoutParams(dp(28), dp(70)))
+            return card
         }
+
+        fun grid(
+            left: Triple<String, String, String>,
+            right: Triple<String, String, String>,
+            leftAction: () -> Unit,
+            rightAction: () -> Unit
+        ) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+            }
+            row.addView(card(left.first, left.second, left.third, Color.rgb(229, 239, 255), leftAction),
+                LinearLayout.LayoutParams(0, dp(132), 1f).apply { rightMargin = dp(7) })
+            row.addView(card(right.first, right.second, right.third, Color.rgb(232, 250, 242), rightAction),
+                LinearLayout.LayoutParams(0, dp(132), 1f).apply { leftMargin = dp(7) })
+            page.addView(row)
+        }
+
+        sectionTitle("ОБЛІК")
+        grid(
+            Triple("⌂", "Склади", "Список складів та залишки"),
+            Triple("●", "МВО", "Матеріально відповідальні особи"),
+            { showWarehouses() },
+            { showPersons() }
+        )
+        grid(
+            Triple("▣", "Картки обліку", "Облік по позиціях"),
+            Triple("◆", "Номенклатура", "Довідник майна"),
+            { showCards() },
+            { showMaterials() }
+        )
+
+        sectionTitle("РУХ МАЙНА")
+        grid(
+            Triple("+", "Надходження", "Приймання майна"),
+            Triple("↥", "Видача", "Видача зі складу"),
+            { showMovement("RECEIPT", "Надходження") },
+            { showMovement("ISSUE", "Видача") }
+        )
+        grid(
+            Triple("↔", "Переміщення", "Між складами"),
+            Triple("▣", "Списання", "Списання майна"),
+            { showMovement("TRANSFER", "Переміщення") },
+            { showMovement("WRITE_OFF", "Списання") }
+        )
+
+        sectionTitle("КОНТРОЛЬ")
+        grid(
+            Triple("▤", "Журнал руху", "Всі операції"),
+            Triple("▥", "Звіти", "Аналіз та звітність"),
+            { showJournal() },
+            { showCards() }
+        )
+
+        scroll.addView(page)
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        val nav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(8), dp(6), dp(8), dp(8))
+            background = rounded(Color.WHITE, 22)
+            elevation = dp(5).toFloat()
+        }
+        fun navItem(icon: String, label: String, active: Boolean, action: () -> Unit): LinearLayout {
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(0, dp(5), 0, dp(4))
+                setOnClickListener { action() }
+            }
+            item.addView(TextView(this).apply {
+                text = icon
+                textSize = 25f
+                gravity = Gravity.CENTER
+                setTextColor(if (active) Color.rgb(18, 91, 177) else Color.rgb(88, 96, 106))
+            })
+            item.addView(TextView(this).apply {
+                text = label
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setTextColor(if (active) Color.rgb(18, 91, 177) else Color.rgb(88, 96, 106))
+            })
+            return item
+        }
+        nav.addView(navItem("⌂", "Головна", true) { showHome() }, LinearLayout.LayoutParams(0, dp(68), 1f))
+        nav.addView(navItem("▣", "Майно", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(68), 1f))
+        nav.addView(navItem("↔", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(68), 1f))
+        nav.addView(navItem("▤", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(68), 1f))
+        nav.addView(navItem("⚙", "Налаштування", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(68), 1f))
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(82)).apply {
+            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(6)
+        })
         setContentView(root)
+    }
+
+    private fun showBackupMenu() {
+        AlertDialog.Builder(this)
+            .setTitle("Налаштування")
+            .setItems(arrayOf("Резервна копія", "Імпорт резервної копії", "Комірки")) { _, which ->
+                when (which) {
+                    0 -> exportBackup()
+                    1 -> importBackup()
+                    2 -> chooseWarehouseForLocations()
+                }
+            }
+            .show()
     }
 
     private fun showWarehouses() {
