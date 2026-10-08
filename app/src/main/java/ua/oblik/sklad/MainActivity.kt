@@ -184,6 +184,9 @@ class MainActivity : Activity() {
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         db = AppDb(this)
+        window.statusBarColor = Color.rgb(7, 18, 21)
+        window.navigationBarColor = Color.rgb(7, 18, 21)
+        window.decorView.systemUiVisibility = 0
         showHome()
     }
 
@@ -222,18 +225,22 @@ class MainActivity : Activity() {
     }
 
     private fun showHome() {
+        window.statusBarColor = Color.rgb(7, 18, 21)
+        window.navigationBarColor = Color.rgb(7, 18, 21)
+        window.decorView.systemUiVisibility = 0
+
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.rgb(247, 249, 253))
+            setBackgroundColor(Color.rgb(7, 18, 21))
         }
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
-            setPadding(0, 0, 0, dp(4))
+            setPadding(0, 0, 0, 0)
         }
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(14), dp(18), dp(6))
+            setPadding(dp(18), dp(10), dp(18), dp(8))
         }
 
         val header = LinearLayout(this).apply {
@@ -241,217 +248,254 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         val titleBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        titleBox.addView(TextView(this).apply {
-            text = "Облік-Склад"
-            textSize = 28f
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(Color.rgb(16, 29, 48))
+        val title = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        title.addView(TextView(this).apply {
+            text = "Облік-"
+            textSize = 29f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            includeFontPadding = false
         })
+        title.addView(TextView(this).apply {
+            text = "Склад"
+            textSize = 29f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(226, 195, 111))
+            includeFontPadding = false
+        })
+        titleBox.addView(title)
         titleBox.addView(TextView(this).apply {
             text = "Облік речового майна"
             textSize = 15f
-            setTextColor(textSecondary)
-            setPadding(0, dp(2), 0, 0)
+            setTextColor(Color.rgb(174, 184, 190))
+            setPadding(0, dp(3), 0, 0)
         })
         header.addView(titleBox, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(TextView(this).apply {
-            text = "●  Офлайн"
-            textSize = 15f
-            setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(Color.rgb(190, 32, 44))
+            text = "●  Офлайн ⌄"
+            textSize = 14f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(255, 221, 221))
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(8), dp(12), dp(8))
-            background = rounded(Color.rgb(255, 226, 229), 24)
+            setPadding(dp(12), dp(8), dp(10), dp(8))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(76, 18, 24), Color.rgb(38, 20, 23))
+            ).apply {
+                cornerRadius = dp(24).toFloat()
+                setStroke(dp(1), Color.rgb(135, 39, 47))
+            }
         })
         page.addView(header)
+
+        val warehouseCount = db.warehouseRows().size
+        val personCount = db.list("responsible_persons").size
+        val materialCount = db.list("materials").size
 
         val stats = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(0, dp(12), 0, dp(12))
-            background = rounded(Color.WHITE, 22)
-            elevation = dp(2).toFloat()
+            setPadding(dp(5), dp(10), dp(5), dp(10))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(29, 35, 34), Color.rgb(17, 24, 23))
+            ).apply {
+                cornerRadius = dp(20).toFloat()
+                setStroke(dp(1), Color.rgb(72, 82, 78))
+            }
         }
-        val warehouseCount = db.warehouseRows().size
-        val personCount = db.list("responsible_persons").size
-        val materialCount = db.list("materials").size
-        listOf(
+
+        val statItems = listOf(
             Triple("home", "Склади", warehouseCount.toString()),
-            Triple("♟", "МВО", personCount.toString()),
-            Triple("▦", "Позиції", materialCount.toString())
-        ).forEachIndexed { index, item ->
+            Triple("person", "МВО", personCount.toString()),
+            Triple("boxes", "Позиції", materialCount.toString()),
+            Triple("boxes", "Заг. вартість", "—")
+        )
+        statItems.forEachIndexed { index, item ->
             val box = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
             }
-            val statIcon = when (index) {
-                0 -> "home"
-                1 -> "person"
-                else -> "boxes"
-            }
-            box.addView(DashboardIconView(this, statIcon, Color.rgb(18, 91, 177)), LinearLayout.LayoutParams(-1, dp(34)))
+            box.addView(DashboardIconView(this, item.first, Color.rgb(226, 195, 111)),
+                LinearLayout.LayoutParams(-1, dp(27)))
             box.addView(TextView(this).apply {
                 text = item.second
-                textSize = 15f
-                setTextColor(Color.rgb(91, 99, 111))
+                textSize = 12f
+                setTextColor(Color.rgb(194, 197, 195))
                 gravity = Gravity.CENTER
-                setPadding(0, dp(3), 0, 0)
+                setPadding(0, dp(2), 0, 0)
             })
             box.addView(TextView(this).apply {
                 text = item.third
-                textSize = 20f
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(Color.rgb(20, 29, 43))
+                textSize = 19f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
-                setPadding(0, dp(3), 0, 0)
+                setPadding(0, dp(1), 0, 0)
             })
-            stats.addView(box, LinearLayout.LayoutParams(0, dp(82), 1f))
-            if (index < 2) stats.addView(View(this).apply {
-                setBackgroundColor(Color.rgb(225, 228, 234))
-            }, LinearLayout.LayoutParams(dp(1), dp(58)))
+            stats.addView(box, LinearLayout.LayoutParams(0, dp(76), 1f))
+            if (index < 3) stats.addView(View(this).apply {
+                setBackgroundColor(Color.rgb(70, 78, 75))
+            }, LinearLayout.LayoutParams(dp(1), dp(55)))
         }
-        page.addView(stats)
+        page.addView(stats, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(10)
+            bottomMargin = dp(5)
+        })
 
-        fun sectionTitle(text: String) {
-            page.addView(TextView(this).apply {
-                this.text = text
+        fun sectionHeader(titleText: String, hint: String) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(7), 0, dp(6))
+            }
+            row.addView(View(this).apply {
+                background = rounded(Color.rgb(224, 193, 102), 3)
+            }, LinearLayout.LayoutParams(dp(5), dp(30)))
+            row.addView(TextView(this).apply {
+                text = titleText
                 textSize = 17f
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(Color.rgb(101, 109, 121))
-                setPadding(dp(2), dp(12), 0, dp(7))
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(192, 201, 205))
+                setPadding(dp(10), 0, 0, 0)
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(TextView(this).apply {
+                text = "$hint  ›"
+                textSize = 11f
+                setTextColor(Color.rgb(119, 132, 136))
+                gravity = Gravity.CENTER_VERTICAL
             })
+            page.addView(row)
         }
 
-        fun card(
+        fun darkCard(
             icon: String,
-            title: String,
+            titleText: String,
             subtitle: String,
-            iconBg: Int,
-            iconColor: Int,
+            accent: Int,
+            tint: Int,
             action: () -> Unit
         ): LinearLayout {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(8), dp(8), dp(5), dp(8))
-                background = rounded(Color.WHITE, 18)
+                setPadding(dp(8), dp(7), dp(5), dp(7))
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.LEFT_RIGHT,
+                    intArrayOf(Color.rgb(31, 40, 39), Color.rgb(17, 25, 25))
+                ).apply {
+                    cornerRadius = dp(15).toFloat()
+                    setStroke(dp(1), Color.argb(175, Color.red(accent), Color.green(accent), Color.blue(accent)))
+                }
                 elevation = dp(2).toFloat()
                 setOnClickListener { action() }
             }
 
             val iconHolder = FrameLayout(this).apply {
-                background = rounded(iconBg, 14)
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(
+                        Color.argb(125, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                        Color.argb(55, Color.red(accent), Color.green(accent), Color.blue(accent))
+                    )
+                ).apply {
+                    cornerRadius = dp(13).toFloat()
+                    setStroke(dp(1), Color.argb(170, Color.red(accent), Color.green(accent), Color.blue(accent)))
+                }
             }
-            iconHolder.addView(DashboardIconView(this, icon, iconColor), FrameLayout.LayoutParams(-1, -1))
-            card.addView(iconHolder, LinearLayout.LayoutParams(dp(56), dp(56)))
+            iconHolder.addView(DashboardIconView(this, icon, tint), FrameLayout.LayoutParams(-1, -1))
+            card.addView(iconHolder, LinearLayout.LayoutParams(dp(52), dp(52)))
 
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(9), 0, dp(3), 0)
-                minimumWidth = dp(88)
+                setPadding(dp(9), 0, dp(2), 0)
             }
-
             labels.addView(TextView(this).apply {
-                text = title
+                text = titleText
                 textSize = 15f
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(Color.rgb(25, 34, 47))
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.WHITE)
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 includeFontPadding = false
-            }, LinearLayout.LayoutParams(-1, -2))
-
+            })
             labels.addView(TextView(this).apply {
                 text = subtitle
-                textSize = 12f
-                setTextColor(Color.rgb(111, 120, 132))
+                textSize = 11f
+                setTextColor(Color.rgb(185, 194, 196))
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 includeFontPadding = false
                 setPadding(0, dp(3), 0, 0)
-            }, LinearLayout.LayoutParams(-1, -2))
-
+            })
             card.addView(labels, LinearLayout.LayoutParams(0, -1, 1f))
-
             card.addView(TextView(this).apply {
                 text = "›"
-                textSize = 26f
-                setTextColor(Color.rgb(90, 100, 112))
+                textSize = 28f
+                setTextColor(Color.rgb(225, 195, 111))
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(22), dp(56)))
-
+            }, LinearLayout.LayoutParams(dp(22), dp(52)))
             return card
         }
 
         fun grid(
             left: Triple<String, String, String>,
             right: Triple<String, String, String>,
-            leftBg: Int,
-            rightBg: Int,
-            leftColor: Int,
-            rightColor: Int,
+            leftAccent: Int,
+            rightAccent: Int,
             leftAction: () -> Unit,
             rightAction: () -> Unit
         ) {
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-            }
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             row.addView(
-                card(left.first, left.second, left.third, leftBg, leftColor, leftAction),
-                LinearLayout.LayoutParams(0, dp(108), 1f).apply { rightMargin = dp(5) }
+                darkCard(left.first, left.second, left.third, leftAccent, Color.WHITE, leftAction),
+                LinearLayout.LayoutParams(0, dp(88), 1f).apply { rightMargin = dp(4) }
             )
             row.addView(
-                card(right.first, right.second, right.third, rightBg, rightColor, rightAction),
-                LinearLayout.LayoutParams(0, dp(108), 1f).apply { leftMargin = dp(5) }
+                darkCard(right.first, right.second, right.third, rightAccent, Color.WHITE, rightAction),
+                LinearLayout.LayoutParams(0, dp(88), 1f).apply { leftMargin = dp(4) }
             )
             page.addView(row)
         }
 
-        sectionTitle("ОБЛІК")
+        sectionHeader("ОСНОВНІ РОЗДІЛИ", "Управління довідниками")
         grid(
-            Triple("⌂", "Склади", "Список складів та залишки"),
+            Triple("home", "Склади", "Список складів та залишки"),
             Triple("person", "МВО", "Матеріально відповідальні особи"),
-            Color.rgb(224, 236, 255), Color.rgb(224, 248, 238),
-            Color.rgb(20, 91, 176), Color.rgb(0, 160, 94),
-            { showWarehouses() },
-            { showPersons() }
+            Color.rgb(102, 126, 92), Color.rgb(92, 101, 103),
+            { showWarehouses() }, { showPersons() }
         )
         grid(
             Triple("clipboard", "Картки обліку", "Облік по позиціях"),
             Triple("cube", "Номенклатура", "Довідник майна"),
-            Color.rgb(255, 238, 211), Color.rgb(242, 232, 255),
-            Color.rgb(205, 111, 0), Color.rgb(103, 42, 194),
-            { showCards() },
-            { showMaterials() }
+            Color.rgb(171, 127, 40), Color.rgb(112, 64, 160),
+            { showCards() }, { showMaterials() }
         )
 
-        sectionTitle("РУХ МАЙНА")
+        sectionHeader("РУХ МАЙНА", "Облік операцій з майном")
         grid(
             Triple("plus", "Надходження", "Приймання майна"),
             Triple("issue", "Видача", "Видача зі складу"),
-            Color.rgb(220, 248, 235), Color.rgb(255, 226, 229),
-            Color.rgb(0, 165, 92), Color.rgb(194, 35, 48),
-            { showMovement("RECEIPT", "Надходження") },
-            { showMovement("ISSUE", "Видача") }
+            Color.rgb(12, 128, 91), Color.rgb(178, 124, 32),
+            { showMovement("RECEIPT", "Надходження") }, { showMovement("ISSUE", "Видача") }
         )
         grid(
             Triple("transfer", "Переміщення", "Між складами"),
             Triple("trash", "Списання", "Списання майна"),
-            Color.rgb(224, 238, 255), Color.rgb(255, 226, 229),
-            Color.rgb(21, 91, 176), Color.rgb(194, 35, 48),
-            { showMovement("TRANSFER", "Переміщення") },
-            { showMovement("WRITE_OFF", "Списання") }
+            Color.rgb(20, 105, 157), Color.rgb(177, 43, 55),
+            { showMovement("TRANSFER", "Переміщення") }, { showMovement("WRITE_OFF", "Списання") }
         )
 
-        sectionTitle("КОНТРОЛЬ")
+        sectionHeader("КОНТРОЛЬ", "Журнали та аналітика")
         grid(
             Triple("journal", "Журнал руху", "Всі операції"),
             Triple("chart", "Звіти", "Аналіз та звітність"),
-            Color.rgb(255, 246, 196), Color.rgb(242, 232, 255),
-            Color.rgb(184, 145, 0), Color.rgb(91, 39, 191),
-            { showJournal() },
-            { showCards() }
+            Color.rgb(112, 55, 157), Color.rgb(13, 122, 133),
+            { showJournal() }, { showCards() }
         )
 
         scroll.addView(page)
@@ -460,36 +504,44 @@ class MainActivity : Activity() {
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(4), dp(4), dp(4), dp(5))
-            background = rounded(Color.WHITE, 22)
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.rgb(28, 34, 34), Color.rgb(15, 22, 22))
+            ).apply {
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(1), Color.rgb(70, 79, 77))
+            }
             elevation = dp(5).toFloat()
         }
+
         fun navItem(icon: String, label: String, active: Boolean, action: () -> Unit): LinearLayout {
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(dp(1), dp(3), dp(1), dp(2))
+                setPadding(dp(1), dp(2), dp(1), dp(1))
                 setOnClickListener { action() }
             }
-            item.addView(DashboardIconView(this, icon, if (active) Color.rgb(18, 91, 177) else Color.rgb(88, 96, 106)),
-                LinearLayout.LayoutParams(dp(28), dp(30)))
+            item.addView(DashboardIconView(this, icon, if (active) Color.rgb(226, 195, 111) else Color.rgb(154, 164, 166)),
+                LinearLayout.LayoutParams(dp(28), dp(29)))
             item.addView(TextView(this).apply {
                 text = label
                 textSize = 10f
                 gravity = Gravity.CENTER
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(if (active) Color.rgb(18, 91, 177) else Color.rgb(88, 96, 106))
+                setTextColor(if (active) Color.rgb(226, 195, 111) else Color.rgb(154, 164, 166))
             }, LinearLayout.LayoutParams(-1, dp(20)))
             return item
         }
-        nav.addView(navItem("home", "Головна", true) { showHome() }, LinearLayout.LayoutParams(0, dp(58), 1f))
-        nav.addView(navItem("boxes", "Майно", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(58), 1f))
-        nav.addView(navItem("transfer", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(58), 1f))
-        nav.addView(navItem("journal", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(58), 1f))
-        nav.addView(navItem("settings", "Налаштування", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(58), 1f))
-        root.addView(nav, LinearLayout.LayoutParams(-1, dp(68)).apply {
-            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(6)
+
+        nav.addView(navItem("home", "Головна", true) { showHome() }, LinearLayout.LayoutParams(0, dp(57), 1f))
+        nav.addView(navItem("boxes", "Майно", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(57), 1f))
+        nav.addView(navItem("transfer", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(57), 1f))
+        nav.addView(navItem("journal", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(57), 1f))
+        nav.addView(navItem("settings", "Налаштування", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(57), 1f))
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(67)).apply {
+            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(5)
         })
         setContentView(root)
     }
