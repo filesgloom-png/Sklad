@@ -183,43 +183,59 @@ class MainActivity : Activity() {
             action: () -> Unit
         ): LinearLayout {
             val card = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(14), dp(12), dp(10), dp(12))
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                setPadding(dp(12), dp(10), dp(10), dp(10))
                 background = rounded(Color.WHITE, 18)
                 elevation = dp(2).toFloat()
                 setOnClickListener { action() }
             }
-            card.addView(TextView(this).apply {
+
+            val top = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+
+            top.addView(TextView(this).apply {
                 text = icon
-                textSize = 27f
+                textSize = 23f
                 gravity = Gravity.CENTER
                 setTextColor(blue)
-                background = rounded(iconBg, 15)
-            }, LinearLayout.LayoutParams(dp(78), dp(78)))
-            val labels = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(14), 0, dp(5), 0)
-            }
-            labels.addView(TextView(this).apply {
-                text = title
-                textSize = 17f
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(Color.rgb(25, 34, 47))
-            })
-            labels.addView(TextView(this).apply {
-                text = subtitle
-                textSize = 14f
-                setTextColor(Color.rgb(111, 120, 132))
-                setPadding(0, dp(5), 0, 0)
-            })
-            card.addView(labels, LinearLayout.LayoutParams(0, -2, 1f))
-            card.addView(TextView(this).apply {
+                background = rounded(iconBg, 14)
+            }, LinearLayout.LayoutParams(dp(54), dp(54)))
+
+            top.addView(Space(this), LinearLayout.LayoutParams(0, 1, 1f))
+
+            top.addView(TextView(this).apply {
                 text = "›"
-                textSize = 31f
+                textSize = 27f
                 setTextColor(Color.rgb(90, 100, 112))
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(28), dp(70)))
+            }, LinearLayout.LayoutParams(dp(24), dp(54)))
+
+            card.addView(top, LinearLayout.LayoutParams(-1, dp(54)))
+
+            card.addView(TextView(this).apply {
+                text = title
+                textSize = 15f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                setTextColor(Color.rgb(25, 34, 47))
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                gravity = Gravity.CENTER_HORIZONTAL
+                setPadding(dp(2), dp(8), dp(2), 0)
+            }, LinearLayout.LayoutParams(-1, -2))
+
+            card.addView(TextView(this).apply {
+                text = subtitle
+                textSize = 11f
+                setTextColor(Color.rgb(111, 120, 132))
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                gravity = Gravity.CENTER_HORIZONTAL
+                setPadding(dp(2), dp(3), dp(2), 0)
+            }, LinearLayout.LayoutParams(-1, -2))
+
             return card
         }
 
@@ -232,10 +248,14 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
             }
-            row.addView(card(left.first, left.second, left.third, Color.rgb(229, 239, 255), leftAction),
-                LinearLayout.LayoutParams(0, dp(132), 1f).apply { rightMargin = dp(7) })
-            row.addView(card(right.first, right.second, right.third, Color.rgb(232, 250, 242), rightAction),
-                LinearLayout.LayoutParams(0, dp(132), 1f).apply { leftMargin = dp(7) })
+            row.addView(
+                card(left.first, left.second, left.third, Color.rgb(229, 239, 255), leftAction),
+                LinearLayout.LayoutParams(0, dp(142), 1f).apply { rightMargin = dp(6) }
+            )
+            row.addView(
+                card(right.first, right.second, right.third, Color.rgb(232, 250, 242), rightAction),
+                LinearLayout.LayoutParams(0, dp(142), 1f).apply { leftMargin = dp(6) }
+            )
             page.addView(row)
         }
 
@@ -281,7 +301,7 @@ class MainActivity : Activity() {
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(8), dp(6), dp(8), dp(8))
+            setPadding(dp(4), dp(4), dp(4), dp(5))
             background = rounded(Color.WHITE, 22)
             elevation = dp(5).toFloat()
         }
@@ -289,29 +309,31 @@ class MainActivity : Activity() {
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(0, dp(5), 0, dp(4))
+                setPadding(dp(1), dp(3), dp(1), dp(2))
                 setOnClickListener { action() }
             }
             item.addView(TextView(this).apply {
                 text = icon
-                textSize = 25f
+                textSize = 22f
                 gravity = Gravity.CENTER
                 setTextColor(if (active) Color.rgb(18, 91, 177) else Color.rgb(88, 96, 106))
-            })
+            }, LinearLayout.LayoutParams(-1, dp(30)))
             item.addView(TextView(this).apply {
                 text = label
-                textSize = 12f
+                textSize = 10f
                 gravity = Gravity.CENTER
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
                 setTextColor(if (active) Color.rgb(18, 91, 177) else Color.rgb(88, 96, 106))
-            })
+            }, LinearLayout.LayoutParams(-1, dp(20)))
             return item
         }
-        nav.addView(navItem("⌂", "Головна", true) { showHome() }, LinearLayout.LayoutParams(0, dp(68), 1f))
-        nav.addView(navItem("▣", "Майно", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(68), 1f))
-        nav.addView(navItem("↔", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(68), 1f))
-        nav.addView(navItem("▤", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(68), 1f))
-        nav.addView(navItem("⚙", "Налаштування", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(68), 1f))
-        root.addView(nav, LinearLayout.LayoutParams(-1, dp(82)).apply {
+        nav.addView(navItem("⌂", "Головна", true) { showHome() }, LinearLayout.LayoutParams(0, dp(58), 1f))
+        nav.addView(navItem("▣", "Майно", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(58), 1f))
+        nav.addView(navItem("↔", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(58), 1f))
+        nav.addView(navItem("▤", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(58), 1f))
+        nav.addView(navItem("⚙", "Налашт.", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(58), 1f))
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(68)).apply {
             leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(6)
         })
         setContentView(root)
