@@ -316,10 +316,10 @@ class MainActivity : Activity() {
             setPadding(dp(6), dp(9), dp(6), dp(9))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(29, 35, 34), Color.rgb(17, 24, 23))
+                intArrayOf(Color.rgb(35, 42, 41), Color.rgb(16, 23, 22))
             ).apply {
                 cornerRadius = dp(20).toFloat()
-                setStroke(dp(1), Color.rgb(72, 82, 78))
+                setStroke(dp(1), Color.rgb(88, 96, 91))
             }
         }
 
@@ -372,14 +372,14 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(dp(5), dp(32)))
             row.addView(TextView(this).apply {
                 text = titleText
-                textSize = 18f
+                textSize = 17f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.rgb(192, 201, 205))
                 setPadding(dp(10), 0, 0, 0)
             }, LinearLayout.LayoutParams(0, -2, 1f))
             row.addView(TextView(this).apply {
                 text = "$hint  ›"
-                textSize = 11f
+                textSize = 12f
                 setTextColor(Color.rgb(119, 132, 136))
                 gravity = Gravity.CENTER_VERTICAL
             })
@@ -420,21 +420,21 @@ class MainActivity : Activity() {
                         Color.argb(55, Color.red(accent), Color.green(accent), Color.blue(accent))
                     )
                 ).apply {
-                    cornerRadius = dp(14).toFloat()
+                    cornerRadius = dp(15).toFloat()
                     setStroke(dp(1), Color.argb(170, Color.red(accent), Color.green(accent), Color.blue(accent)))
                 }
             }
             iconHolder.addView(DashboardIconView(this, icon, tint), FrameLayout.LayoutParams(-1, -1))
-            card.addView(iconHolder, LinearLayout.LayoutParams(dp(52), dp(52)))
+            card.addView(iconHolder, LinearLayout.LayoutParams(dp(60), dp(60)))
 
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(11), 0, dp(2), 0)
+                setPadding(dp(12), 0, dp(2), 0)
             }
             labels.addView(TextView(this).apply {
                 text = titleText
-                textSize = 15f
+                textSize = 16f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.WHITE)
                 maxLines = 2
@@ -453,10 +453,10 @@ class MainActivity : Activity() {
             card.addView(labels, LinearLayout.LayoutParams(0, -1, 1f))
             card.addView(TextView(this).apply {
                 text = "›"
-                textSize = 28f
+                textSize = 30f
                 setTextColor(Color.rgb(225, 195, 111))
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(24), dp(58)))
+            }, LinearLayout.LayoutParams(dp(25), dp(60)))
             return card
         }
 
@@ -471,11 +471,11 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             row.addView(
                 darkCard(left.first, left.second, left.third, leftAccent, Color.WHITE, leftAction),
-                LinearLayout.LayoutParams(0, dp(104), 1f).apply { rightMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(110), 1f).apply { rightMargin = dp(4) }
             )
             row.addView(
                 darkCard(right.first, right.second, right.third, rightAccent, Color.WHITE, rightAction),
-                LinearLayout.LayoutParams(0, dp(104), 1f).apply { leftMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(110), 1f).apply { leftMargin = dp(4) }
             )
             page.addView(row)
         }
