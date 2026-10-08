@@ -334,9 +334,10 @@ class MainActivity : Activity() {
             if (type == "RECEIPT") {
                 safeDb { db.insertMovement(materialId, type, qty, null, fromWarehouse, null, toLocation, documentNo, date, v[3]) }
             } else if (type == "TRANSFER") {
-                val current = db.warehouseBalance(materialId, fromWarehouse)
+                val current = if (fromLocation != null) db.locationBalance(materialId, fromLocation) else db.warehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
-                    showError("Недостатньо залишку на складі-відправнику. Доступно: ${formatQty(current)}.")
+                    val scope = if (fromLocation != null) "комірці" else "складі-відправнику"
+                    showError("Недостатньо залишку на $scope. Доступно: ${formatQty(current)}.")
                     return@formDialog
                 }
                 safeDb { val targetWarehouse = toWarehouse
@@ -346,9 +347,10 @@ class MainActivity : Activity() {
                 }
                 db.insertTransfer(materialId, qty, fromWarehouse, targetWarehouse, fromLocation, toLocation, documentNo, date, v[3]) }
             } else {
-                val current = db.warehouseBalance(materialId, fromWarehouse)
+                val current = if (fromLocation != null) db.locationBalance(materialId, fromLocation) else db.warehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
-                    showError("Недостатньо залишку на складі. Доступно: ${formatQty(current)}.")
+                    val scope = if (fromLocation != null) "комірці" else "складі"
+                    showError("Недостатньо залишку на $scope. Доступно: ${formatQty(current)}.")
                     return@formDialog
                 }
                 safeDb { db.insertMovement(materialId, type, qty, fromWarehouse, null, fromLocation, null, documentNo, date, v[3]) }
@@ -372,6 +374,12 @@ class MainActivity : Activity() {
                 val balance = db.warehouseBalance(materialId, warehouse[0].toLong())
                 if (balance != 0.0) {
                     addRow(root, "  ${warehouse[1]}", "Залишок: ${formatQty(balance)} ${material[4]}")
+                    db.locationRows(warehouse[0].toLong()).forEach { location ->
+                        val locationBalance = db.locationBalance(materialId, location[0].toLong())
+                        if (locationBalance != 0.0) {
+                            addRow(root, "    ↳ ${location[1]}", "Комірка: ${formatQty(locationBalance)} ${material[4]}")
+                        }
+                    }
                 }
             }
         }
@@ -389,7 +397,7 @@ class MainActivity : Activity() {
             addRow(
                 root,
                 "${it[0]} • ${it[1]}",
-                "${typeLabel(it[2])} • ${formatQty(it[3].toDoubleOrNull() ?: 0.0)} • Документ ${it[4]}${route}"
+                "${typeLabel(it[2])} • ${formatQty(it[3].toDoubleOrNull() ?: 0.0)} • Документ ${it[4]}${route}${if (it[9].isNotBlank()) " • ${it[9]}" else ""}"
             )
         }
         if (rows.isEmpty()) addRow(root, "Журнал порожній", "Документи руху з’являться після першої операції.")
