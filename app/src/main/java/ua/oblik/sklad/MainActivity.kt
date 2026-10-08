@@ -49,7 +49,7 @@ class MainActivity : Activity() {
             text = "‹"
             textSize = 28f
             setTextColor(blue)
-            allCaps = false
+            setAllCaps(false)
             minHeight = 0
             minimumHeight = 0
             background = rounded(Color.WHITE, 14)
@@ -116,7 +116,7 @@ class MainActivity : Activity() {
                 text = label
                 textSize = 16f
                 setTextColor(textPrimary)
-                allCaps = false
+                setAllCaps(false)
                 gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 minHeight = 0
                 minimumHeight = 0
@@ -654,7 +654,7 @@ class MainActivity : Activity() {
             this.text = text
             textSize = 15f
             setTextColor(Color.WHITE)
-            allCaps = false
+            setAllCaps(false)
             minHeight = 0
             minimumHeight = 0
             gravity = Gravity.CENTER
