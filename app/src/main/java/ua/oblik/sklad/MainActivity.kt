@@ -262,7 +262,7 @@ class MainActivity : Activity() {
         val personCount = db.list("responsible_persons").size
         val materialCount = db.list("materials").size
         listOf(
-            Triple("⌂", "Склади", warehouseCount.toString()),
+            Triple("home", "Склади", warehouseCount.toString()),
             Triple("♟", "МВО", personCount.toString()),
             Triple("▦", "Позиції", materialCount.toString())
         ).forEachIndexed { index, item ->
@@ -270,13 +270,12 @@ class MainActivity : Activity() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
             }
-            box.addView(TextView(this).apply {
-                text = item.first
-                textSize = 25f
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(Color.rgb(18, 91, 177))
-                gravity = Gravity.CENTER
-            })
+            val statIcon = when (index) {
+                0 -> "home"
+                1 -> "person"
+                else -> "boxes"
+            }
+            box.addView(DashboardIconView(this, statIcon, Color.rgb(18, 91, 177)), LinearLayout.LayoutParams(-1, dp(34)))
             box.addView(TextView(this).apply {
                 text = item.second
                 textSize = 15f
@@ -326,14 +325,11 @@ class MainActivity : Activity() {
                 setOnClickListener { action() }
             }
 
-            card.addView(TextView(this).apply {
-                text = icon
-                textSize = 25f
-                gravity = Gravity.CENTER
-                setTypeface(null, android.graphics.Typeface.BOLD)
-                setTextColor(iconColor)
+            val iconHolder = FrameLayout(this).apply {
                 background = rounded(iconBg, 14)
-            }, LinearLayout.LayoutParams(dp(64), dp(64)))
+            }
+            iconHolder.addView(DashboardIconView(this, icon, iconColor), FrameLayout.LayoutParams(-1, -1))
+            card.addView(iconHolder, LinearLayout.LayoutParams(dp(64), dp(64)))
 
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -401,15 +397,15 @@ class MainActivity : Activity() {
         sectionTitle("ОБЛІК")
         grid(
             Triple("⌂", "Склади", "Список складів та залишки"),
-            Triple("●", "МВО", "Матеріально відповідальні особи"),
+            Triple("person", "МВО", "Матеріально відповідальні особи"),
             Color.rgb(224, 236, 255), Color.rgb(224, 248, 238),
             Color.rgb(20, 91, 176), Color.rgb(0, 160, 94),
             { showWarehouses() },
             { showPersons() }
         )
         grid(
-            Triple("▣", "Картки обліку", "Облік по позиціях"),
-            Triple("◆", "Номенклатура", "Довідник майна"),
+            Triple("clipboard", "Картки обліку", "Облік по позиціях"),
+            Triple("cube", "Номенклатура", "Довідник майна"),
             Color.rgb(255, 238, 211), Color.rgb(242, 232, 255),
             Color.rgb(205, 111, 0), Color.rgb(103, 42, 194),
             { showCards() },
@@ -418,16 +414,16 @@ class MainActivity : Activity() {
 
         sectionTitle("РУХ МАЙНА")
         grid(
-            Triple("+", "Надходження", "Приймання майна"),
-            Triple("↥", "Видача", "Видача зі складу"),
+            Triple("plus", "Надходження", "Приймання майна"),
+            Triple("issue", "Видача", "Видача зі складу"),
             Color.rgb(220, 248, 235), Color.rgb(255, 226, 229),
             Color.rgb(0, 165, 92), Color.rgb(194, 35, 48),
             { showMovement("RECEIPT", "Надходження") },
             { showMovement("ISSUE", "Видача") }
         )
         grid(
-            Triple("↔", "Переміщення", "Між складами"),
-            Triple("▣", "Списання", "Списання майна"),
+            Triple("transfer", "Переміщення", "Між складами"),
+            Triple("trash", "Списання", "Списання майна"),
             Color.rgb(224, 238, 255), Color.rgb(255, 226, 229),
             Color.rgb(21, 91, 176), Color.rgb(194, 35, 48),
             { showMovement("TRANSFER", "Переміщення") },
@@ -436,8 +432,8 @@ class MainActivity : Activity() {
 
         sectionTitle("КОНТРОЛЬ")
         grid(
-            Triple("▤", "Журнал руху", "Всі операції"),
-            Triple("▥", "Звіти", "Аналіз та звітність"),
+            Triple("journal", "Журнал руху", "Всі операції"),
+            Triple("chart", "Звіти", "Аналіз та звітність"),
             Color.rgb(255, 246, 196), Color.rgb(242, 232, 255),
             Color.rgb(184, 145, 0), Color.rgb(91, 39, 191),
             { showJournal() },
