@@ -213,6 +213,7 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
     fun warehouseHasLocations(id: Long): Boolean = exists("SELECT 1 FROM storage_locations WHERE warehouse_id=? LIMIT 1", arrayOf(id.toString()))
     fun personAssigned(id: Long): Boolean = exists("SELECT 1 FROM warehouses WHERE responsible_person_id=? LIMIT 1", arrayOf(id.toString()))
     fun materialHasMovements(id: Long): Boolean = exists("SELECT 1 FROM movements WHERE material_id=? LIMIT 1", arrayOf(id.toString()))
+    fun locationHasMovements(id: Long): Boolean = exists("SELECT 1 FROM movements WHERE from_location_id=? OR to_location_id=? LIMIT 1", arrayOf(id.toString(), id.toString()))
     private fun exists(sql: String, args: Array<String>): Boolean = readableDatabase.rawQuery(sql, args).use { it.moveToFirst() }
 
     fun list(table: String): List<Array<String>> {
@@ -231,7 +232,7 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
     fun warehouseRows(): List<Array<String>> {
         val rows = mutableListOf<Array<String>>()
         val sql = """
-            SELECT w.id, w.name, w.address, COALESCE(p.full_name, 'Не призначено'), w.responsible_person_id
+            SELECT w.id, w.name, w.address, COALESCE(p.full_name, 'Не призначено'), w.responsible_person_id, w.note
             FROM warehouses w
             LEFT JOIN responsible_persons p ON p.id=w.responsible_person_id
             ORDER BY w.id DESC
