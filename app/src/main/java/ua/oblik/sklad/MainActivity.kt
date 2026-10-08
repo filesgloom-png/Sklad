@@ -113,7 +113,7 @@ class MainActivity : Activity() {
             val id = it[0].toLong()
             val address = if (it[2].isBlank()) "Адресу не вказано" else it[2]
             addManageRow(root, "№$id  ${it[1]}", "${address} • МВО: ${it[3]}") {
-                showWarehouseActions(id, it[1], it[2], it[4].toLongOrNull())
+                showWarehouseActions(id, it[1], it[2], it[4].toLongOrNull(), it.getOrNull(5) ?: "")
             }
         }
         if (rows.isEmpty()) addRow(root, "Складів ще немає", "Додайте перший склад перед проведенням руху.")
@@ -236,7 +236,8 @@ class MainActivity : Activity() {
         val wanted = if (type == "TRANSFER") listOf("TRANSFER_OUT", "TRANSFER_IN") else listOf(type)
         db.movementRows().filter { it[2] in wanted }.forEach {
             val route = if (it[2].startsWith("TRANSFER")) " • ${it[5]} → ${it[6]}" else " • Склад: ${if (it[6] != "—") it[6] else it[5]}"
-            addRow(root, "${it[0]} • ${it[1]}", "Кількість: ${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  |  Документ: ${it[4]}${route}")
+            val location = if (it[2].startsWith("TRANSFER")) " • Комірки: ${it[7]} → ${it[8]}" else if (it[2] == "RECEIPT") " • Комірка: ${it[8]}" else " • Комірка: ${it[7]}"
+            addRow(root, "${it[0]} • ${it[1]}", "Кількість: ${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  |  Документ: ${it[4]}${route}${location}")
         }
         setContentView(root)
     }
@@ -252,7 +253,10 @@ class MainActivity : Activity() {
         AlertDialog.Builder(this)
             .setTitle(action)
             .setItems(names) { _, which ->
-                showMovementForm(materialId, type, title, warehouses[which][0].toLong(), null)
+                val warehouseId = warehouses[which][0].toLong()
+                chooseLocation(warehouseId, "Комірка", true) { locationId ->
+                    showMovementForm(materialId, type, title, warehouseId, null, locationId, null)
+                }
             }
             .show()
     }
@@ -328,21 +332,21 @@ class MainActivity : Activity() {
             }
 
             if (type == "RECEIPT") {
-                db.insertMovement(materialId, type, qty, null, fromWarehouse, null, toLocation, documentNo, date, v[3])
+                safeDb { db.insertMovement(materialId, type, qty, null, fromWarehouse, null, toLocation, documentNo, date, v[3]) }
             } else if (type == "TRANSFER") {
                 val current = db.warehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
                     showError("Недостатньо залишку на складі-відправнику. Доступно: ${formatQty(current)}.")
                     return@formDialog
                 }
-                db.insertTransfer(materialId, qty, fromWarehouse, toWarehouse ?: return@formDialog, fromLocation, toLocation, documentNo, date, v[3])
+                safeDb { db.insertTransfer(materialId, qty, fromWarehouse, toWarehouse ?: return@formDialog, fromLocation, toLocation, documentNo, date, v[3]) }
             } else {
                 val current = db.warehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
                     showError("Недостатньо залишку на складі. Доступно: ${formatQty(current)}.")
                     return@formDialog
                 }
-                db.insertMovement(materialId, type, qty, fromWarehouse, null, fromLocation, null, documentNo, date, v[3])
+                safeDb { db.insertMovement(materialId, type, qty, fromWarehouse, null, fromLocation, null, documentNo, date, v[3]) }
             }
             showMovement(type, title)
         }
@@ -387,10 +391,10 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
-    private fun showWarehouseActions(id: Long, name: String, address: String, responsibleId: Long?) {
+    private fun showWarehouseActions(id: Long, name: String, address: String, responsibleId: Long?, note: String) {
         AlertDialog.Builder(this).setTitle(name)
             .setItems(arrayOf("Редагувати", "Видалити")) { _, which ->
-                if (which == 0) editWarehouse(id, name, address, responsibleId) else {
+                if (which == 0) editWarehouse(id, name, address, responsibleId, note) else {
                     if (db.warehouseHasMovements(id)) showError("Склад має документи руху і не може бути видалений.")
                     else if (db.warehouseHasLocations(id)) showError("Спочатку видаліть комірки цього складу.")
                     else { db.deleteWarehouse(id); showWarehouses() }
@@ -398,7 +402,7 @@ class MainActivity : Activity() {
             }.show()
     }
 
-    private fun editWarehouse(id: Long, name: String, address: String, responsibleId: Long?) {
+    private fun editWarehouse(id: Long, name: String, address: String, responsibleId: Long?, note: String) {
         val persons = db.list("responsible_persons")
         val labels = mutableListOf("Без призначеного МВО")
         labels += persons.map { it[1] }
@@ -407,7 +411,7 @@ class MainActivity : Activity() {
             .setSingleChoiceItems(labels.toTypedArray(), current.coerceAtLeast(0)) { dialog, selected ->
                 val rid = if (selected == 0) null else persons[selected - 1][0].toLongOrNull()
                 dialog.dismiss()
-                formDialog("Редагувати склад", listOf("Назва", "Адреса", "Примітка"), initialValues = listOf(name, address, "")) { v ->
+                formDialog("Редагувати склад", listOf("Назва", "Адреса", "Примітка"), initialValues = listOf(name, address, note)) { v ->
                     if (v[0].isBlank()) showError("Назва складу не може бути порожньою.")
                     else { db.updateWarehouse(id, v[0], v[1], v[2], rid); showWarehouses() }
                 }
