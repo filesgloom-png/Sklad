@@ -9,7 +9,6 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import java.io.File
 import android.content.Intent
