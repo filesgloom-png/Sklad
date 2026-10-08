@@ -233,14 +233,19 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.rgb(7, 18, 21))
         }
+        root.setOnApplyWindowInsetsListener { view, insets ->
+            val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
+            view.setPadding(0, bars.top, 0, bars.bottom)
+            insets
+        }
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
-            setPadding(0, 0, 0, dp(90))
+            setPadding(0, 0, 0, dp(8))
         }
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(30), dp(18), dp(8))
+            setPadding(dp(18), dp(8), dp(18), dp(8))
         }
 
         val header = LinearLayout(this).apply {
