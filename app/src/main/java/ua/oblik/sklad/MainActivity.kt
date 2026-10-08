@@ -560,15 +560,6 @@ class MainActivity : Activity() {
         )
 
         scroll.addView(page)
-        val foreground = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-        foreground.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        foreground.addView(nav, LinearLayout.LayoutParams(-1, dp(67)).apply {
-            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(8)
-        })
-        root.addView(foreground, FrameLayout.LayoutParams(-1, -1))
-
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -608,6 +599,15 @@ class MainActivity : Activity() {
         nav.addView(navItem("transfer", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(57), 1f))
         nav.addView(navItem("journal", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(57), 1f))
         nav.addView(navItem("settings", "Налаштування", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(57), 1f))
+
+        val foreground = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        foreground.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        foreground.addView(nav, LinearLayout.LayoutParams(-1, dp(67)).apply {
+            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(8)
+        })
+        root.addView(foreground, FrameLayout.LayoutParams(-1, -1))
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(67)).apply {
             leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(28)
         })
