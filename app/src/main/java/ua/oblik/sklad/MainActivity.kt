@@ -147,6 +147,16 @@ class MainActivity : Activity() {
                     canvas.drawRoundRect(cx - s * .25f, cy - s * .20f, cx + s * .32f, cy + s, 4f, 4f, paint)
                     canvas.drawRoundRect(cx + s * .50f, cy - s, cx + s, cy + s, 4f, 4f, paint)
                 }
+                "database" -> {
+                    paint.style = Paint.Style.FILL
+                    canvas.drawOval(cx - s, cy - s * .72f, cx + s, cy - s * .25f, paint)
+                    canvas.drawRect(cx - s, cy - s * .48f, cx + s, cy + s * .50f, paint)
+                    canvas.drawOval(cx - s, cy + s * .20f, cx + s, cy + s * .70f, paint)
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeWidth = s * .10f
+                    canvas.drawOval(cx - s, cy - s * .72f, cx + s, cy - s * .25f, paint)
+                    canvas.drawOval(cx - s, cy + s * .20f, cx + s, cy + s * .70f, paint)
+                }
                 "settings" -> {
                     paint.style = Paint.Style.STROKE
                     paint.strokeWidth = s * .22f
@@ -317,7 +327,7 @@ class MainActivity : Activity() {
             Triple("home", "Склади", warehouseCount.toString()),
             Triple("person", "МВО", personCount.toString()),
             Triple("boxes", "Позиції", materialCount.toString()),
-            Triple("boxes", "Заг. вартість", "—")
+            Triple("database", "Заг. вартість", "—")
         )
         statItems.forEachIndexed { index, item ->
             val box = LinearLayout(this).apply {
@@ -526,9 +536,12 @@ class MainActivity : Activity() {
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setPadding(dp(1), dp(2), dp(1), dp(1))
+                setPadding(dp(1), dp(1), dp(1), dp(1))
                 setOnClickListener { action() }
             }
+            item.addView(View(this).apply {
+                background = if (active) rounded(Color.rgb(226, 195, 111), 2) else null
+            }, LinearLayout.LayoutParams(dp(58), dp(3)))
             item.addView(DashboardIconView(this, icon, if (active) Color.rgb(226, 195, 111) else Color.rgb(154, 164, 166)),
                 LinearLayout.LayoutParams(dp(28), dp(29)))
             item.addView(TextView(this).apply {
