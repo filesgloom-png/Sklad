@@ -236,11 +236,11 @@ class MainActivity : Activity() {
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
-            setPadding(0, 0, 0, 0)
+            setPadding(0, 0, 0, dp(90))
         }
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(10), dp(18), dp(8))
+            setPadding(dp(18), dp(30), dp(18), dp(8))
         }
 
         val header = LinearLayout(this).apply {
@@ -254,7 +254,7 @@ class MainActivity : Activity() {
         }
         title.addView(TextView(this).apply {
             text = "Облік-"
-            textSize = 29f
+            textSize = 30f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.WHITE)
             includeFontPadding = false
@@ -425,7 +425,7 @@ class MainActivity : Activity() {
             })
             labels.addView(TextView(this).apply {
                 text = subtitle
-                textSize = 11f
+                textSize = 12f
                 setTextColor(Color.rgb(185, 194, 196))
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -453,11 +453,11 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             row.addView(
                 darkCard(left.first, left.second, left.third, leftAccent, Color.WHITE, leftAction),
-                LinearLayout.LayoutParams(0, dp(88), 1f).apply { rightMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(94), 1f).apply { rightMargin = dp(4) }
             )
             row.addView(
                 darkCard(right.first, right.second, right.third, rightAccent, Color.WHITE, rightAction),
-                LinearLayout.LayoutParams(0, dp(88), 1f).apply { leftMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(94), 1f).apply { leftMargin = dp(4) }
             )
             page.addView(row)
         }
@@ -541,7 +541,7 @@ class MainActivity : Activity() {
         nav.addView(navItem("journal", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(57), 1f))
         nav.addView(navItem("settings", "Налаштування", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(57), 1f))
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(67)).apply {
-            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(5)
+            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(28)
         })
         setContentView(root)
     }
