@@ -3,6 +3,8 @@ package ua.oblik.sklad
 import android.app.Activity
 import android.app.AlertDialog
 import android.database.sqlite.SQLiteException
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
