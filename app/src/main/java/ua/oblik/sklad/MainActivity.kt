@@ -3,8 +3,6 @@ package ua.oblik.sklad
 import android.app.Activity
 import android.app.AlertDialog
 import android.database.sqlite.SQLiteException
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -17,10 +15,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
-import java.io.ByteArrayInputStream
-import java.util.Base64
-import java.util.zip.ZipInputStream
-
 import android.widget.*
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -31,84 +25,6 @@ class MainActivity : Activity() {
     private val surface = Color.rgb(246, 248, 251)
     private val textPrimary = Color.rgb(28, 35, 43)
     private val textSecondary = Color.rgb(96, 108, 120)
-
-    private class ReferencePhotoCardLayout(
-        context: android.content.Context,
-        private val photoName: String
-    ) : LinearLayout(context) {
-        private val photoPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { alpha = 120 }
-        private val shadePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-        init {
-            setWillNotDraw(false)
-        }
-
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            val bitmap = loadPhoto()
-            if (bitmap != null && width > 0 && height > 0) {
-                val save = canvas.save()
-                val radius = dpLocal(16).toFloat()
-                val clipPath = Path().apply {
-                    addRoundRect(0f, 0f, width.toFloat(), height.toFloat(), radius, radius, Path.Direction.CW)
-                }
-                canvas.clipPath(clipPath)
-
-                val scale = maxOf(width.toFloat() / bitmap.width, height.toFloat() / bitmap.height)
-                val bw = bitmap.width * scale
-                val bh = bitmap.height * scale
-                val left = width - bw
-                val top = (height - bh) / 2f
-                val src = android.graphics.Rect(0, 0, bitmap.width, bitmap.height)
-                val dst = android.graphics.RectF(left, top, width.toFloat(), top + bh)
-                canvas.drawBitmap(bitmap, src, dst, photoPaint)
-
-                shadePaint.shader = android.graphics.LinearGradient(
-                    0f, 0f, width.toFloat(), 0f,
-                    Color.argb(205, 7, 14, 14),
-                    Color.argb(55, 7, 14, 14),
-                    android.graphics.Shader.TileMode.CLAMP
-                )
-                canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), shadePaint)
-                shadePaint.shader = null
-                canvas.restoreToCount(save)
-            }
-        }
-
-        private fun dpLocal(v: Int): Int = (v * resources.displayMetrics.density).toInt()
-
-        private fun loadPhoto(): Bitmap? {
-            return try {
-                val cache = PhotoCache.get(context, photoName)
-                cache
-            } catch (_: Exception) { null }
-        }
-    }
-
-    private object PhotoCache {
-        private val bitmaps = mutableMapOf<String, Bitmap>()
-        private var zipBytes: ByteArray? = null
-
-        fun get(context: android.content.Context, name: String): Bitmap? {
-            bitmaps[name]?.let { return it }
-            if (zipBytes == null) {
-                val text = context.assets.open("reference_photos.zip.b64").bufferedReader().use { it.readText() }
-                zipBytes = Base64.getDecoder().decode(text)
-            }
-            ZipInputStream(ByteArrayInputStream(zipBytes!!)).use { zis ->
-                while (true) {
-                    val entry = zis.nextEntry ?: break
-                    if (entry.name == "$name.jpg") {
-                        val bytes = zis.readBytes()
-                        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                        if (bitmap != null) bitmaps[name] = bitmap
-                        return bitmap
-                    }
-                }
-            }
-            return null
-        }
-    }
 
     private class DashboardIconView(
         context: android.content.Context,
@@ -305,7 +221,7 @@ class MainActivity : Activity() {
         bar.addView(back, LinearLayout.LayoutParams(dp(58), dp(58)))
         bar.addView(TextView(this).apply {
             text = title
-            textSize = 24f
+            textSize = 21f
             setTextColor(Color.rgb(20, 20, 20))
             setPadding(dp(12), 0, 0, 0)
         }, LinearLayout.LayoutParams(0, -2, 1f))
@@ -335,11 +251,11 @@ class MainActivity : Activity() {
 
         val scroll = ScrollView(this).apply {
             isFillViewport = true
-            setPadding(0, 0, 0, dp(8))
+            setPadding(0, 0, 0, dp(3))
         }
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(12), dp(18), dp(10))
+            setPadding(dp(18), dp(8), dp(18), dp(6))
         }
 
         val header = LinearLayout(this).apply {
@@ -353,14 +269,14 @@ class MainActivity : Activity() {
         }
         title.addView(TextView(this).apply {
             text = "Облік-"
-            textSize = 31f
+            textSize = 29f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.WHITE)
             includeFontPadding = false
         })
         title.addView(TextView(this).apply {
             text = "Склад"
-            textSize = 30f
+            textSize = 28f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(226, 195, 111))
             includeFontPadding = false
@@ -368,14 +284,14 @@ class MainActivity : Activity() {
         titleBox.addView(title)
         titleBox.addView(TextView(this).apply {
             text = "Облік речового майна"
-            textSize = 16f
+            textSize = 15f
             setTextColor(Color.rgb(174, 184, 190))
             setPadding(0, dp(2), 0, 0)
         })
         header.addView(titleBox, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(TextView(this).apply {
             text = "●  Офлайн ⌄"
-            textSize = 14f
+            textSize = 13f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(255, 221, 221))
             gravity = Gravity.CENTER
@@ -397,7 +313,7 @@ class MainActivity : Activity() {
         val stats = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(6), dp(9), dp(6), dp(9))
+            setPadding(dp(5), dp(6), dp(5), dp(6))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.rgb(35, 42, 41), Color.rgb(16, 23, 22))
@@ -419,44 +335,44 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
             }
             box.addView(DashboardIconView(this, item.first, Color.rgb(226, 195, 111)),
-                LinearLayout.LayoutParams(-1, dp(27)))
+                LinearLayout.LayoutParams(-1, dp(23)))
             box.addView(TextView(this).apply {
                 text = item.second
-                textSize = 12f
+                textSize = 11f
                 setTextColor(Color.rgb(194, 197, 195))
                 gravity = Gravity.CENTER
                 setPadding(0, dp(2), 0, 0)
             })
             box.addView(TextView(this).apply {
                 text = item.third
-                textSize = 19f
+                textSize = 18f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
                 setPadding(0, dp(1), 0, 0)
             })
-            stats.addView(box, LinearLayout.LayoutParams(0, dp(72), 1f))
+            stats.addView(box, LinearLayout.LayoutParams(0, dp(62), 1f))
             if (index < 3) stats.addView(View(this).apply {
                 setBackgroundColor(Color.rgb(70, 78, 75))
-            }, LinearLayout.LayoutParams(dp(1), dp(52)))
+            }, LinearLayout.LayoutParams(dp(1), dp(44)))
         }
         page.addView(stats, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(12)
-            bottomMargin = dp(7)
+            topMargin = dp(8)
+            bottomMargin = dp(4)
         })
 
         fun sectionHeader(titleText: String, hint: String) {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(8), 0, dp(7))
+                setPadding(0, dp(5), 0, dp(4))
             }
             row.addView(View(this).apply {
                 background = rounded(Color.rgb(224, 193, 102), 3)
-            }, LinearLayout.LayoutParams(dp(5), dp(32)))
+            }, LinearLayout.LayoutParams(dp(5), dp(27)))
             row.addView(TextView(this).apply {
                 text = titleText
-                textSize = 17f
+                textSize = 16f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.rgb(192, 201, 205))
                 setPadding(dp(10), 0, 0, 0)
@@ -478,23 +394,10 @@ class MainActivity : Activity() {
             tint: Int,
             action: () -> Unit
         ): LinearLayout {
-            val photoName = when (icon) {
-                "home" -> "warehouses"
-                "person" -> "mvo"
-                "clipboard" -> "cards"
-                "cube" -> "nomenclature"
-                "plus" -> "receipt"
-                "issue" -> "issue"
-                "transfer" -> "transfer"
-                "trash" -> "writeoff"
-                "journal" -> "journal"
-                "chart" -> "reports"
-                else -> null
-            }
-            val card = ReferencePhotoCardLayout(this, photoName ?: "warehouses").apply {
+            val card = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(7), dp(5), dp(4), dp(5))
+                setPadding(dp(6), dp(4), dp(3), dp(4))
                 background = GradientDrawable(
                     GradientDrawable.Orientation.LEFT_RIGHT,
                     intArrayOf(
@@ -502,7 +405,7 @@ class MainActivity : Activity() {
                         Color.rgb(15, 23, 23)
                     )
                 ).apply {
-                    cornerRadius = dp(16).toFloat()
+                    cornerRadius = dp(14).toFloat()
                     setStroke(dp(1), Color.argb(175, Color.red(accent), Color.green(accent), Color.blue(accent)))
                 }
                 elevation = dp(2).toFloat()
@@ -517,21 +420,21 @@ class MainActivity : Activity() {
                         Color.argb(55, Color.red(accent), Color.green(accent), Color.blue(accent))
                     )
                 ).apply {
-                    cornerRadius = dp(13).toFloat()
+                    cornerRadius = dp(12).toFloat()
                     setStroke(dp(1), Color.argb(170, Color.red(accent), Color.green(accent), Color.blue(accent)))
                 }
             }
             iconHolder.addView(DashboardIconView(this, icon, tint), FrameLayout.LayoutParams(-1, -1))
-            card.addView(iconHolder, LinearLayout.LayoutParams(dp(48), dp(48)))
+            card.addView(iconHolder, LinearLayout.LayoutParams(dp(44), dp(44)))
 
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(8), 0, dp(2), 0)
+                setPadding(dp(6), 0, dp(1), 0)
             }
             labels.addView(TextView(this).apply {
                 text = titleText
-                textSize = 14f
+                textSize = 13f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.WHITE)
                 maxLines = 2
@@ -540,20 +443,20 @@ class MainActivity : Activity() {
             })
             labels.addView(TextView(this).apply {
                 text = subtitle
-                textSize = 10f
+                textSize = 9.5f
                 setTextColor(Color.rgb(193, 201, 202))
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 includeFontPadding = false
-                setPadding(0, dp(3), 0, 0)
+                setPadding(0, dp(2), 0, 0)
             })
             card.addView(labels, LinearLayout.LayoutParams(0, -1, 1f))
             card.addView(TextView(this).apply {
                 text = "›"
-                textSize = 24f
+                textSize = 21f
                 setTextColor(Color.rgb(225, 195, 111))
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(18), dp(48)))
+            }, LinearLayout.LayoutParams(dp(16), dp(44)))
             return card
         }
 
@@ -568,11 +471,11 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             row.addView(
                 darkCard(left.first, left.second, left.third, leftAccent, Color.WHITE, leftAction),
-                LinearLayout.LayoutParams(0, dp(78), 1f).apply { rightMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(72), 1f).apply { rightMargin = dp(4) }
             )
             row.addView(
                 darkCard(right.first, right.second, right.third, rightAccent, Color.WHITE, rightAction),
-                LinearLayout.LayoutParams(0, dp(78), 1f).apply { leftMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(72), 1f).apply { leftMargin = dp(4) }
             )
             page.addView(row)
         }
@@ -618,7 +521,7 @@ class MainActivity : Activity() {
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(4), dp(4), dp(4), dp(4))
+            setPadding(dp(3), dp(2), dp(3), dp(2))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
                 intArrayOf(Color.rgb(28, 34, 34), Color.rgb(15, 22, 22))
@@ -638,27 +541,27 @@ class MainActivity : Activity() {
             }
             item.addView(View(this).apply {
                 background = if (active) rounded(Color.rgb(226, 195, 111), 2) else null
-            }, LinearLayout.LayoutParams(dp(58), dp(3)))
+            }, LinearLayout.LayoutParams(dp(50), dp(2)))
             item.addView(DashboardIconView(this, icon, if (active) Color.rgb(226, 195, 111) else Color.rgb(154, 164, 166)),
-                LinearLayout.LayoutParams(dp(28), dp(29)))
+                LinearLayout.LayoutParams(dp(24), dp(25)))
             item.addView(TextView(this).apply {
                 text = label
-                textSize = 10f
+                textSize = 9.5f
                 gravity = Gravity.CENTER
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setTextColor(if (active) Color.rgb(226, 195, 111) else Color.rgb(154, 164, 166))
-            }, LinearLayout.LayoutParams(-1, dp(20)))
+            }, LinearLayout.LayoutParams(-1, dp(17)))
             return item
         }
 
-        nav.addView(navItem("home", "Головна", true) { showHome() }, LinearLayout.LayoutParams(0, dp(57), 1f))
-        nav.addView(navItem("boxes", "Майно", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(57), 1f))
-        nav.addView(navItem("transfer", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(57), 1f))
-        nav.addView(navItem("journal", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(57), 1f))
-        nav.addView(navItem("settings", "Налаштування", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(57), 1f))
-        root.addView(nav, LinearLayout.LayoutParams(-1, dp(67)).apply {
-            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(8)
+        nav.addView(navItem("home", "Головна", true) { showHome() }, LinearLayout.LayoutParams(0, dp(50), 1f))
+        nav.addView(navItem("boxes", "Майно", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(50), 1f))
+        nav.addView(navItem("transfer", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(50), 1f))
+        nav.addView(navItem("journal", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(50), 1f))
+        nav.addView(navItem("settings", "Налаштування", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(50), 1f))
+        root.addView(nav, LinearLayout.LayoutParams(-1, dp(58)).apply {
+            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(5)
         })
 
         setContentView(root)
@@ -1219,10 +1122,10 @@ class MainActivity : Activity() {
             background = rounded(Color.WHITE, 16)
             elevation = dp(1).toFloat()
         }
-        box.addView(TextView(this).apply { text = title; textSize = 17f })
+        box.addView(TextView(this).apply { text = title; textSize = 16f })
         box.addView(TextView(this).apply {
             text = subtitle
-            textSize = 14f
+            textSize = 13f
             setPadding(0, dp(6), 0, dp(8))
         })
         box.addView(Button(this).apply {
@@ -1239,10 +1142,10 @@ class MainActivity : Activity() {
             background = rounded(Color.WHITE, 16)
             elevation = dp(1).toFloat()
         }
-        box.addView(TextView(this).apply { text = title; textSize = 17f })
+        box.addView(TextView(this).apply { text = title; textSize = 16f })
         box.addView(TextView(this).apply {
             text = subtitle
-            textSize = 14f
+            textSize = 13f
             setPadding(0, 6, 0, 0)
         })
         root.addView(box, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 8 })
