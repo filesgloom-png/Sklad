@@ -457,12 +457,8 @@ class MainActivity : Activity() {
                 setPadding(dp(1), dp(3), dp(1), dp(2))
                 setOnClickListener { action() }
             }
-            item.addView(TextView(this).apply {
-                text = icon
-                textSize = 22f
-                gravity = Gravity.CENTER
-                setTextColor(if (active) Color.rgb(18, 91, 177) else Color.rgb(88, 96, 106))
-            }, LinearLayout.LayoutParams(-1, dp(30)))
+            item.addView(DashboardIconView(this, icon, if (active) Color.rgb(18, 91, 177) else Color.rgb(88, 96, 106)),
+                LinearLayout.LayoutParams(dp(28), dp(30)))
             item.addView(TextView(this).apply {
                 text = label
                 textSize = 10f
@@ -473,11 +469,11 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(-1, dp(20)))
             return item
         }
-        nav.addView(navItem("⌂", "Головна", true) { showHome() }, LinearLayout.LayoutParams(0, dp(58), 1f))
-        nav.addView(navItem("▣", "Майно", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(58), 1f))
-        nav.addView(navItem("↔", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(58), 1f))
-        nav.addView(navItem("▤", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(58), 1f))
-        nav.addView(navItem("⚙", "Налашт.", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(58), 1f))
+        nav.addView(navItem("home", "Головна", true) { showHome() }, LinearLayout.LayoutParams(0, dp(58), 1f))
+        nav.addView(navItem("boxes", "Майно", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(58), 1f))
+        nav.addView(navItem("transfer", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(58), 1f))
+        nav.addView(navItem("journal", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(58), 1f))
+        nav.addView(navItem("settings", "Налаштування", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(58), 1f))
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(68)).apply {
             leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(6)
         })
