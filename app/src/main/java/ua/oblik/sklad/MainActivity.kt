@@ -49,7 +49,10 @@ class MainActivity : Activity() {
             if (bitmap != null && width > 0 && height > 0) {
                 val save = canvas.save()
                 val radius = dpLocal(16).toFloat()
-                canvas.clipRoundRect(0f, 0f, width.toFloat(), height.toFloat(), radius, radius, android.graphics.Region.Op.INTERSECT)
+                val clipPath = Path().apply {
+                    addRoundRect(0f, 0f, width.toFloat(), height.toFloat(), radius, radius, Path.Direction.CW)
+                }
+                canvas.clipPath(clipPath)
 
                 val scale = maxOf(width.toFloat() / bitmap.width, height.toFloat() / bitmap.height)
                 val bw = bitmap.width * scale
