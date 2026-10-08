@@ -44,15 +44,21 @@ CREATE TABLE movements (
   quantity REAL NOT NULL CHECK(quantity > 0),
   from_warehouse_id INTEGER,
   to_warehouse_id INTEGER,
+  from_location_id INTEGER,
+  to_location_id INTEGER,
   document_no TEXT DEFAULT '',
   movement_date TEXT NOT NULL,
   note TEXT DEFAULT '',
   FOREIGN KEY (material_id) REFERENCES materials(id),
   FOREIGN KEY (from_warehouse_id) REFERENCES warehouses(id),
-  FOREIGN KEY (to_warehouse_id) REFERENCES warehouses(id)
+  FOREIGN KEY (to_warehouse_id) REFERENCES warehouses(id),
+  FOREIGN KEY (from_location_id) REFERENCES storage_locations(id),
+  FOREIGN KEY (to_location_id) REFERENCES storage_locations(id)
 );
 
 CREATE INDEX idx_mov_material ON movements(material_id);
 CREATE INDEX idx_mov_date ON movements(movement_date);
 CREATE INDEX idx_mov_from_warehouse ON movements(from_warehouse_id);
 CREATE INDEX idx_mov_to_warehouse ON movements(to_warehouse_id);
+CREATE INDEX idx_mov_from_location ON movements(from_location_id);
+CREATE INDEX idx_mov_to_location ON movements(to_location_id);
