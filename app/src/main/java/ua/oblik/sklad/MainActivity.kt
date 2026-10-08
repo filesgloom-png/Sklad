@@ -208,7 +208,7 @@ class MainActivity : Activity() {
             setPadding(0, 0, 0, dp(3))
             setOnClickListener { showHome() }
         }
-        bar.addView(back, LinearLayout.LayoutParams(dp(52), dp(52)))
+        bar.addView(back, LinearLayout.LayoutParams(dp(58), dp(58)))
         bar.addView(TextView(this).apply {
             text = title
             textSize = 24f
@@ -245,7 +245,7 @@ class MainActivity : Activity() {
         }
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(8), dp(18), dp(8))
+            setPadding(dp(18), dp(12), dp(18), dp(10))
         }
 
         val header = LinearLayout(this).apply {
@@ -259,14 +259,14 @@ class MainActivity : Activity() {
         }
         title.addView(TextView(this).apply {
             text = "Облік-"
-            textSize = 30f
+            textSize = 31f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.WHITE)
             includeFontPadding = false
         })
         title.addView(TextView(this).apply {
             text = "Склад"
-            textSize = 29f
+            textSize = 30f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(226, 195, 111))
             includeFontPadding = false
@@ -274,7 +274,7 @@ class MainActivity : Activity() {
         titleBox.addView(title)
         titleBox.addView(TextView(this).apply {
             text = "Облік речового майна"
-            textSize = 15f
+            textSize = 16f
             setTextColor(Color.rgb(174, 184, 190))
             setPadding(0, dp(3), 0, 0)
         })
@@ -285,7 +285,7 @@ class MainActivity : Activity() {
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(255, 221, 221))
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(8), dp(10), dp(8))
+            setPadding(dp(14), dp(9), dp(12), dp(9))
             background = GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
                 intArrayOf(Color.rgb(76, 18, 24), Color.rgb(38, 20, 23))
@@ -303,7 +303,7 @@ class MainActivity : Activity() {
         val stats = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(5), dp(10), dp(5), dp(10))
+            setPadding(dp(6), dp(9), dp(6), dp(9))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.rgb(29, 35, 34), Color.rgb(17, 24, 23))
@@ -341,28 +341,28 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setPadding(0, dp(1), 0, 0)
             })
-            stats.addView(box, LinearLayout.LayoutParams(0, dp(76), 1f))
+            stats.addView(box, LinearLayout.LayoutParams(0, dp(72), 1f))
             if (index < 3) stats.addView(View(this).apply {
                 setBackgroundColor(Color.rgb(70, 78, 75))
-            }, LinearLayout.LayoutParams(dp(1), dp(55)))
+            }, LinearLayout.LayoutParams(dp(1), dp(52)))
         }
         page.addView(stats, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(10)
-            bottomMargin = dp(5)
+            topMargin = dp(12)
+            bottomMargin = dp(7)
         })
 
         fun sectionHeader(titleText: String, hint: String) {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(7), 0, dp(6))
+                setPadding(0, dp(8), 0, dp(7))
             }
             row.addView(View(this).apply {
                 background = rounded(Color.rgb(224, 193, 102), 3)
-            }, LinearLayout.LayoutParams(dp(5), dp(30)))
+            }, LinearLayout.LayoutParams(dp(5), dp(32)))
             row.addView(TextView(this).apply {
                 text = titleText
-                textSize = 17f
+                textSize = 18f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.rgb(192, 201, 205))
                 setPadding(dp(10), 0, 0, 0)
@@ -387,12 +387,15 @@ class MainActivity : Activity() {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(8), dp(7), dp(5), dp(7))
+                setPadding(dp(8), dp(8), dp(5), dp(8))
                 background = GradientDrawable(
                     GradientDrawable.Orientation.LEFT_RIGHT,
-                    intArrayOf(Color.rgb(38, 48, 46), Color.rgb(16, 24, 24))
+                    intArrayOf(
+                        Color.argb(105, Color.red(accent), Color.green(accent), Color.blue(accent)),
+                        Color.rgb(15, 23, 23)
+                    )
                 ).apply {
-                    cornerRadius = dp(14).toFloat()
+                    cornerRadius = dp(16).toFloat()
                     setStroke(dp(1), Color.argb(175, Color.red(accent), Color.green(accent), Color.blue(accent)))
                 }
                 elevation = dp(2).toFloat()
@@ -407,7 +410,7 @@ class MainActivity : Activity() {
                         Color.argb(55, Color.red(accent), Color.green(accent), Color.blue(accent))
                     )
                 ).apply {
-                    cornerRadius = dp(13).toFloat()
+                    cornerRadius = dp(14).toFloat()
                     setStroke(dp(1), Color.argb(170, Color.red(accent), Color.green(accent), Color.blue(accent)))
                 }
             }
@@ -417,7 +420,7 @@ class MainActivity : Activity() {
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(9), 0, dp(2), 0)
+                setPadding(dp(11), 0, dp(2), 0)
             }
             labels.addView(TextView(this).apply {
                 text = titleText
@@ -431,7 +434,7 @@ class MainActivity : Activity() {
             labels.addView(TextView(this).apply {
                 text = subtitle
                 textSize = 12f
-                setTextColor(Color.rgb(185, 194, 196))
+                setTextColor(Color.rgb(193, 201, 202))
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 includeFontPadding = false
@@ -443,7 +446,7 @@ class MainActivity : Activity() {
                 textSize = 28f
                 setTextColor(Color.rgb(225, 195, 111))
                 gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(22), dp(52)))
+            }, LinearLayout.LayoutParams(dp(24), dp(58)))
             return card
         }
 
@@ -458,11 +461,11 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             row.addView(
                 darkCard(left.first, left.second, left.third, leftAccent, Color.WHITE, leftAction),
-                LinearLayout.LayoutParams(0, dp(96), 1f).apply { rightMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(104), 1f).apply { rightMargin = dp(4) }
             )
             row.addView(
                 darkCard(right.first, right.second, right.third, rightAccent, Color.WHITE, rightAction),
-                LinearLayout.LayoutParams(0, dp(96), 1f).apply { leftMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(104), 1f).apply { leftMargin = dp(4) }
             )
             page.addView(row)
         }
