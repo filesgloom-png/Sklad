@@ -1312,7 +1312,7 @@ class MainActivity : Activity() {
                                     val values = (0..10).map { cells[it].orEmpty().trim() }
                                     val warehouseCode = values[0]
                                     val appCode = if (warehouseCode.endsWith("A", true)) warehouseCode else warehouseCode + "A"
-                                    val sourceKey = values.joinToString("|")
+                                    val sourceKey = imported.size.toString() + "|" + values.joinToString("|")
                                     imported.add(arrayOf(sourceKey, warehouseCode, appCode, values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10]))
                                 }
                             }
