@@ -314,6 +314,22 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         return result
     }
 
+    fun initialStockRowsForAll(type: String = "ALL", query: String = ""): List<Array<String>> {
+        val result = mutableListOf<Array<String>>()
+        val sql = StringBuilder("SELECT warehouse_code, app_warehouse_code, storage_type, storage_location, material_code, description, nsn, size, batch, unit, quantity, price FROM initial_stock WHERE 1=1")
+        val args = mutableListOf<String>()
+        if (type != "ALL") { sql.append(" AND storage_type=?"); args.add(type) }
+        if (query.isNotBlank()) {
+            sql.append(" AND (description LIKE ? OR material_code LIKE ? OR nsn LIKE ? OR size LIKE ? OR batch LIKE ? OR storage_location LIKE ? OR warehouse_code LIKE ? OR app_warehouse_code LIKE ?)")
+            repeat(8) { args.add("%$query%") }
+        }
+        sql.append(" ORDER BY app_warehouse_code, storage_type, description, size, batch")
+        readableDatabase.rawQuery(sql.toString(), args.toTypedArray()).use { c ->
+            while (c.moveToNext()) result += Array(c.columnCount) { i -> c.getString(i) ?: "" }
+        }
+        return result
+    }
+
     fun initialStockCount(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM initial_stock", null).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
 
     fun insertWarehouse(name: String, address: String, note: String, responsiblePersonId: Long?, number: String = "", propertyType: String = "", active: Boolean = true) =
