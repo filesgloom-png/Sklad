@@ -368,6 +368,12 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             put("price", price)
         })
 
+    private fun locationBelongsToWarehouse(locationId: Long, warehouseId: Long): Boolean =
+        readableDatabase.rawQuery(
+            "SELECT 1 FROM storage_locations WHERE id=? AND warehouse_id=? LIMIT 1",
+            arrayOf(locationId.toString(), warehouseId.toString())
+        ).use { it.moveToFirst() }
+
     fun insertMovement(
         materialId: Long,
         type: String,
@@ -386,6 +392,12 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         try {
             if (!quantity.isFinite() || quantity <= 0.0) {
                 throw SQLiteException("Кількість має бути числом більше 0.")
+            }
+            if (fromLocation != null && (fromWarehouse == null || !locationBelongsToWarehouse(fromLocation, fromWarehouse))) {
+                throw SQLiteException("Комірка-відправник не належить обраному складу.")
+            }
+            if (toLocation != null && (toWarehouse == null || !locationBelongsToWarehouse(toLocation, toWarehouse))) {
+                throw SQLiteException("Комірка-отримувач не належить обраному складу.")
             }
             if (type in listOf("ISSUE", "WRITE_OFF", "TRANSFER_OUT")) {
                 val sourceWarehouse = fromWarehouse
