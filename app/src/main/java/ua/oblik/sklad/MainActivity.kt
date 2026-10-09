@@ -903,6 +903,7 @@ class MainActivity : Activity() {
         line("Код: ${first.getOrElse(4) { "" }.ifBlank { "—" }} • NSN: ${first.getOrElse(6) { "" }.ifBlank { "—" }}")
         line("Розмір: ${first.getOrElse(7) { "" }.ifBlank { "—" }} • Партія: ${first.getOrElse(8) { "" }.ifBlank { "—" }}")
         line("ЗАЛИШКИ ЗА СКЛАДАМИ", true)
+        var detailDialog: AlertDialog? = null
         byWarehouse.forEach { (code, entries) ->
             val qty = entries.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 }
             val warehouse = warehouses.firstOrNull { it.getOrElse(6) { "" }.equals(code, true) }
@@ -919,14 +920,29 @@ class MainActivity : Activity() {
             line("Тип зберігання: $types")
             val locations = entries.map { it.getOrElse(3) { "" } }.filter { it.isNotBlank() }.distinct()
             if (locations.isNotEmpty()) line("Місця: ${locations.joinToString(", ")}")
+            val openStock = TextView(this).apply {
+                text = if (warehouse == null) "Переглянути залишки за кодом →" else "Відкрити склад і залишки →"
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(226, 195, 111))
+                setPadding(0, dp(8), 0, dp(8))
+                setOnClickListener {
+                    detailDialog?.dismiss()
+                    val id = warehouse?.getOrNull(0)?.toLongOrNull()
+                    if (id != null) showWarehouseDetail(id, "Залишки")
+                    else showAllInitialStock("ALL", "", code, "ALL")
+                }
+            }
+            layout.addView(openStock)
             layout.addView(View(this).apply { setBackgroundColor(Color.rgb(43, 57, 54)) },
                 LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(4); bottomMargin = dp(4) })
         }
-        AlertDialog.Builder(this)
+        detailDialog = AlertDialog.Builder(this)
             .setTitle(title)
             .setView(ScrollView(this).apply { addView(layout) })
             .setPositiveButton("Закрити", null)
-            .show()
+            .create()
+        detailDialog?.show()
     }
 
     private fun showMovement(type: String, title: String) {
@@ -1237,7 +1253,14 @@ class MainActivity : Activity() {
         addAction(root, "922 • Заблоковано") { showWarehouseStockTab(warehouseId, "922", query) }
         addAction(root, "⌕ Пошук") { searchDialog("Пошук залишків", query) { q -> showWarehouseStockTab(warehouseId, type, q) } }
         rows.take(500).forEachIndexed { i, r ->
-            addManageRow(root, (i + 1).toString() + ". " + r[5], "Матеріал " + r[4] + " • NSN " + r[6] + " • Тип " + r[2] + " • Місце " + r[3] + " • Розмір " + r[7] + " • Партія " + r[8] + " • " + r[10] + " " + r[9] + " • Ціна " + r[11]) { }
+            addManageRow(root, (i + 1).toString() + ". " + r[5], "Матеріал " + r[4] + " • NSN " + r[6] + " • Тип " + r[2] + " • Місце " + r[3] + " • Розмір " + r[7] + " • Партія " + r[8] + " • " + r[10] + " " + r[9] + " • Ціна " + r[11]) {
+                val identity = (4..9).map { r.getOrElse(it) { "" } }
+                val matching = db.initialStockRowsForAll("ALL", "").filter { candidate ->
+                    (4..9).map { candidate.getOrElse(it) { "" } } == identity
+                }
+                if (matching.isNotEmpty()) showImportedNomenclatureDetail(matching)
+                else showError("Деталізацію цієї позиції не знайдено.")
+            }
         }
         if (rows.isEmpty()) addEmptyState(root, "Залишків немає", "Оберіть інший тип зберігання або пошуковий запит.")
         setContentView(root)
