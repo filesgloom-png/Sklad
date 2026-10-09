@@ -5,7 +5,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null, 4) {
+class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null, 5) {
     override fun onConfigure(db: SQLiteDatabase) {
         super.onConfigure(db)
         db.setForeignKeyConstraintsEnabled(true)
@@ -28,6 +28,9 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
                 address TEXT DEFAULT '',
                 note TEXT DEFAULT '',
                 responsible_person_id INTEGER,
+                warehouse_number TEXT DEFAULT '',
+                property_type TEXT DEFAULT '',
+                is_active INTEGER DEFAULT 1,
                 FOREIGN KEY(responsible_person_id) REFERENCES responsible_persons(id)
             )
         """.trimIndent())
@@ -103,13 +106,21 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_mov_from_location ON movements(from_location_id)")
             db.execSQL("CREATE INDEX IF NOT EXISTS idx_mov_to_location ON movements(to_location_id)")
         }
+        if (oldVersion < 5) {
+            db.execSQL("ALTER TABLE warehouses ADD COLUMN warehouse_number TEXT DEFAULT ''")
+            db.execSQL("ALTER TABLE warehouses ADD COLUMN property_type TEXT DEFAULT ''")
+            db.execSQL("ALTER TABLE warehouses ADD COLUMN is_active INTEGER DEFAULT 1")
+        }
     }
 
-    fun insertWarehouse(name: String, address: String, note: String, responsiblePersonId: Long?) =
+    fun insertWarehouse(name: String, address: String, note: String, responsiblePersonId: Long?, number: String = "", propertyType: String = "", active: Boolean = true) =
         writableDatabase.insertOrThrow("warehouses", null, ContentValues().apply {
             put("name", name)
             put("address", address)
             put("note", note)
+            put("warehouse_number", number)
+            put("property_type", propertyType)
+            put("is_active", if (active) 1 else 0)
             if (responsiblePersonId == null) putNull("responsible_person_id") else put("responsible_person_id", responsiblePersonId)
         })
 
@@ -232,7 +243,7 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
     fun warehouseRows(): List<Array<String>> {
         val rows = mutableListOf<Array<String>>()
         val sql = """
-            SELECT w.id, w.name, w.address, COALESCE(p.full_name, 'Не призначено'), w.responsible_person_id, w.note
+            SELECT w.id, w.name, w.address, COALESCE(p.full_name, 'Не призначено'), w.responsible_person_id, w.note, COALESCE(w.warehouse_number, ''), COALESCE(w.property_type, ''), COALESCE(w.is_active, 1)
             FROM warehouses w
             LEFT JOIN responsible_persons p ON p.id=w.responsible_person_id
             ORDER BY w.id DESC
