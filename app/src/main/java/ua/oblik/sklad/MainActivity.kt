@@ -2050,6 +2050,7 @@ class MainActivity : Activity() {
                 minHeight = dp(44)
                 elevation = dp(2).toFloat()
                 letterSpacing = 0.005f
+                stateListAnimator = null
                 setOnClickListener { item.second() }
             }
             row.addView(button, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
