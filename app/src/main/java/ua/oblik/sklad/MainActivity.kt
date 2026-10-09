@@ -607,12 +607,12 @@ class MainActivity : Activity() {
         banner.addView(WarehouseBannerView(this),FrameLayout.LayoutParams(-1,dp(118)))
         banner.addView(View(this).apply{background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.TRANSPARENT,Color.argb(220,7,18,21)))},FrameLayout.LayoutParams(-1,dp(118)))
         banner.addView(TextView(this).apply{text="←";textSize=30f;setTextColor(Color.rgb(226,195,111));gravity=Gravity.CENTER;setOnClickListener{showHome()}},FrameLayout.LayoutParams(dp(48),dp(52)).apply{leftMargin=dp(6);topMargin=dp(8)})
-        banner.addView(TextView(this).apply{text="Склади";textSize=29f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);includeFontPadding=false},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(55);topMargin=dp(27)})
-        banner.addView(TextView(this).apply{text="Склади нашої частини (ОЦЗ)";textSize=16f;setTextColor(Color.rgb(187,194,198))},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(55);topMargin=dp(66)})
-        banner.addView(TextView(this).apply{text="+  Додати склад";textSize=11.5f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);gravity=Gravity.CENTER;background=rounded(Color.rgb(65,54,29),12);setPadding(dp(8),0,dp(8),0);setOnClickListener{
+        banner.addView(TextView(this).apply{text="Склади";textSize=26f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);includeFontPadding=false},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(55);topMargin=dp(27)})
+        banner.addView(TextView(this).apply{text="Склади нашої частини (ОЦЗ)";textSize=16f;setTextColor(Color.rgb(187,194,198))},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(55);topMargin=dp(74)})
+        banner.addView(TextView(this).apply{text="+ Додати";textSize=12f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);gravity=Gravity.CENTER;background=rounded(Color.rgb(65,54,29),12);setPadding(dp(8),0,dp(8),0);setOnClickListener{
             val persons=db.list("responsible_persons"); val labels=mutableListOf("Без призначеного МВО"); labels+=persons.map{it[1]}
             AlertDialog.Builder(this@MainActivity).setTitle("МВО складу").setItems(labels.toTypedArray()){_,selected->val rid=if(selected==0)null else persons[selected-1][0].toLongOrNull();formDialog("Новий склад",listOf("Назва","Адреса","Примітка")){v->if(v[0].isBlank())showError("Назва складу не може бути порожньою.") else{db.insertWarehouse(v[0],v[1],v[2],rid);showWarehouses(query,filter)}}}.show()
-        }},FrameLayout.LayoutParams(dp(108),dp(48)).apply{rightMargin=dp(8);topMargin=dp(20);gravity=Gravity.RIGHT})
+        }},FrameLayout.LayoutParams(dp(104),dp(44)).apply{rightMargin=dp(8);topMargin=dp(20);gravity=Gravity.RIGHT})
         page.addView(banner)
         val rows=db.warehouseRows(); val materials=db.list("materials")
         var totalQty=0.0; rows.forEach{w->materials.forEach{m->totalQty+=db.warehouseBalance(m[0].toLongOrNull()?:return@forEach,w[0].toLong())}}
