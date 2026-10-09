@@ -1179,15 +1179,15 @@ class MainActivity : Activity() {
         materials.forEach { material ->
             val materialId = material[0].toLongOrNull() ?: return@forEach
             val balance = db.materialBalance(materialId)
-            addManageRow(root, material[3], "NSN ${material[1].ifBlank { "—" }}  •  ${material[4]}  •  Загальний залишок: ${formatQty(balance)}") {
+            addAccountCard(root, material[3], "NSN ${material[1].ifBlank { "—" }}  •  ${material[4]}", balance) {
                 val detail = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8), dp(4), dp(8), dp(4)) }
                 addRow(detail, "Картка майна", material[3])
                 addRow(detail, "Одиниця виміру", material[4])
-                addRow(detail, "Загальний залишок", formatQty(balance))
+                addBalanceLine(detail, "Загальний залишок", balance, material[4], 0)
                 warehouses.forEach { warehouse ->
                     val warehouseId = warehouse[0].toLongOrNull() ?: return@forEach
                     val warehouseBalance = db.warehouseBalance(materialId, warehouseId)
-                    if (warehouseBalance != 0.0) addRow(detail, warehouse[1], "Залишок: ${formatQty(warehouseBalance)} ${material[4]}")
+                    if (warehouseBalance != 0.0) addBalanceLine(detail, warehouse[1], warehouseBalance, material[4], 1)
                 }
                 AlertDialog.Builder(this).setTitle("Картка обліку").setView(detail).setPositiveButton("Готово", null).show()
             }
@@ -1195,13 +1195,13 @@ class MainActivity : Activity() {
                 val warehouseId = warehouse[0].toLongOrNull() ?: return@forEach
                 val warehouseBalance = db.warehouseBalance(materialId, warehouseId)
                 if (warehouseBalance != 0.0) {
-                    addRow(root, "  ${warehouse[1]}", "Залишок: ${formatQty(warehouseBalance)} ${material[4]}")
+                    addBalanceLine(root, warehouse[1], warehouseBalance, material[4], 1)
                     val unassigned = db.unassignedWarehouseBalance(materialId, warehouseId)
-                    if (unassigned != 0.0) addRow(root, "    ↳ Без комірки", "Не розподілено: ${formatQty(unassigned)} ${material[4]}")
+                    if (unassigned != 0.0) addBalanceLine(root, "Без комірки", unassigned, material[4], 2)
                     db.locationRows(warehouseId).forEach { location ->
                         val locationId = location[0].toLongOrNull() ?: return@forEach
                         val locationBalance = db.locationBalance(materialId, locationId)
-                        if (locationBalance != 0.0) addRow(root, "    ↳ ${location[1]}", "Комірка: ${formatQty(locationBalance)} ${material[4]}")
+                        if (locationBalance != 0.0) addBalanceLine(root, location[1], locationBalance, material[4], 2)
                     }
                 }
             }
@@ -1948,6 +1948,98 @@ class MainActivity : Activity() {
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(246,218,133),Color.rgb(179,143,56))).apply{cornerRadius=dp(12).toFloat();setStroke(dp(1),Color.rgb(238,207,122))}
             setPadding(dp(12),0,dp(12),0);setOnClickListener{action()}
         },LinearLayout.LayoutParams(-1,dp(50)).apply{bottomMargin=dp(10)})
+    }
+
+    private fun addAccountCard(root: LinearLayout, title: String, subtitle: String, balance: Double, action: () -> Unit) {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(13), dp(14), dp(12))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(31, 39, 34), Color.rgb(13, 25, 27))
+            ).apply {
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), Color.rgb(77, 78, 53))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
+        val heading = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        heading.addView(TextView(this).apply {
+            text = title
+            textSize = 15f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        heading.addView(TextView(this).apply {
+            text = formatQty(balance)
+            textSize = 16f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(226, 195, 111))
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(48, 43, 28), 9)
+            setPadding(dp(10), dp(7), dp(10), dp(7))
+        })
+        card.addView(heading)
+        card.addView(TextView(this).apply {
+            text = subtitle
+            textSize = 12f
+            setTextColor(Color.rgb(164, 179, 178))
+            setPadding(0, dp(7), 0, dp(9))
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        card.addView(TextView(this).apply {
+            text = "Відкрити картку  ›"
+            textSize = 12f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(226, 195, 111))
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Color.rgb(35, 39, 29), 8)
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+        })
+        root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) })
+    }
+
+    private fun addBalanceLine(root: LinearLayout, title: String, balance: Double, unit: String, level: Int) {
+        val nested = level > 1
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(if (nested) 10 else 12), dp(if (nested) 9 else 11), dp(11), dp(if (nested) 9 else 11))
+            background = rounded(
+                when (level) {
+                    0 -> Color.rgb(40, 39, 28)
+                    1 -> Color.rgb(17, 31, 31)
+                    else -> Color.rgb(13, 25, 27)
+                }, 9
+            )
+        }
+        row.addView(TextView(this).apply {
+            text = (if (nested) "↳  " else if (level == 1) "▦  " else "") + title
+            textSize = if (nested) 12f else 13f
+            setTypeface(null, if (level == 0 || level == 1) Typeface.BOLD else Typeface.NORMAL)
+            setTextColor(if (level == 0) Color.rgb(226, 195, 111) else Color.rgb(220, 229, 227))
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        row.addView(TextView(this).apply {
+            text = "${formatQty(balance)} ${unit}".trim()
+            textSize = if (nested) 12f else 13f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            gravity = Gravity.END or Gravity.CENTER_VERTICAL
+        })
+        root.addView(row, LinearLayout.LayoutParams(-1, -2).apply {
+            leftMargin = dp(if (nested) 12 else 0)
+            bottomMargin = dp(5)
+        })
     }
 
     private fun addManageRow(root: LinearLayout, title: String, subtitle: String, action: () -> Unit) {
