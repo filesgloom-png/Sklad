@@ -839,15 +839,17 @@ class MainActivity : Activity() {
         val importedQty = importedRows.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 }
         addScreenSummary(root, "ДОВІДНИК МАЙНА", "Номенклатурні позиції",
             "${all.size + importedGroups.size} позицій  •  Excel: ${formatQty(importedQty)} од.")
-        addAction(root, "⌕  Пошук / фільтр") { searchDialog("Пошук номенклатури", query) { q -> showMaterials(q) } }
-        addAction(root, "＋  Додати матеріал") {
-            formDialog("Новий матеріал", listOf("NSN", "Номенклатурний номер", "Назва", "Одиниця", "Партія", "Ціна")) { v ->
-                val price = v[5].replace(',', '.').toDoubleOrNull()
-                if (v[2].isBlank() || v[3].isBlank()) showError("Заповніть назву та одиницю виміру.")
-                else if (price == null || !price.isFinite() || price < 0) showError("Ціна має бути числом не менше 0.")
-                else { db.insertMaterial(v[0], v[1], v[2], v[3], v[4], price); showMaterials(query) }
+        addActionRow(root, listOf(
+            "⌕  Пошук" to { searchDialog("Пошук номенклатури", query) { q -> showMaterials(q) } },
+            "＋  Додати матеріал" to {
+                formDialog("Новий матеріал", listOf("NSN", "Номенклатурний номер", "Назва", "Одиниця", "Партія", "Ціна")) { v ->
+                    val price = v[5].replace(',', '.').toDoubleOrNull()
+                    if (v[2].isBlank() || v[3].isBlank()) showError("Заповніть назву та одиницю виміру.")
+                    else if (price == null || !price.isFinite() || price < 0) showError("Ціна має бути числом не менше 0.")
+                    else { db.insertMaterial(v[0], v[1], v[2], v[3], v[4], price); showMaterials(query) }
+                }
             }
-        }
+        ))
 
         addScreenSummary(root, "ЗАЛИШКИ З EXCEL", "Номенклатура на складах",
             "${importedGroups.size} позицій • ${importedRows.map { it.getOrElse(1) { "" } }.distinct().size} складів")
@@ -1905,6 +1907,39 @@ class MainActivity : Activity() {
         box.addView(TextView(this).apply { text = title; textSize = 16f; setTypeface(null, Typeface.BOLD); gravity = Gravity.CENTER; setTextColor(Color.WHITE) })
         box.addView(TextView(this).apply { text = description; textSize = 12f; gravity = Gravity.CENTER; setTextColor(Color.rgb(157, 172, 174)); setPadding(0, dp(7), 0, 0) })
         root.addView(box, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6); bottomMargin = dp(8) })
+    }
+
+    private fun addActionRow(root: LinearLayout, actions: List<Pair<String, () -> Unit>>) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        actions.forEachIndexed { index, item ->
+            val button = TextView(this).apply {
+                text = item.first
+                textSize = 13f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(24, 25, 20))
+                gravity = Gravity.CENTER
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.rgb(246, 218, 133), Color.rgb(179, 143, 56))
+                ).apply {
+                    cornerRadius = dp(11).toFloat()
+                    setStroke(dp(1), Color.rgb(238, 207, 122))
+                }
+                setPadding(dp(8), 0, dp(8), 0)
+                setOnClickListener { item.second() }
+            }
+            row.addView(button, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+                if (index > 0) leftMargin = dp(8)
+            })
+        }
+        root.addView(row, LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = dp(10)
+        })
     }
 
     private fun addAction(root: LinearLayout, text: String, action: () -> Unit) {
