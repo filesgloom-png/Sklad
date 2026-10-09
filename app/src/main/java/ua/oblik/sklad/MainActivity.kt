@@ -19,6 +19,8 @@ import android.widget.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.zip.ZipFile
+import org.xmlpull.v1.XmlPullParserFactory
 
 class MainActivity : Activity() {
     private val blue = Color.rgb(30, 91, 150)
@@ -554,6 +556,7 @@ class MainActivity : Activity() {
     private fun showBackupMenu() {
         val root = base("Налаштування")
         addScreenSummary(root, "СИСТЕМА", "Налаштування та безпека", "Резервні копії • Місця зберігання")
+        addAction(root, "Імпортувати залишки з Excel") { importInitialStock() }
         addAction(root, "Резервна копія бази даних") { exportBackup() }
         addAction(root, "Відновити з резервної копії") {
             AlertDialog.Builder(this).setTitle("Відновлення даних")
@@ -1195,6 +1198,102 @@ class MainActivity : Activity() {
             }.show()
     }
 
+
+    private val STOCK_OPEN = 4103
+
+    private fun importInitialStock() {
+        AlertDialog.Builder(this).setTitle("Імпорт залишків Excel")
+            .setMessage("Оберіть файл .xlsx з аркушем «Залишки». Повторний імпорт замінить попередній імпортований список, не змінюючи документи руху.")
+            .setNegativeButton("Скасувати", null)
+            .setPositiveButton("Обрати файл") { _, _ ->
+                startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                }, STOCK_OPEN)
+            }.show()
+    }
+
+    private fun parseInitialStock(uri: Uri): List<Array<String>> {
+        val temp = File.createTempFile("stock-import-", ".xlsx", cacheDir)
+        try {
+            contentResolver.openInputStream(uri)?.use { input ->
+                temp.outputStream().use { output -> input.copyTo(output) }
+            } ?: throw IllegalArgumentException("Не вдалося прочитати файл.")
+            ZipFile(temp).use { zip ->
+                val strings = mutableListOf<String>()
+                zip.getEntry("xl/sharedStrings.xml")?.let { entry ->
+                    val parser = XmlPullParserFactory.newInstance().newPullParser()
+                    parser.setInput(zip.getInputStream(entry), "UTF-8")
+                    var current: StringBuilder? = null
+                    var event = parser.eventType
+                    while (event != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                        if (event == org.xmlpull.v1.XmlPullParser.START_TAG && parser.name == "si") current = StringBuilder()
+                        else if (event == org.xmlpull.v1.XmlPullParser.TEXT && current != null) current!!.append(parser.text)
+                        else if (event == org.xmlpull.v1.XmlPullParser.END_TAG && parser.name == "si") {
+                            strings.add(current?.toString().orEmpty())
+                            current = null
+                        }
+                        event = parser.next()
+                    }
+                }
+                val sheet = zip.getEntry("xl/worksheets/sheet1.xml")
+                    ?: throw IllegalArgumentException("Не знайдено аркуш Excel.")
+                val parser = XmlPullParserFactory.newInstance().newPullParser()
+                parser.setInput(zip.getInputStream(sheet), "UTF-8")
+                val imported = mutableListOf<Array<String>>()
+                var cells = mutableMapOf<Int, String>()
+                var column = 0
+                var cellType = ""
+                var value = StringBuilder()
+                var readingValue = false
+                fun columnIndex(ref: String): Int {
+                    var result = 0
+                    for (ch in ref.takeWhile { it.isLetter() }.uppercase()) result = result * 26 + (ch - 'A' + 1)
+                    return result - 1
+                }
+                var event = parser.eventType
+                while (event != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                    if (event == org.xmlpull.v1.XmlPullParser.START_TAG) {
+                        when (parser.name) {
+                            "row" -> cells = mutableMapOf()
+                            "c" -> {
+                                column = columnIndex(parser.getAttributeValue(null, "r") ?: "A1")
+                                cellType = parser.getAttributeValue(null, "t") ?: ""
+                                value = StringBuilder()
+                            }
+                            "v", "t" -> readingValue = true
+                        }
+                    } else if (event == org.xmlpull.v1.XmlPullParser.TEXT && readingValue) {
+                        value.append(parser.text)
+                    } else if (event == org.xmlpull.v1.XmlPullParser.END_TAG) {
+                        when (parser.name) {
+                            "v", "t" -> readingValue = false
+                            "c" -> {
+                                val raw = value.toString()
+                                cells[column] = if (cellType == "s") strings.getOrNull(raw.toIntOrNull() ?: -1).orEmpty() else raw
+                            }
+                            "row" -> {
+                                val first = cells[0].orEmpty().trim()
+                                if (first.isNotBlank() && !first.equals("Номер складу", true) && cells.size >= 10) {
+                                    val values = (0..10).map { cells[it].orEmpty().trim() }
+                                    val warehouseCode = values[0]
+                                    val appCode = if (warehouseCode.endsWith("A", true)) warehouseCode else warehouseCode + "A"
+                                    val sourceKey = values.joinToString("|")
+                                    imported.add(arrayOf(sourceKey, warehouseCode, appCode, values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10]))
+                                }
+                            }
+                        }
+                    }
+                    event = parser.next()
+                }
+                if (imported.isEmpty()) throw IllegalArgumentException("У першому аркуші не знайдено рядків залишків.")
+                return imported
+            }
+        } finally {
+            temp.delete()
+        }
+    }
+
     private val BACKUP_CREATE = 4101
     private val BACKUP_OPEN = 4102
 
@@ -1243,6 +1342,14 @@ class MainActivity : Activity() {
         val uri = data.data ?: return
         try {
             when (requestCode) {
+                STOCK_OPEN -> {
+                    val rows = parseInitialStock(uri)
+                    val count = db.replaceInitialStock(rows)
+                    showBackupMenu()
+                    AlertDialog.Builder(this).setTitle("Імпорт завершено")
+                        .setMessage("Імпортовано рядків: " + count + ". Код складу зіставлено за правилом: 25C → 25CA. Імпортовані залишки показуються окремо від документів руху.")
+                        .setPositiveButton("Гаразд", null).show()
+                }
                 BACKUP_CREATE -> {
                     db.writableDatabase.rawQuery("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() }
                     db.close()
