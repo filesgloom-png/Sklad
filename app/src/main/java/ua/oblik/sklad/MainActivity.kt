@@ -197,8 +197,7 @@ class MainActivity : Activity() {
         super.onCreate(state)
         db = AppDb(this)
         preloadBundledStockIfNeeded()
-        window.statusBarColor = Color.rgb(7, 18, 21)
-        window.navigationBarColor = Color.rgb(7, 18, 21)
+        window.statusBarColor = Color.rgb(7, 18, 21)        window.navigationBarColor = Color.rgb(7, 18, 21)
         window.decorView.systemUiVisibility = 0
         showHome()
     }
@@ -314,9 +313,14 @@ class MainActivity : Activity() {
         })
         page.addView(header)
 
-        val warehouseCount = db.warehouseRows().size
+        val warehouseRows = db.warehouseRows()
+        val warehouseCount = warehouseRows.count { it.getOrNull(8) != "0" }
         val personCount = db.list("responsible_persons").size
-        val materialCount = db.list("materials").size
+        val stockRows = db.initialStockRowsForAll()
+        val nomenclatureCount = stockRows
+            .map { listOf(it.getOrNull(4).orEmpty(), it.getOrNull(5).orEmpty(), it.getOrNull(6).orEmpty(), it.getOrNull(7).orEmpty(), it.getOrNull(8).orEmpty()).joinToString("|") }
+            .distinct()
+            .size
 
         val stats = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -332,10 +336,10 @@ class MainActivity : Activity() {
         }
 
         val statItems = listOf(
-            Triple("home", "Склади", warehouseCount.toString()),
+            Triple("home", "Активні склади", warehouseCount.toString()),
             Triple("person", "МВО", personCount.toString()),
-            Triple("boxes", "Позиції", materialCount.toString()),
-            Triple("database", "Заг. вартість", "—")
+            Triple("boxes", "Номенклатура", nomenclatureCount.toString()),
+            Triple("database", "Рядки залишків", stockRows.size.toString())
         )
         statItems.forEachIndexed { index, item ->
             val box = LinearLayout(this).apply {
@@ -397,8 +401,7 @@ class MainActivity : Activity() {
         fun darkCard(
             icon: String,
             titleText: String,
-            subtitle: String,
-            accent: Int,
+            subtitle: String,            accent: Int,
             tint: Int,
             action: () -> Unit
         ): LinearLayout {
@@ -598,7 +601,6 @@ class MainActivity : Activity() {
         addEmptyState(root, "Дані залишаються локально", "Резервне копіювання допомагає перенести облік на інший пристрій. Реальні дані не створюються автоматично.")
         setContentView(root)
     }
-
     private class WarehouseBannerView(context: android.content.Context) : View(context) {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         override fun onDraw(canvas: Canvas) {
@@ -797,8 +799,7 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
-    private fun showPersons(query: String = "") {
-        val root = base("Матеріально відповідальні особи")
+    private fun showPersons(query: String = "") {        val root = base("Матеріально відповідальні особи")
         val all = db.list("responsible_persons")
         val rows = all.filter { query.isBlank() || it.any { value -> value.contains(query, true) } }
         addScreenSummary(content, "ОБЛІКОВИЙ СКЛАД", "Відповідальні особи", "${all.size} осіб")
@@ -997,8 +998,7 @@ class MainActivity : Activity() {
                         if (fromIndex == toIndex) {
                             showError("Склад-відправник і склад-отримувач мають бути різними.")
                         } else {
-                            val fromWarehouse = warehouses[fromIndex][0].toLong()
-                            val toWarehouse = warehouses[toIndex][0].toLong()
+                            val fromWarehouse = warehouses[fromIndex][0].toLong()                            val toWarehouse = warehouses[toIndex][0].toLong()
                             chooseLocation(fromWarehouse, "Комірка-відправник", true) { fromLocation ->
                                 chooseLocation(toWarehouse, "Комірка-отримувач", true) { toLocation ->
                                     showMovementForm(materialId, "TRANSFER", title, fromWarehouse, toWarehouse, fromLocation, toLocation)
@@ -1197,8 +1197,7 @@ class MainActivity : Activity() {
         hero.addView(TextView(this).apply{text=if(active)"● Активний" else "● Неактивний";textSize=10f;setTextColor(if(active)Color.rgb(23,220,151) else muted);background=rounded(if(active)Color.rgb(10,56,46) else Color.rgb(35,43,47),9);setPadding(dp(8),dp(4),dp(8),dp(4))},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(102);topMargin=dp(76)})
         hero.addView(TextView(this).apply{text="✎ Редагувати";textSize=10f;setTextColor(Color.WHITE);gravity=Gravity.CENTER;background=rounded(Color.rgb(65,54,29),9);setOnClickListener{showWarehouseActions(warehouseId,w[1],w[2],w[4].toLongOrNull(),w.getOrNull(5).orEmpty())}},FrameLayout.LayoutParams(dp(96),dp(38)).apply{rightMargin=dp(7);topMargin=dp(16);gravity=Gravity.RIGHT})
         page.addView(hero,LinearLayout.LayoutParams(-1,dp(116)).apply{bottomMargin=dp(8)})
-        val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;background=rounded(Color.rgb(14,25,27),12);setPadding(dp(12),dp(8),dp(12),dp(8))}
-        fun infoLine(label:String,value:String){info.addView(LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;addView(TextView(this@MainActivity).apply{text=label;textSize=11f;setTextColor(muted)},LinearLayout.LayoutParams(dp(135),-2));addView(TextView(this@MainActivity).apply{text=value.ifBlank{"—"};textSize=12f;setTextColor(Color.WHITE)},LinearLayout.LayoutParams(0,-2,1f))},LinearLayout.LayoutParams(-1,dp(27)))}
+        val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;background=rounded(Color.rgb(14,25,27),12);setPadding(dp(12),dp(8),dp(12),dp(8))}        fun infoLine(label:String,value:String){info.addView(LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;addView(TextView(this@MainActivity).apply{text=label;textSize=11f;setTextColor(muted)},LinearLayout.LayoutParams(dp(135),-2));addView(TextView(this@MainActivity).apply{text=value.ifBlank{"—"};textSize=12f;setTextColor(Color.WHITE)},LinearLayout.LayoutParams(0,-2,1f))},LinearLayout.LayoutParams(-1,dp(27)))}
         infoLine("Номер складу",w.getOrNull(6).orEmpty().ifBlank { title });infoLine("Тип майна",type);infoLine("Місце розташування",w[2]);infoLine("МВО",w[3]);infoLine("Примітка",w.getOrNull(5).orEmpty())
         page.addView(info,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
         val materials=db.list("materials");var pos=0;var qty=0.0
@@ -1397,8 +1396,7 @@ class MainActivity : Activity() {
                         else if (event == org.xmlpull.v1.XmlPullParser.END_TAG && parser.name == "si") {
                             strings.add(current?.toString().orEmpty())
                             current = null
-                        }
-                        event = parser.next()
+                        }                        event = parser.next()
                     }
                 }
                 val sheet = zip.getEntry("xl/worksheets/sheet1.xml")
@@ -1597,8 +1595,7 @@ class MainActivity : Activity() {
     }
 
     private fun safeDb(action: () -> Unit): Boolean {
-        return try {
-            action()
+        return try {            action()
             true
         } catch (e: SQLiteException) {
             showError("Не вдалося виконати операцію: ${e.message ?: "помилка бази даних"}.")
