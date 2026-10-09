@@ -1641,7 +1641,7 @@ class MainActivity : Activity() {
             "МВО: $mvoLabel" to { openMvoFilter() }
         ))
         val searchAction: () -> Unit = {
-            searchDialog("Пошук залишків", query) { q -> showAllInitialStock(type, q, warehouseCode, mvo) }
+            searchDialog("Пошук залишків", query) { q -> showAllInitialStock(type, q.trim(), warehouseCode, mvo) }
         }
         if (type != "ALL" || warehouseCode != "ALL" || mvo != "ALL" || query.isNotBlank()) {
             addActionRow(root, listOf(
@@ -1693,7 +1693,7 @@ class MainActivity : Activity() {
             val values = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(10), 0, 0)
+                setPadding(0, dp(11), 0, 0)
             }
             val qtyBadge = TextView(this).apply {
                 text = "КІЛЬКІСТЬ\n$quantity $unit".trim()
