@@ -924,7 +924,7 @@ class MainActivity : Activity() {
                     showError("Не обрано склад-отримувач.")
                     return@formDialog
                 }
-                val current = if (fromLocation != null) db.locationBalance(materialId, fromLocation) else db.warehouseBalance(materialId, fromWarehouse)
+                val current = if (fromLocation != null) db.locationBalance(materialId, fromLocation) else db.unassignedWarehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
                     val scope = if (fromLocation != null) "комірці" else "складі-відправнику"
                     showError("Недостатньо залишку на $scope. Доступно: ${formatQty(current)}.")
@@ -973,6 +973,8 @@ class MainActivity : Activity() {
                 val warehouseBalance = db.warehouseBalance(materialId, warehouseId)
                 if (warehouseBalance != 0.0) {
                     addRow(root, "  ${warehouse[1]}", "Залишок: ${formatQty(warehouseBalance)} ${material[4]}")
+                    val unassigned = db.unassignedWarehouseBalance(materialId, warehouseId)
+                    if (unassigned != 0.0) addRow(root, "    ↳ Без комірки", "Не розподілено: ${formatQty(unassigned)} ${material[4]}")
                     db.locationRows(warehouseId).forEach { location ->
                         val locationId = location[0].toLongOrNull() ?: return@forEach
                         val locationBalance = db.locationBalance(materialId, locationId)
