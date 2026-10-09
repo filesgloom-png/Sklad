@@ -36,6 +36,6 @@
 
 GitHub Actions збирає debug APK на Java 17, Android SDK 35 та Gradle 8.9 і завантажує artifact Sklad-debug.
 
-Остання перевірена збірка: Run 37819463777 — SUCCESS.
+Статус останньої перевіреної збірки доступний у [GitHub Actions](https://github.com/filesgloom-png/Sklad/actions/workflows/build.yml). Файл `.ci/last-green-build.txt` містить SHA вихідного коду та номер останнього успішного запуску.
 
 Проєкт не містить реальних складських даних.
