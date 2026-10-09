@@ -809,16 +809,22 @@ class MainActivity : Activity() {
         val all = db.list("responsible_persons")
         val rows = all.filter { query.isBlank() || it.any { value -> value.contains(query, true) } }
         addScreenSummary(content, "ОБЛІКОВИЙ СКЛАД", "Відповідальні особи", "${all.size} осіб")
-        addAction(content, "⌕  Пошук МВО") { searchDialog("Пошук МВО", query) { q -> showPersons(q) } }
-        addAction(root, "＋  Додати МВО") {
-            formDialog("Нова МВО", listOf("ПІБ", "Посада", "Телефон")) { v ->
-                if (v[0].isBlank()) showError("ПІБ не може бути порожнім.")
-                else { db.insertPerson(v[0], v[1], v[2]); showPersons(query) }
+        addActionRow(content, listOf(
+            "⌕  Пошук МВО" to { searchDialog("Пошук МВО", query) { q -> showPersons(q) } },
+            "＋  Додати МВО" to {
+                formDialog("Нова МВО", listOf("ПІБ", "Посада", "Телефон")) { v ->
+                    if (v[0].isBlank()) showError("ПІБ не може бути порожнім.")
+                    else { db.insertPerson(v[0], v[1], v[2]); showPersons(query) }
+                }
             }
-        }
+        ))
         rows.forEach {
             val id = it[0].toLong()
-            addManageRow(content, it[1], listOf(it.getOrNull(2).orEmpty(), it.getOrNull(3).orEmpty()).filter { x -> x.isNotBlank() }.joinToString("  • ").ifBlank { "Посаду та телефон не вказано" }) {
+            val subtitle = listOf(it.getOrNull(2).orEmpty(), it.getOrNull(3).orEmpty())
+                .filter { value -> value.isNotBlank() }
+                .joinToString("  • ")
+                .ifBlank { "Посаду та телефон не вказано" }
+            addRecordCard(content, it[1], subtitle, "МВО") {
                 showPersonActions(id, it[1], it.getOrNull(2) ?: "", it.getOrNull(3) ?: "")
             }
         }
