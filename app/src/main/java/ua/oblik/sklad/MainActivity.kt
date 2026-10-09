@@ -552,16 +552,19 @@ class MainActivity : Activity() {
     }
 
     private fun showBackupMenu() {
-        AlertDialog.Builder(this)
-            .setTitle("Налаштування")
-            .setItems(arrayOf("Резервна копія", "Імпорт резервної копії", "Комірки")) { _, which ->
-                when (which) {
-                    0 -> exportBackup()
-                    1 -> importBackup()
-                    2 -> chooseWarehouseForLocations()
-                }
-            }
-            .show()
+        val root = base("Налаштування")
+        addScreenSummary(root, "СИСТЕМА", "Налаштування та безпека", "Резервні копії • Місця зберігання")
+        addAction(root, "Резервна копія бази даних") { exportBackup() }
+        addAction(root, "Відновити з резервної копії") {
+            AlertDialog.Builder(this).setTitle("Відновлення даних")
+                .setMessage("База даних буде замінена вибраною резервною копією. Перед продовженням переконайтеся, що маєте актуальну копію.")
+                .setNegativeButton("Скасувати", null)
+                .setPositiveButton("Обрати файл") { _, _ -> importBackup() }
+                .show()
+        }
+        addAction(root, "Комірки та місця зберігання") { chooseWarehouseForLocations() }
+        addEmptyState(root, "Дані залишаються локально", "Резервне копіювання допомагає перенести облік на інший пристрій. Реальні дані не створюються автоматично.")
+        setContentView(root)
     }
 
     private class WarehouseBannerView(context: android.content.Context) : View(context) {
@@ -720,25 +723,22 @@ class MainActivity : Activity() {
     }
 
     private fun showLocations(warehouseId: Long, warehouseName: String) {
-        val root = base("Комірки • ${warehouseName}")
-        addAction(root, "Додати комірку") {
-            formDialog("Нова комірка", listOf("Назва", "Примітка")) { v ->
-                if (v[0].isBlank()) {
-                    showError("Назва комірки не може бути порожньою.")
-                } else {
-                    db.insertLocation(warehouseId, v[0], v[1])
-                    showLocations(warehouseId, warehouseName)
-                }
+        val root = base("Місця зберігання")
+        val rows = db.locationRows(warehouseId)
+        addScreenSummary(root, "СКЛАД • ${warehouseName}", "Комірки та місця зберігання", "${rows.size} місць")
+        addAction(root, "＋  Додати комірку") {
+            formDialog("Нова комірка", listOf("Назва місця зберігання", "Примітка")) { v ->
+                if (v[0].isBlank()) showError("Назва комірки не може бути порожньою.")
+                else { db.insertLocation(warehouseId, v[0], v[1]); showLocations(warehouseId, warehouseName) }
             }
         }
-        val rows = db.locationRows(warehouseId)
         rows.forEach {
             val id = it[0].toLong()
-            addManageRow(root, "№$id  ${it[1]}", it.getOrNull(2) ?: "") {
+            addManageRow(root, it[1], "Місце зберігання • ${it.getOrNull(2).orEmpty().ifBlank { "Без примітки" }}") {
                 showLocationActions(warehouseId, warehouseName, id, it[1], it.getOrNull(2) ?: "")
             }
         }
-        if (rows.isEmpty()) addRow(root, "Комірок ще немає", "Додайте місце зберігання для цього складу.")
+        if (rows.isEmpty()) addEmptyState(root, "Місць зберігання ще немає", "Додайте стелаж, комірку або інше місце для обліку майна на цьому складі.")
         setContentView(root)
     }
 
