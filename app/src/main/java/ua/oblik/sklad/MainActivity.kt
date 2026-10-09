@@ -1344,11 +1344,17 @@ class MainActivity : Activity() {
                                         .replace('М', 'M').replace('Н', 'H').replace('О', 'O').replace('Р', 'P')
                                         .replace('С', 'C').replace('Т', 'T').replace('Х', 'X')
                                         .replace(" ", "").replace("-", "")
-                                    val candidate = if (normCode(warehouseCode).endsWith("A")) warehouseCode else warehouseCode + "А"
+                                    val normalizedRaw = normCode(warehouseCode)
+                                    // Codes in the Excel file omit the final A for these warehouse IDs.
+                                    // 20C is the same warehouse as 20CA; 25C is the same as 25CA.
+                                    val canonicalCode = when (normalizedRaw) {
+                                        "20C" -> "20CA"
+                                        "25C" -> "25CA"
+                                        else -> if (normalizedRaw.endsWith("A")) normalizedRaw else normalizedRaw + "A"
+                                    }
                                     val appCodes = db.warehouseRows().mapNotNull { row -> row.getOrNull(6)?.takeIf { it.isNotBlank() } }
-                                    val appCode = appCodes.firstOrNull { normCode(it) == normCode(candidate) }
-                                        ?: appCodes.firstOrNull { normCode(it) == normCode(warehouseCode) + "A" }
-                                        ?: candidate
+                                    val appCode = appCodes.firstOrNull { normCode(it) == canonicalCode }
+                                        ?: canonicalCode
                                     val sourceKey = imported.size.toString() + "|" + values.joinToString("|")
                                     imported.add(arrayOf(sourceKey, warehouseCode, appCode, values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10]))
                                 }
