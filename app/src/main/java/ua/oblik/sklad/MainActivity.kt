@@ -823,8 +823,15 @@ class MainActivity : Activity() {
         val root = base("Номенклатура")
         val all = db.list("materials")
         val rows = all.filter { row -> query.isBlank() || row.any { it.contains(query, true) } }
+        val importedRows = db.initialStockRowsForAll("ALL", query)
+        val importedGroups = importedRows.groupBy { row ->
+            listOf(row.getOrElse(4) { "" }, row.getOrElse(5) { "" }, row.getOrElse(6) { "" },
+                row.getOrElse(7) { "" }, row.getOrElse(8) { "" }, row.getOrElse(9) { "" }).joinToString("|")
+        }.values.sortedBy { group -> group.firstOrNull()?.getOrElse(5) { "" }?.lowercase(Locale.ROOT) ?: "" }
         val totalBalance = all.sumOf { row -> db.materialBalance(row[0].toLongOrNull() ?: 0L) }
-        addScreenSummary(root, "ДОВІДНИК МАЙНА", "Номенклатурні позиції", "${all.size} позицій  •  ${formatQty(totalBalance)} од.")
+        val importedQty = importedRows.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 }
+        addScreenSummary(root, "ДОВІДНИК МАЙНА", "Номенклатурні позиції",
+            "${all.size + importedGroups.size} позицій  •  Excel: ${formatQty(importedQty)} од.")
         addAction(root, "⌕  Пошук / фільтр") { searchDialog("Пошук номенклатури", query) { q -> showMaterials(q) } }
         addAction(root, "＋  Додати матеріал") {
             formDialog("Новий матеріал", listOf("NSN", "Номенклатурний номер", "Назва", "Одиниця", "Партія", "Ціна")) { v ->
@@ -834,13 +841,87 @@ class MainActivity : Activity() {
                 else { db.insertMaterial(v[0], v[1], v[2], v[3], v[4], price); showMaterials(query) }
             }
         }
+
+        addScreenSummary(root, "ЗАЛИШКИ З EXCEL", "Номенклатура на складах",
+            "${importedGroups.size} позицій • ${importedRows.map { it.getOrElse(1) { "" } }.distinct().size} складів")
+        if (importedGroups.isEmpty()) {
+            addRow(root, "Імпортовану номенклатуру не знайдено", "Перевірте пошуковий запит або імпорт Excel.")
+        } else {
+            importedGroups.forEach { group ->
+                val first = group.first()
+                val qty = group.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 }
+                val warehouseCount = group.map { it.getOrElse(1) { "" } }.distinct().size
+                val title = first.getOrElse(5) { "" }.ifBlank { first.getOrElse(4) { "Без назви" } }
+                val identifiers = listOf(first.getOrElse(4) { "" }, first.getOrElse(6) { "" })
+                    .filter { it.isNotBlank() }.distinct().joinToString(" • ")
+                val details = "${formatQty(qty)} ${first.getOrElse(9) { "" }} • ${warehouseCount} складів" +
+                    if (identifiers.isBlank()) "" else " • $identifiers"
+                addManageRow(root, title, details) { showImportedNomenclatureDetail(group) }
+            }
+        }
+
+        addScreenSummary(root, "РУЧНИЙ ДОВІДНИК", "Створені позиції", "${rows.size} позицій • ${formatQty(totalBalance)} од. за рухами")
         rows.forEach { row ->
             val id = row[0].toLongOrNull() ?: return@forEach
             val balance = db.materialBalance(id)
             addManageRow(root, row[3], "${row[4]}  •  Залишок: ${formatQty(balance)}  •  NSN ${row[1].ifBlank { "—" }}") { showMaterialActions(id, row) }
         }
-        if (rows.isEmpty()) addEmptyState(root, if (query.isBlank()) "Номенклатура порожня" else "Нічого не знайдено", if (query.isBlank()) "Додайте матеріали перед створенням документів." else "Змініть пошуковий запит.")
+        if (rows.isEmpty() && importedGroups.isEmpty()) addEmptyState(root,
+            if (query.isBlank()) "Номенклатура порожня" else "Нічого не знайдено",
+            if (query.isBlank()) "Після імпорту Excel або додавання матеріалів номенклатура з'явиться тут." else "Змініть пошуковий запит.")
         setContentView(root)
+    }
+
+    private fun showImportedNomenclatureDetail(group: List<Array<String>>) {
+        if (group.isEmpty()) return
+        val first = group.first()
+        val title = first.getOrElse(5) { "" }.ifBlank { first.getOrElse(4) { "Номенклатура" } }
+        val total = group.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 }
+        val unit = first.getOrElse(9) { "" }
+        val warehouses = db.warehouseRows()
+        val byWarehouse = group.groupBy { it.getOrElse(1) { "" } }.toSortedMap()
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(8), dp(18), dp(8))
+            setBackgroundColor(Color.rgb(14, 25, 27))
+        }
+        fun line(text: String, emphasis: Boolean = false) {
+            layout.addView(TextView(this).apply {
+                this.text = text
+                textSize = if (emphasis) 14f else 12f
+                setTextColor(if (emphasis) Color.WHITE else Color.rgb(174, 187, 188))
+                if (emphasis) setTypeface(null, Typeface.BOLD)
+                setPadding(0, dp(7), 0, dp(7))
+            })
+        }
+        line("Загальний залишок: ${formatQty(total)} $unit", true)
+        line("Код: ${first.getOrElse(4) { "" }.ifBlank { "—" }} • NSN: ${first.getOrElse(6) { "" }.ifBlank { "—" }}")
+        line("Розмір: ${first.getOrElse(7) { "" }.ifBlank { "—" }} • Партія: ${first.getOrElse(8) { "" }.ifBlank { "—" }}")
+        line("ЗАЛИШКИ ЗА СКЛАДАМИ", true)
+        byWarehouse.forEach { (code, entries) ->
+            val qty = entries.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 }
+            val warehouse = warehouses.firstOrNull { it.getOrElse(6) { "" }.equals(code, true) }
+            val warehouseName = warehouse?.getOrElse(1) { "" }?.ifBlank { "Склад $code" } ?: "Склад $code"
+            val responsible = warehouse?.getOrElse(3) { "" }?.takeIf { it.isNotBlank() } ?: "МВО не вказано"
+            val types = entries.groupBy { it.getOrElse(2) { "" } }
+                .entries.sortedBy { it.key }
+                .joinToString(" • ") { (type, values) ->
+                    "$type: ${formatQty(values.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 })}"
+                }
+            line("$warehouseName ($code)", true)
+            line("МВО: $responsible")
+            line("Кількість: ${formatQty(qty)} $unit")
+            line("Тип зберігання: $types")
+            val locations = entries.map { it.getOrElse(3) { "" } }.filter { it.isNotBlank() }.distinct()
+            if (locations.isNotEmpty()) line("Місця: ${locations.joinToString(", ")}")
+            layout.addView(View(this).apply { setBackgroundColor(Color.rgb(43, 57, 54)) },
+                LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(4); bottomMargin = dp(4) })
+        }
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(ScrollView(this).apply { addView(layout) })
+            .setPositiveButton("Закрити", null)
+            .show()
     }
 
     private fun showMovement(type: String, title: String) {
