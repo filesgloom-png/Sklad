@@ -1690,14 +1690,14 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(0, -2, 1f))
             item.addView(titleRow)
             val locationMeta = TextView(this).apply {
-                text = "СКЛАД  ${r.getOrNull(1).orEmpty()}     ТИП  ${r.getOrNull(2).orEmpty()}     МІСЦЕ  ${r.getOrNull(3).orEmpty()}"
-                textSize = 10f
+                text = "СКЛАД  ${r.getOrNull(1).orEmpty()}  •  ТИП  ${r.getOrNull(2).orEmpty()}  •  МІСЦЕ  ${r.getOrNull(3).orEmpty()}"
+                textSize = 10.5f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.rgb(174, 190, 191))
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
-                setPadding(0, dp(7), 0, dp(3))
-                letterSpacing = 0.015f
+                setPadding(0, dp(8), 0, dp(4))
+                letterSpacing = 0.01f
             }
             item.addView(locationMeta)
             item.addView(TextView(this).apply {
