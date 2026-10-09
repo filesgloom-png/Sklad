@@ -19,18 +19,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Bundle stock workbook into Android assets
-        run: |
-          test -s "Залишки.XLSX"
-          mkdir -p app/src/main/assets
-          cp "Залишки.XLSX" app/src/main/assets/Залишки.XLSX
+      - name: Verify bundled stock workbook source exists
+        run: test -s "Залишки.XLSX"
       - name: Verify source workbook contains 3569 importable stock rows
         run: |
           python3 - <<'PY'
           import zipfile
           import xml.etree.ElementTree as ET
 
-          path = "app/src/main/assets/Залишки.XLSX"
+          path = "Залишки.XLSX"
           ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
           with zipfile.ZipFile(path) as book:
               shared = []
