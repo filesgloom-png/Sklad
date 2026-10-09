@@ -1696,25 +1696,29 @@ class MainActivity : Activity() {
                 setPadding(0, dp(10), 0, 0)
             }
             val qtyBadge = TextView(this).apply {
-                text = "Кількість  $quantity $unit"
+                text = "КІЛЬКІСТЬ\n$quantity $unit".trim()
                 textSize = 12f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.rgb(185, 239, 215))
                 gravity = Gravity.CENTER
-                setPadding(dp(9), dp(7), dp(9), dp(7))
-                background = rounded(Color.rgb(18, 62, 49), 9)
-                maxLines = 1
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                background = rounded(Color.rgb(18, 62, 49), 10)
+                minHeight = dp(48)
+                maxLines = 2
+                setLineSpacing(dp(2).toFloat(), 1f)
             }
-            values.addView(qtyBadge, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(6) })
+            values.addView(qtyBadge, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(7) })
             val priceBadge = TextView(this).apply {
-                text = "Ціна  $price"
+                text = "ЦІНА\n$price"
                 textSize = 12f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.rgb(247, 221, 157))
                 gravity = Gravity.CENTER
-                setPadding(dp(9), dp(7), dp(9), dp(7))
-                background = rounded(Color.rgb(66, 54, 28), 9)
-                maxLines = 1
+                setPadding(dp(8), dp(8), dp(8), dp(8))
+                background = rounded(Color.rgb(66, 54, 28), 10)
+                minHeight = dp(48)
+                maxLines = 2
+                setLineSpacing(dp(2).toFloat(), 1f)
             }
             values.addView(priceBadge, LinearLayout.LayoutParams(0, -2, 1f))
             item.addView(values)
