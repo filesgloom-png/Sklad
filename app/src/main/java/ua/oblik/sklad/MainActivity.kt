@@ -597,6 +597,72 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun showAddWarehouseForm(query: String = "", filter: String = "ALL") {
+        val gold = Color.rgb(226,195,111)
+        val muted = Color.rgb(166,178,181)
+        val root = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setBackgroundColor(Color.rgb(7,18,21)) }
+        root.setOnApplyWindowInsetsListener { v, i -> val b=i.getInsets(android.view.WindowInsets.Type.systemBars()); v.setPadding(0,b.top,0,b.bottom); i }
+        val scroll = ScrollView(this).apply { isFillViewport=true }
+        val page = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(dp(20),dp(8),dp(20),dp(16)) }
+        val hero = FrameLayout(this).apply { clipToOutline=true; background=rounded(Color.rgb(15,26,27),16) }
+        hero.addView(WarehouseBannerView(this),FrameLayout.LayoutParams(-1,dp(112)))
+        hero.addView(View(this).apply { background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.TRANSPARENT,Color.argb(225,7,18,21))) },FrameLayout.LayoutParams(-1,dp(112)))
+        hero.addView(TextView(this).apply { text="←"; textSize=30f; setTextColor(gold); gravity=Gravity.CENTER; setOnClickListener{showWarehouses(query,filter)} },FrameLayout.LayoutParams(dp(48),dp(52)).apply{leftMargin=dp(2);topMargin=dp(4)})
+        hero.addView(TextView(this).apply { text="Додати склад"; textSize=27f; setTypeface(null,Typeface.BOLD); setTextColor(Color.WHITE) },FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(56);topMargin=dp(24)})
+        hero.addView(TextView(this).apply { text="Створення нового складу"; textSize=15f; setTextColor(Color.rgb(190,198,200)) },FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(56);topMargin=dp(66)})
+        page.addView(hero,LinearLayout.LayoutParams(-1,dp(112)).apply{bottomMargin=dp(10)})
+        val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(16),dp(16),dp(16));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(17,29,29),Color.rgb(10,21,23))).apply{cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(38,50,48))}}
+        fun fieldLabel(label:String, required:Boolean=false) { card.addView(TextView(this).apply{text=if(required)"$label *" else label;textSize=14f;setTextColor(Color.rgb(202,210,211));setPadding(dp(2),dp(7),0,dp(6))}) }
+        fun input(hintText:String, icon:String, multiline:Boolean=false): EditText {
+            val wrap=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(47,47,35),Color.rgb(18,29,28))).apply{cornerRadius=dp(10).toFloat();setStroke(dp(1),Color.rgb(47,59,55))}}
+            wrap.addView(TextView(this).apply{text=icon;textSize=22f;gravity=Gravity.CENTER;setTextColor(gold);setPadding(dp(12),dp(10),dp(12),dp(10))},LinearLayout.LayoutParams(dp(50),if(multiline)dp(72)else dp(48)))
+            val e=EditText(this).apply{hint=hintText;textSize=14f;setTextColor(Color.WHITE);setHintTextColor(Color.rgb(121,136,139));background=null;setPadding(dp(12),dp(8),dp(10),dp(8));if(multiline){minLines=2;gravity=Gravity.TOP}else setSingleLine(true)}
+            wrap.addView(e,LinearLayout.LayoutParams(0,if(multiline)dp(72)else dp(48),1f))
+            card.addView(wrap,LinearLayout.LayoutParams(-1,if(multiline)dp(72)else dp(48)).apply{bottomMargin=dp(5)})
+            return e
+        }
+        fun choice(hintText:String, icon:String, values:List<String>, selected:(Int)->Unit) {
+            val wrap=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(47,47,35),Color.rgb(18,29,28))).apply{cornerRadius=dp(10).toFloat();setStroke(dp(1),Color.rgb(47,59,55))}}
+            wrap.addView(TextView(this).apply{text=icon;textSize=22f;gravity=Gravity.CENTER;setTextColor(gold)},LinearLayout.LayoutParams(dp(50),dp(48)))
+            val label=TextView(this).apply{text=hintText;textSize=14f;setTextColor(muted);gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),0,0,0)}
+            wrap.addView(label,LinearLayout.LayoutParams(0,dp(48),1f))
+            wrap.addView(TextView(this).apply{text="⌄";textSize=22f;setTextColor(gold);gravity=Gravity.CENTER},LinearLayout.LayoutParams(dp(38),dp(48)))
+            wrap.setOnClickListener{AlertDialog.Builder(this@MainActivity).setTitle(hintText).setItems(values.toTypedArray()){_,which->label.text=values[which];label.setTextColor(Color.WHITE);selected(which)}.show()}
+            card.addView(wrap,LinearLayout.LayoutParams(-1,dp(48)).apply{bottomMargin=dp(5)})
+        }
+        fieldLabel("Назва складу",true); val name=input("Наприклад, Склад №1","⌂")
+        fieldLabel("Номер складу",true); val number=input("Введіть номер","＃")
+        fieldLabel("Тип майна"); var propertyType=""
+        val types=listOf("Речове майно","Обмундирування","Взуття","Спорядження","Палатки, інвентар","Господарське майно","Резерв","Інше")
+        choice("Оберіть тип майна","◇",types){propertyType=types[it]}
+        fieldLabel("Місце розташування"); val location=input("Вкажіть місце розташування","●")
+        val persons=db.list("responsible_persons"); var responsibleId:Long?=null
+        fieldLabel("Матеріально відповідальна особа (МВО)")
+        choice("Оберіть МВО","●",listOf("Не призначено")+persons.map{it[1]}){responsibleId=if(it==0)null else persons[it-1][0].toLongOrNull()}
+        fieldLabel("Примітка"); val note=input("Додаткова інформація (необов’язково)","▤",true)
+        var active=true
+        val activeRow=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(12),dp(10),dp(12),dp(10));background=rounded(Color.rgb(18,29,29),12)}
+        val activeSwitch=Switch(this).apply{text="Склад активний";textSize=14f;setTextColor(Color.WHITE);isChecked=true;buttonTintList=android.content.res.ColorStateList.valueOf(gold);setOnCheckedChangeListener{_,checked->active=checked}}
+        activeRow.addView(activeSwitch)
+        activeRow.addView(TextView(this).apply{text="Склад буде відображатися у списку";textSize=11f;setTextColor(muted)})
+        card.addView(activeRow,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8);bottomMargin=dp(12)})
+        val save=TextView(this).apply{text="▣   Зберегти склад";textSize=15f;setTypeface(null,Typeface.BOLD);setTextColor(Color.rgb(20,22,17));gravity=Gravity.CENTER;background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(246,218,133),Color.rgb(179,143,56))).apply{cornerRadius=dp(11).toFloat();setStroke(dp(1),Color.rgb(247,219,139))};setOnClickListener{
+            val n=name.text.toString().trim();val no=number.text.toString().trim()
+            if(n.isBlank())showError("Введіть назву складу.")
+            else if(no.isBlank())showError("Введіть номер складу.")
+            else {try{db.insertWarehouse(n,location.text.toString().trim(),note.text.toString().trim(),responsibleId,no,propertyType,active);showWarehouses(query,filter)}catch(e:Exception){showError("Не вдалося зберегти склад: "+e.message)}}
+        }}
+        card.addView(save,LinearLayout.LayoutParams(-1,dp(56)).apply{bottomMargin=dp(8)})
+        card.addView(TextView(this).apply{text="Скасувати";textSize=14f;setTextColor(gold);gravity=Gravity.CENTER;background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(17,29,29),Color.rgb(12,22,23))).apply{cornerRadius=dp(11).toFloat();setStroke(dp(1),Color.rgb(86,75,44))};setOnClickListener{showWarehouses(query,filter)}},LinearLayout.LayoutParams(-1,dp(50)))
+        page.addView(card)
+        scroll.addView(page);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
+        val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER;background=rounded(Color.rgb(17,27,29),18);setPadding(dp(2),dp(2),dp(2),dp(2))}
+        fun navItem(icon:String,label:String,activeItem:Boolean,action:()->Unit)=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setOnClickListener{action()};addView(DashboardIconView(this@MainActivity,icon,if(activeItem)gold else Color.rgb(174,184,188)),LinearLayout.LayoutParams(dp(25),dp(27)));addView(TextView(this@MainActivity).apply{text=label;textSize=7.5f;gravity=Gravity.CENTER;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;setTextColor(if(activeItem)gold else Color.rgb(174,184,188))},LinearLayout.LayoutParams(-1,dp(16)))}
+        nav.addView(navItem("home","Головна",false){showHome()},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("home","Склади",true){showWarehouses(query,filter)},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("cube","Номенкл.",false){showMaterials()},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("transfer","Рух майна",false){showMovement("TRANSFER","Переміщення")},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("chart","Звіти",false){showCards()},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("settings","Налаштув.",false){showBackupMenu()},LinearLayout.LayoutParams(0,dp(58),1f))
+        root.addView(nav,LinearLayout.LayoutParams(-1,dp(64)).apply{leftMargin=dp(1);rightMargin=dp(1);bottomMargin=dp(2)})
+        setContentView(root)
+    }
+
     private fun showWarehouses(query:String="",filter:String="ALL"){
         window.statusBarColor=Color.rgb(7,18,21); window.navigationBarColor=Color.rgb(7,18,21); window.decorView.systemUiVisibility=0
         val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(Color.rgb(7,18,21))}
@@ -609,10 +675,7 @@ class MainActivity : Activity() {
         banner.addView(TextView(this).apply{text="←";textSize=30f;setTextColor(Color.rgb(226,195,111));gravity=Gravity.CENTER;setOnClickListener{showHome()}},FrameLayout.LayoutParams(dp(48),dp(52)).apply{leftMargin=dp(6);topMargin=dp(8)})
         banner.addView(TextView(this).apply{text="Склади";textSize=26f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);includeFontPadding=false},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(55);topMargin=dp(27)})
         banner.addView(TextView(this).apply{text="Склади нашої частини (ОЦЗ)";textSize=16f;setTextColor(Color.rgb(187,194,198))},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(55);topMargin=dp(74)})
-        banner.addView(TextView(this).apply{text="+ Додати";textSize=12f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);gravity=Gravity.CENTER;background=rounded(Color.rgb(65,54,29),12);setPadding(dp(8),0,dp(8),0);setOnClickListener{
-            val persons=db.list("responsible_persons"); val labels=mutableListOf("Без призначеного МВО"); labels+=persons.map{it[1]}
-            AlertDialog.Builder(this@MainActivity).setTitle("МВО складу").setItems(labels.toTypedArray()){_,selected->val rid=if(selected==0)null else persons[selected-1][0].toLongOrNull();formDialog("Новий склад",listOf("Назва","Адреса","Примітка")){v->if(v[0].isBlank())showError("Назва складу не може бути порожньою.") else{db.insertWarehouse(v[0],v[1],v[2],rid);showWarehouses(query,filter)}}}.show()
-        }},FrameLayout.LayoutParams(dp(104),dp(44)).apply{rightMargin=dp(8);topMargin=dp(20);gravity=Gravity.RIGHT})
+        banner.addView(TextView(this).apply{text="+ Додати склад";textSize=12f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);gravity=Gravity.CENTER;background=rounded(Color.rgb(65,54,29),12);setPadding(dp(8),0,dp(8),0);setOnClickListener{showAddWarehouseForm(query,filter)}},FrameLayout.LayoutParams(dp(128),dp(44)).apply{rightMargin=dp(8);topMargin=dp(20);gravity=Gravity.RIGHT})
         page.addView(banner)
         val rows=db.warehouseRows(); val materials=db.list("materials")
         var totalQty=0.0; rows.forEach{w->materials.forEach{m->totalQty+=db.warehouseBalance(m[0].toLongOrNull()?:return@forEach,w[0].toLong())}}
