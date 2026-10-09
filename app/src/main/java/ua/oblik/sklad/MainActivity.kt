@@ -849,7 +849,9 @@ class MainActivity : Activity() {
         title: String,
         warehouses: List<Array<String>>
     ) {
-        val names = warehouses.map { it[1] }.toTypedArray()
+        val names = warehouses.map { warehouse ->
+            "${warehouse[1]}${warehouse.getOrNull(6)?.takeIf { it.isNotBlank() }?.let { " • №$it" } ?: ""}"
+        }.toTypedArray()
         AlertDialog.Builder(this)
             .setTitle("З якого складу")
             .setItems(names) { _, fromIndex ->
@@ -983,17 +985,38 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
-    private fun showJournal(query: String = "") {
+    private fun showJournal(query: String = "", filter: String = "ALL") {
         val root = base("Журнал руху")
         val all = db.movementRows()
-        val rows = all.filter { row -> query.isBlank() || row.any { value -> value.contains(query, true) } }
-        addScreenSummary(root, "ІСТОРІЯ ОПЕРАЦІЙ", "Журнал руху майна", "${all.size} записів")
-        addAction(root, "⌕  Пошук у журналі") { searchDialog("Пошук у журналі", query) { q -> showJournal(q) } }
+        val rows = all.filter { row ->
+            val matchesType = when (filter) {
+                "RECEIPT" -> row[2] == "RECEIPT"
+                "ISSUE" -> row[2] == "ISSUE"
+                "TRANSFER" -> row[2].startsWith("TRANSFER")
+                "WRITE_OFF" -> row[2] == "WRITE_OFF"
+                else -> true
+            }
+            matchesType && (query.isBlank() || row.any { value -> value.contains(query, true) })
+        }
+        val filterLabel = when (filter) {
+            "RECEIPT" -> "Надходження"
+            "ISSUE" -> "Видача"
+            "TRANSFER" -> "Переміщення"
+            "WRITE_OFF" -> "Списання"
+            else -> "Усі операції"
+        }
+        addScreenSummary(root, "ІСТОРІЯ ОПЕРАЦІЙ", "Журнал руху майна", "${rows.size} записів • ${filterLabel}")
+        addAction(root, "⌕  Пошук у журналі") { searchDialog("Пошук у журналі", query) { q -> showJournal(q, filter) } }
+        addAction(root, "▤  Усі операції") { showJournal(query, "ALL") }
+        addAction(root, "↓  Надходження") { showJournal(query, "RECEIPT") }
+        addAction(root, "↑  Видача") { showJournal(query, "ISSUE") }
+        addAction(root, "⇄  Переміщення") { showJournal(query, "TRANSFER") }
+        addAction(root, "×  Списання") { showJournal(query, "WRITE_OFF") }
         rows.forEach {
             val route = if (it[2].startsWith("TRANSFER")) " • ${it[5]} → ${it[6]}" else if (it[2] == "RECEIPT") " • ${it[6]}" else " • ${it[5]}"
-            addRow(root, "${typeLabel(it[2])}  ·  ${it[1]}", "${it[0]}  •  Кількість: ${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  •  Документ ${it[4]}${route}${if (it[9].isNotBlank()) " • ${it[9]}" else ""}")
+            addRow(root, "${typeLabel(it[2])}  ·  ${it[1]}", "${it[0]}  •  Кількість: ${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  •  Документ: ${it[4]}${route}${if (it[9].isNotBlank()) " • ${it[9]}" else ""}")
         }
-        if (rows.isEmpty()) addEmptyState(root, if (query.isBlank()) "Журнал порожній" else "Нічого не знайдено", if (query.isBlank()) "Документи руху з’являться після першої операції." else "Змініть пошуковий запит.")
+        if (rows.isEmpty()) addEmptyState(root, if (all.isEmpty()) "Журнал порожній" else "Нічого не знайдено", if (all.isEmpty()) "Документи руху з’являться після першої операції." else "Змініть пошук або виберіть інший тип операції.")
         setContentView(root)
     }
 
