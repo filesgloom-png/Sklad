@@ -697,22 +697,22 @@ class MainActivity : Activity() {
         val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(Color.rgb(7,18,21))}
         root.setOnApplyWindowInsetsListener{v,i->val b=i.getInsets(android.view.WindowInsets.Type.systemBars());v.setPadding(0,b.top,0,b.bottom);i}
         val scroll=ScrollView(this).apply{isFillViewport=true}
-        val page=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(8),dp(20),dp(10))}
+        val page=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(12),dp(16),dp(14))}
         val banner=FrameLayout(this).apply{background=rounded(Color.rgb(15,25,25),18);clipToOutline=true}
         banner.addView(WarehouseBannerView(this),FrameLayout.LayoutParams(-1,dp(118)))
         banner.addView(View(this).apply{background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.TRANSPARENT,Color.argb(220,7,18,21)))},FrameLayout.LayoutParams(-1,dp(118)))
         banner.addView(TextView(this).apply{text="←";textSize=30f;setTextColor(Color.rgb(226,195,111));gravity=Gravity.CENTER;setOnClickListener{showHome()}},FrameLayout.LayoutParams(dp(48),dp(52)).apply{leftMargin=dp(6);topMargin=dp(8)})
         banner.addView(TextView(this).apply{text="Склади";textSize=26f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);includeFontPadding=false},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(55);topMargin=dp(27)})
-        banner.addView(TextView(this).apply{text="Склади нашої частини (ОЦЗ)";textSize=16f;setTextColor(Color.rgb(187,194,198))},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(55);topMargin=dp(74)})
-        banner.addView(TextView(this).apply{text="+ Додати склад";textSize=12f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);gravity=Gravity.CENTER;background=rounded(Color.rgb(65,54,29),12);setPadding(dp(8),0,dp(8),0);setOnClickListener{showAddWarehouseForm(query,filter)}},FrameLayout.LayoutParams(dp(128),dp(44)).apply{rightMargin=dp(8);topMargin=dp(20);gravity=Gravity.RIGHT})
+        banner.addView(TextView(this).apply{text="Керування місцями зберігання";textSize=13f;setTextColor(Color.rgb(205,214,215));maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END},FrameLayout.LayoutParams(-1,-2).apply{leftMargin=dp(55);rightMargin=dp(142);topMargin=dp(76)})
+        banner.addView(TextView(this).apply{text="+ Додати";textSize=12f;setTypeface(null,Typeface.BOLD);setTextColor(Color.rgb(20,22,17));gravity=Gravity.CENTER;background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(246,218,133),Color.rgb(179,143,56))).apply{cornerRadius=dp(12).toFloat()};setPadding(dp(8),0,dp(8),0);setOnClickListener{showAddWarehouseForm(query,filter)}},FrameLayout.LayoutParams(dp(108),dp(42)).apply{rightMargin=dp(8);topMargin=dp(20);gravity=Gravity.RIGHT})
         page.addView(banner)
         val rows=db.warehouseRows(); val materials=db.list("materials")
         var totalQty=0.0; rows.forEach{w->materials.forEach{m->totalQty+=db.warehouseBalance(m[0].toLongOrNull()?:return@forEach,w[0].toLong())}}
         val stats=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;background=rounded(Color.rgb(17,27,29),14);setPadding(dp(4),dp(5),dp(4),dp(5))}
-        listOf(Triple("home","Всього складів",rows.size.toString()),Triple("cube","Всього номенклатури",materials.size.toString()),Triple("boxes","Загальна кількість",formatQty(totalQty)),Triple("database","Загальна вартість","—")).forEachIndexed{i,x->
-            val b=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER};b.addView(DashboardIconView(this,x.first,Color.rgb(226,195,111)),LinearLayout.LayoutParams(-1,dp(22)));b.addView(TextView(this).apply{text=x.second;textSize=8.5f;setTextColor(Color.rgb(171,180,183));gravity=Gravity.CENTER});b.addView(TextView(this).apply{text=x.third;textSize=17f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);gravity=Gravity.CENTER});stats.addView(b,LinearLayout.LayoutParams(0,dp(60),1f));if(i<3)stats.addView(View(this).apply{setBackgroundColor(Color.rgb(65,73,72))},LinearLayout.LayoutParams(dp(1),dp(40))) }
+        listOf(Triple("home","Складів",rows.size.toString()),Triple("cube","Номенклатура",materials.size.toString()),Triple("boxes","Кількість",formatQty(totalQty)),Triple("database","Вартість","—")).forEachIndexed{i,x->
+            val b=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER};b.addView(DashboardIconView(this,x.first,Color.rgb(226,195,111)),LinearLayout.LayoutParams(-1,dp(23)));b.addView(TextView(this).apply{text=x.second;textSize=10f;setTextColor(Color.rgb(194,204,205));gravity=Gravity.CENTER;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END});b.addView(TextView(this).apply{text=x.third;textSize=17f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);gravity=Gravity.CENTER;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END});stats.addView(b,LinearLayout.LayoutParams(0,dp(64),1f));if(i<3)stats.addView(View(this).apply{setBackgroundColor(Color.rgb(65,73,72))},LinearLayout.LayoutParams(dp(1),dp(42))) }
         page.addView(stats,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8);bottomMargin=dp(8)})
-        val search=EditText(this).apply{hint="⌕  Пошук по номеру, назві, місцю...";setText(query);textSize=14f;setSingleLine();setTextColor(Color.WHITE);setHintTextColor(Color.rgb(128,142,147));setPadding(dp(14),0,dp(10),0);background=rounded(Color.rgb(15,26,29),11)}
+        val search=EditText(this).apply{hint="⌕  Пошук за номером, назвою або місцем";setText(query);textSize=14f;setSingleLine();setTextColor(Color.WHITE);setHintTextColor(Color.rgb(154,168,171));setPadding(dp(14),0,dp(10),0);background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(22,35,36),Color.rgb(14,25,27))).apply{cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.rgb(55,75,72))}}
         page.addView(search,LinearLayout.LayoutParams(-1,dp(52)).apply{bottomMargin=dp(7)})
         val chips=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         fun chip(t:String,sel:Boolean,act:()->Unit)=TextView(this).apply{text=t;textSize=10.5f;setTypeface(null,Typeface.BOLD);setTextColor(if(sel)Color.rgb(245,221,151)else Color.rgb(180,190,194));gravity=Gravity.CENTER;background=rounded(if(sel)Color.rgb(75,61,30)else Color.rgb(17,28,31),10);if(sel)(background as GradientDrawable).setStroke(dp(1),Color.rgb(180,145,61));setOnClickListener{act()}}
@@ -1505,8 +1505,70 @@ class MainActivity : Activity() {
             "Змініть склад, МВО, тип зберігання або пошуковий запит.")
         all.take(1000).forEachIndexed { i, r ->
             val responsible = warehouseByCode[r.getOrNull(1).orEmpty().uppercase(Locale.ROOT)]?.getOrNull(3).orEmpty()
-            addManageRow(root, "${i + 1}. ${r[4]} • ${r[6]}",
-                "Склад ${r[1]} • МВО: ${responsible.ifBlank { "Не вказано" }} • Тип ${r[2]} • Місце ${r[3]} • ${r[10]} ${r[9]} • Розмір ${r[7]} • Партія ${r[8]} • Ціна ${r[11]}") { }
+            val quantity = r.getOrNull(10).orEmpty().ifBlank { "—" }
+            val unit = r.getOrNull(9).orEmpty()
+            val price = r.getOrNull(11).orEmpty().ifBlank { "—" }
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(13), dp(12), dp(13), dp(12))
+                background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.rgb(23, 36, 36), Color.rgb(13, 25, 27))).apply {
+                    cornerRadius = dp(14).toFloat()
+                    setStroke(dp(1), Color.rgb(48, 65, 62))
+                }
+            }
+            item.addView(TextView(this).apply {
+                text = "${i + 1}. ${r.getOrNull(4).orEmpty()} • ${r.getOrNull(6).orEmpty()}"
+                textSize = 14f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.WHITE)
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+            item.addView(TextView(this).apply {
+                text = "Склад ${r.getOrNull(1).orEmpty()}  •  Тип ${r.getOrNull(2).orEmpty()}  •  Місце ${r.getOrNull(3).orEmpty()}"
+                textSize = 11f
+                setTextColor(Color.rgb(174, 190, 191))
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                setPadding(0, dp(5), 0, dp(2))
+            })
+            item.addView(TextView(this).apply {
+                text = "МВО: ${responsible.ifBlank { "Не вказано" }}  •  Розмір ${r.getOrNull(7).orEmpty()}  •  Партія ${r.getOrNull(8).orEmpty()}"
+                textSize = 11f
+                setTextColor(Color.rgb(154, 171, 173))
+                maxLines = 2
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+            val values = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(10), 0, 0)
+            }
+            val qtyBadge = TextView(this).apply {
+                text = "Кількість  $quantity $unit"
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(185, 239, 215))
+                gravity = Gravity.CENTER
+                setPadding(dp(9), dp(7), dp(9), dp(7))
+                background = rounded(Color.rgb(18, 62, 49), 9)
+                maxLines = 1
+            }
+            values.addView(qtyBadge, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(6) })
+            val priceBadge = TextView(this).apply {
+                text = "Ціна  $price"
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(247, 221, 157))
+                gravity = Gravity.CENTER
+                setPadding(dp(9), dp(7), dp(9), dp(7))
+                background = rounded(Color.rgb(66, 54, 28), 9)
+                maxLines = 1
+            }
+            values.addView(priceBadge, LinearLayout.LayoutParams(0, -2, 1f))
+            item.addView(values)
+            root.addView(item, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
         }
         setContentView(root)
     }
