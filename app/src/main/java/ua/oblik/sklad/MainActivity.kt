@@ -932,7 +932,7 @@ class MainActivity : Activity() {
                 }
                 safeDb { db.insertTransfer(materialId, qty, fromWarehouse, targetWarehouse, fromLocation, toLocation, documentNo, date, v[3]) }
             } else {
-                val current = if (fromLocation != null) db.locationBalance(materialId, fromLocation) else db.warehouseBalance(materialId, fromWarehouse)
+                val current = if (fromLocation != null) db.locationBalance(materialId, fromLocation) else db.unassignedWarehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
                     val scope = if (fromLocation != null) "комірці" else "складі"
                     showError("Недостатньо залишку на $scope. Доступно: ${formatQty(current)}.")
