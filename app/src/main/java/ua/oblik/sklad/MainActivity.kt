@@ -1699,6 +1699,7 @@ class MainActivity : Activity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setPadding(0, dp(8), 0, dp(4))
                 letterSpacing = 0.01f
+                contentDescription = "Склад ${r.getOrNull(1).orEmpty()}, тип ${r.getOrNull(2).orEmpty()}, місце ${r.getOrNull(3).orEmpty()}"
             }
             item.addView(locationMeta)
             item.addView(TextView(this).apply {
