@@ -72,6 +72,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Run warehouse movement database tests
+        run: gradle --no-daemon --stacktrace testDebugUnitTest
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleDebug
       - name: Verify APK contains bundled stock workbook
