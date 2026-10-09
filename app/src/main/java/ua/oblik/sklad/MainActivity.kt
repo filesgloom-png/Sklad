@@ -1276,11 +1276,38 @@ class MainActivity : Activity() {
         val rows = db.initialStockRows(code, type, query)
         val root = base("Залишки • " + code)
         addScreenSummary(root, "ІМПОРТОВАНІ ЗАЛИШКИ", "Тип зберігання: " + type, rows.size.toString() + " рядків")
-        addAction(root, "Усі типи") { showWarehouseStockTab(warehouseId, "ALL", query) }
-        addAction(root, "005 • Можна виписувати") { showWarehouseStockTab(warehouseId, "005", query) }
-        addAction(root, "902 • Не розміщене") { showWarehouseStockTab(warehouseId, "902", query) }
-        addAction(root, "922 • Заблоковано") { showWarehouseStockTab(warehouseId, "922", query) }
-        addAction(root, "⌕ Пошук") { searchDialog("Пошук залишків", query) { q -> showWarehouseStockTab(warehouseId, type, q) } }
+        val filterScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
+        val filterRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        listOf(
+            "ALL" to "Усі типи",
+            "005" to "005 • Можна виписувати",
+            "902" to "902 • Не розміщене",
+            "922" to "922 • Заблоковано"
+        ).forEach { option ->
+            val selected = option.first == type
+            filterRow.addView(TextView(this).apply {
+                text = option.second
+                textSize = 11f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setTextColor(if (selected) Color.rgb(25, 25, 19) else Color.rgb(188, 198, 198))
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    if (selected) intArrayOf(Color.rgb(246, 218, 133), Color.rgb(179, 143, 56))
+                    else intArrayOf(Color.rgb(20, 32, 32), Color.rgb(12, 23, 25))
+                ).apply {
+                    cornerRadius = dp(10).toFloat()
+                    setStroke(dp(1), if (selected) Color.rgb(238, 207, 122) else Color.rgb(43, 57, 54))
+                }
+                setPadding(dp(12), dp(10), dp(12), dp(10))
+                setOnClickListener { showWarehouseStockTab(warehouseId, option.first, query) }
+            }, LinearLayout.LayoutParams(-2, dp(38)).apply { rightMargin = dp(6) })
+        }
+        filterScroll.addView(filterRow)
+        root.addView(filterScroll, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        addAction(root, "⌕  Пошук залишків") {
+            searchDialog("Пошук залишків", query) { q -> showWarehouseStockTab(warehouseId, type, q) }
+        }
         rows.take(500).forEachIndexed { i, r ->
             addManageRow(root, (i + 1).toString() + ". " + r[5], "Матеріал " + r[4] + " • NSN " + r[6] + " • Тип " + r[2] + " • Місце " + r[3] + " • Розмір " + r[7] + " • Партія " + r[8] + " • " + r[10] + " " + r[9] + " • Ціна " + r[11]) {
                 val identity = (4..9).map { r.getOrElse(it) { "" } }
