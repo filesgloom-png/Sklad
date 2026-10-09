@@ -1414,19 +1414,74 @@ class MainActivity : Activity() {
     }
 
 
-    private fun showAllInitialStock(type: String = "ALL", query: String = "") {
-        val all = db.initialStockRowsForAll(type, query)
-        val root = base("Залишки")
-        val qty = all.sumOf { it.getOrNull(10)?.toDoubleOrNull() ?: 0.0 }
-        val value = all.sumOf { (it.getOrNull(10)?.toDoubleOrNull() ?: 0.0) * (it.getOrNull(11)?.toDoubleOrNull() ?: 0.0) }
-        addScreenSummary(root, "ЗАЛИШКИ", "Імпортоване майно", "Рядків: ${all.size} • Кількість: ${formatQty(qty)} • Вартість: ${String.format(Locale.US, "%.2f", value)}")
-        listOf("ALL", "005", "902", "922").forEach { t ->
-            addAction(root, if (t == "ALL") "Усі типи" else "Тип $t") { showAllInitialStock(t, query) }
+    private fun showAllInitialStock(
+        type: String = "ALL",
+        query: String = "",
+        warehouseCode: String = "ALL",
+        mvo: String = "ALL"
+    ) {
+        val sourceRows = db.initialStockRowsForAll(type, query)
+        val warehouseRows = db.warehouseRows()
+        val warehouseByCode = warehouseRows.associateBy { it.getOrNull(6).orEmpty().uppercase(Locale.ROOT) }
+        val all = sourceRows.filter { row ->
+            val code = row.getOrNull(1).orEmpty().uppercase(Locale.ROOT)
+            val warehouseMatches = warehouseCode == "ALL" || code == warehouseCode.uppercase(Locale.ROOT)
+            val responsible = warehouseByCode[code]?.getOrNull(3).orEmpty()
+            warehouseMatches && (mvo == "ALL" || responsible.equals(mvo, true))
         }
-        addAction(root, "Пошук / фільтр") { searchDialog("Пошук залишків", query) { q -> showAllInitialStock(type, q) } }
-        if (all.isEmpty()) addEmptyState(root, "Залишки не знайдено", "Перевірте імпорт Excel або очистіть фільтр. Якщо список порожній, потрібен звіт імпорту.")
+        val root = base("Залишки")
+        val qty = all.sumOf { it.getOrNull(10)?.replace(',', '.')?.toDoubleOrNull() ?: 0.0 }
+        val value = all.sumOf {
+            (it.getOrNull(10)?.replace(',', '.')?.toDoubleOrNull() ?: 0.0) *
+                (it.getOrNull(11)?.replace(',', '.')?.toDoubleOrNull() ?: 0.0)
+        }
+        val warehouseLabel = if (warehouseCode == "ALL") "Усі склади" else {
+            warehouseByCode[warehouseCode.uppercase(Locale.ROOT)]?.getOrNull(1)?.let { "$it • $warehouseCode" } ?: warehouseCode
+        }
+        val mvoLabel = if (mvo == "ALL") "Усі МВО" else mvo
+        addScreenSummary(root, "ЗАЛИШКИ", "Імпортоване майно",
+            "Рядків: ${all.size} • ${warehouseLabel} • ${mvoLabel} • Кількість: ${formatQty(qty)} • Вартість: ${String.format(Locale.US, "%.2f", value)}")
+
+        listOf("ALL", "005", "902", "922").forEach { t ->
+            addAction(root, if (t == "ALL") "Усі типи" else "Тип $t") {
+                showAllInitialStock(t, query, warehouseCode, mvo)
+            }
+        }
+        val codes = sourceRows.map { it.getOrNull(1).orEmpty() }.filter { it.isNotBlank() }.distinct().sorted()
+        val warehouseOptions = listOf("Усі склади") + codes.map { code ->
+            val name = warehouseByCode[code.uppercase(Locale.ROOT)]?.getOrNull(1).orEmpty()
+            if (name.isBlank()) code else "$name • $code"
+        }
+        addAction(root, "Склад: $warehouseLabel") {
+            AlertDialog.Builder(this).setTitle("Фільтр за складом")
+                .setItems(warehouseOptions.toTypedArray()) { _, which ->
+                    val selected = if (which == 0) "ALL" else codes[which - 1]
+                    showAllInitialStock(type, query, selected, mvo)
+                }.setNegativeButton("Скасувати", null).show()
+        }
+        val mvoNames = codes.mapNotNull { code ->
+            warehouseByCode[code.uppercase(Locale.ROOT)]?.getOrNull(3)?.takeIf { it.isNotBlank() && it != "Не призначено" }
+        }.distinct().sorted()
+        val mvoOptions = listOf("Усі МВО") + mvoNames
+        addAction(root, "МВО: $mvoLabel") {
+            AlertDialog.Builder(this).setTitle("Фільтр за МВО")
+                .setItems(mvoOptions.toTypedArray()) { _, which ->
+                    val selected = if (which == 0) "ALL" else mvoNames[which - 1]
+                    showAllInitialStock(type, query, warehouseCode, selected)
+                }.setNegativeButton("Скасувати", null).show()
+        }
+        addAction(root, "Пошук: ${query.ifBlank { "усі позиції" }}") {
+            searchDialog("Пошук залишків", query) { q -> showAllInitialStock(type, q, warehouseCode, mvo) }
+        }
+        if (warehouseCode != "ALL" || mvo != "ALL" || query.isNotBlank()) {
+            addAction(root, "Скинути фільтри") { showAllInitialStock(type) }
+        }
+        if (all.isEmpty()) addEmptyState(root, "Залишки не знайдено",
+            "Змініть склад, МВО, тип зберігання або пошуковий запит.")
         all.take(1000).forEachIndexed { i, r ->
-            addManageRow(root, "${i + 1}. ${r[4]} • ${r[6]}", "Склад ${r[1]} • Тип ${r[2]} • Місце ${r[3]} • ${r[10]} ${r[9]} • Розмір ${r[7]} • Партія ${r[8]} • Ціна ${r[11]}") { }
+            val responsible = warehouseByCode[r.getOrNull(1).orEmpty().uppercase(Locale.ROOT)]?.getOrNull(3).orEmpty()
+            addManageRow(root, "${i + 1}. ${r[4]} • ${r[6]}",
+                "Склад ${r[1]} • МВО: ${responsible.ifBlank { "Не вказано" }} • Тип ${r[2]} • Місце ${r[3]} • ${r[10]} ${r[9]} • Розмір ${r[7]} • Партія ${r[8]} • Ціна ${r[11]}") { }
         }
         setContentView(root)
     }
