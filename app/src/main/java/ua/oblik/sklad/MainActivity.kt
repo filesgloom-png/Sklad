@@ -1708,6 +1708,7 @@ class MainActivity : Activity() {
                 setTextColor(Color.rgb(154, 171, 173))
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
+                contentDescription = "Матеріально відповідальна особа: ${responsible.ifBlank { "Не вказано" }}, розмір ${r.getOrNull(7).orEmpty()}, партія ${r.getOrNull(8).orEmpty()}"
             })
             val values = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
