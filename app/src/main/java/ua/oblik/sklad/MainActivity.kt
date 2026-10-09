@@ -201,36 +201,20 @@ class MainActivity : Activity() {
     }
 
     private fun base(title: String): LinearLayout {
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(surface)
-            setPadding(dp(20), dp(18), dp(20), dp(16))
+        window.statusBarColor = Color.rgb(7, 18, 21)
+        window.navigationBarColor = Color.rgb(7, 18, 21)
+        window.decorView.systemUiVisibility = 0
+        val root = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setBackgroundColor(Color.rgb(7,18,21)) }
+        root.setOnApplyWindowInsetsListener { view, insets ->
+            val bars=insets.getInsets(android.view.WindowInsets.Type.systemBars())
+            view.setPadding(dp(14),bars.top+dp(5),dp(14),bars.bottom);insets
         }
-        val bar = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL }
-        val back = Button(this).apply {
-            text = "‹"
-            textSize = 28f
-            setTextColor(blue)
-            setAllCaps(false)
-            minHeight = 0
-            minimumHeight = 0
-            background = rounded(Color.WHITE, 14)
-            setPadding(0, 0, 0, dp(3))
-            setOnClickListener { showHome() }
-        }
-        bar.addView(back, LinearLayout.LayoutParams(dp(58), dp(58)))
-        bar.addView(TextView(this).apply {
-            text = title
-            textSize = 21f
-            setTextColor(Color.rgb(20, 20, 20))
-            setPadding(dp(12), 0, 0, 0)
-        }, LinearLayout.LayoutParams(0, -2, 1f))
+        val bar=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;setPadding(0,dp(5),0,dp(10))}
+        bar.addView(TextView(this).apply{text="←";textSize=27f;gravity=Gravity.CENTER;setTextColor(Color.rgb(226,195,111));background=rounded(Color.rgb(18,29,29),12);setOnClickListener{showHome()}},LinearLayout.LayoutParams(dp(46),dp(46)))
+        bar.addView(TextView(this).apply{text=title;textSize=21f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);maxLines=2;setPadding(dp(12),0,0,0)},LinearLayout.LayoutParams(0,-2,1f))
         root.addView(bar)
-        content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(18), 0, 0)
-        }
-        root.addView(ScrollView(this).apply { addView(content) }, LinearLayout.LayoutParams(-1, 0, 1f))
+        content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,dp(3),0,dp(12))}
+        root.addView(ScrollView(this).apply{isFillViewport=false;addView(content)},LinearLayout.LayoutParams(-1,0,1f))
         return root
     }
 
@@ -1268,76 +1252,47 @@ class MainActivity : Activity() {
     }
 
     private fun addAction(root: LinearLayout, text: String, action: () -> Unit) {
-        root.addView(Button(this).apply {
-            this.text = text
-            textSize = 15f
-            setTextColor(Color.WHITE)
-            setAllCaps(false)
-            minHeight = 0
-            minimumHeight = 0
-            gravity = Gravity.CENTER
-            background = rounded(blue, 14)
-            elevation = dp(2).toFloat()
-            setOnClickListener { action() }
-        }, LinearLayout.LayoutParams(-1, dp(56)).apply { bottomMargin = dp(12) })
+        root.addView(TextView(this).apply {
+            this.text=text;textSize=14f;setTypeface(null,Typeface.BOLD);setTextColor(Color.rgb(24,25,20));gravity=Gravity.CENTER
+            background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(246,218,133),Color.rgb(179,143,56))).apply{cornerRadius=dp(12).toFloat();setStroke(dp(1),Color.rgb(238,207,122))}
+            setPadding(dp(12),0,dp(12),0);setOnClickListener{action()}
+        },LinearLayout.LayoutParams(-1,dp(50)).apply{bottomMargin=dp(10)})
     }
 
     private fun addManageRow(root: LinearLayout, title: String, subtitle: String, action: () -> Unit) {
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(10))
-            background = rounded(Color.WHITE, 16)
-            elevation = dp(1).toFloat()
-        }
-        box.addView(TextView(this).apply { text = title; textSize = 16f })
-        box.addView(TextView(this).apply {
-            text = subtitle
-            textSize = 13f
-            setPadding(0, dp(6), 0, dp(8))
-        })
-        box.addView(Button(this).apply {
-            text = "⚙ Керувати"
-            setOnClickListener { action() }
-        }, LinearLayout.LayoutParams(-1, dp(48)))
-        root.addView(box, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+        val box=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(14),dp(12),dp(14),dp(12));background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(20,32,32),Color.rgb(12,23,25))).apply{cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.rgb(43,57,54))};setOnClickListener{action()}}
+        box.addView(TextView(this).apply{text=title;textSize=15f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE)})
+        box.addView(TextView(this).apply{text=subtitle;textSize=12f;setTextColor(Color.rgb(164,177,180));setPadding(0,dp(4),0,dp(9))})
+        box.addView(TextView(this).apply{text="⚙  Керувати   ›";textSize=12f;setTypeface(null,Typeface.BOLD);setTextColor(Color.rgb(226,195,111));gravity=Gravity.CENTER_VERTICAL;setPadding(dp(10),0,dp(10),0);background=rounded(Color.rgb(45,39,25),9)},LinearLayout.LayoutParams(-1,dp(36)))
+        root.addView(box,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
     }
 
     private fun addRow(root: LinearLayout, title: String, subtitle: String) {
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
-            background = rounded(Color.WHITE, 16)
-            elevation = dp(1).toFloat()
-        }
-        box.addView(TextView(this).apply { text = title; textSize = 16f })
-        box.addView(TextView(this).apply {
-            text = subtitle
-            textSize = 13f
-            setPadding(0, 6, 0, 0)
-        })
-        root.addView(box, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = 8 })
+        val box=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(14),dp(12),dp(14),dp(12));background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(19,31,32),Color.rgb(12,23,25))).apply{cornerRadius=dp(12).toFloat();setStroke(dp(1),Color.rgb(38,51,50))}}
+        box.addView(TextView(this).apply{text=title;textSize=14f;setTypeface(null,Typeface.BOLD);setTextColor(Color.rgb(245,247,247))})
+        box.addView(TextView(this).apply{text=subtitle;textSize=12f;setTextColor(Color.rgb(162,176,179));setPadding(0,dp(4),0,0)})
+        root.addView(box,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
     }
 
     private fun formDialog(title: String, labels: List<String>, initialValues: List<String> = emptyList(), onSave: (List<String>) -> Unit) {
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(8), dp(24), 0)
+        val gold=Color.rgb(226,195,111)
+        val layout=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(8),dp(20),dp(2));setBackgroundColor(Color.rgb(14,25,27))}
+        val fields=labels.mapIndexed{index,label->EditText(this).apply{
+            hint=label;setTextColor(Color.WHITE);setHintTextColor(Color.rgb(126,141,144));textSize=14f
+            background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(42,42,31),Color.rgb(18,29,29))).apply{cornerRadius=dp(10).toFloat();setStroke(dp(1),Color.rgb(48,61,57))}
+            setPadding(dp(12),dp(8),dp(12),dp(8));if(index<initialValues.size)setText(initialValues[index]);setSingleLine(true)
+            layout.addView(this,LinearLayout.LayoutParams(-1,dp(48)).apply{bottomMargin=dp(8)})
+        }}
+        val dialog=AlertDialog.Builder(this).setTitle(title).setView(layout).setNegativeButton("Скасувати",null).setPositiveButton("Зберегти"){_,_->onSave(fields.map{it.text.toString().trim()})}.create()
+        dialog.setOnShowListener{
+            dialog.window?.setBackgroundDrawable(rounded(Color.rgb(14,25,27),16))
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(gold)
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(Color.rgb(177,188,190))
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isAllCaps=false
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.isAllCaps=false
+            dialog.window?.setLayout((resources.displayMetrics.widthPixels*0.92f).toInt(),-2)
         }
-        val fields = labels.mapIndexed { index, label ->
-            EditText(this).apply {
-                hint = label
-                if (index < initialValues.size) setText(initialValues[index])
-                setSingleLine(true)
-                layout.addView(this, LinearLayout.LayoutParams(-1, dp(58)))
-            }
-        }
-        AlertDialog.Builder(this)
-            .setTitle(title)
-            .setView(layout)
-            .setNegativeButton("Скасувати", null)
-            .setPositiveButton("Зберегти") { _, _ ->
-                onSave(fields.map { it.text.toString().trim() })
-            }
-            .show()
+        dialog.show()
     }
+
 }
