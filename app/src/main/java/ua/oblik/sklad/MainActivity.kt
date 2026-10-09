@@ -746,7 +746,7 @@ class MainActivity : Activity() {
         val root = base("Матеріально відповідальні особи")
         val all = db.list("responsible_persons")
         val rows = all.filter { query.isBlank() || it.any { value -> value.contains(query, true) } }
-        addScreenSummary(root, "ОБЛІКОВИЙ СКЛАД", "Відповідальні особи", "\${all.size} осіб")
+        addScreenSummary(root, "ОБЛІКОВИЙ СКЛАД", "Відповідальні особи", "${all.size} осіб")
         addAction(root, "⌕  Пошук МВО") { searchDialog("Пошук МВО", query) { q -> showPersons(q) } }
         addAction(root, "＋  Додати МВО") {
             formDialog("Нова МВО", listOf("ПІБ", "Посада", "Телефон")) { v ->
@@ -769,7 +769,7 @@ class MainActivity : Activity() {
         val all = db.list("materials")
         val rows = all.filter { row -> query.isBlank() || row.any { it.contains(query, true) } }
         val totalBalance = all.sumOf { row -> db.materialBalance(row[0].toLongOrNull() ?: 0L) }
-        addScreenSummary(root, "ДОВІДНИК МАЙНА", "Номенклатурні позиції", "\${all.size} позицій  •  \${formatQty(totalBalance)} од.")
+        addScreenSummary(root, "ДОВІДНИК МАЙНА", "Номенклатурні позиції", "${all.size} позицій  •  ${formatQty(totalBalance)} од.")
         addAction(root, "⌕  Пошук / фільтр") { searchDialog("Пошук номенклатури", query) { q -> showMaterials(q) } }
         addAction(root, "＋  Додати матеріал") {
             formDialog("Новий матеріал", listOf("NSN", "Номенклатурний номер", "Назва", "Одиниця", "Партія", "Ціна")) { v ->
@@ -782,7 +782,7 @@ class MainActivity : Activity() {
         rows.forEach { row ->
             val id = row[0].toLongOrNull() ?: return@forEach
             val balance = db.materialBalance(id)
-            addManageRow(root, row[3], "\${row[4]}  •  Залишок: \${formatQty(balance)}  •  NSN \${row[1].ifBlank { "—" }}") { showMaterialActions(id, row) }
+            addManageRow(root, row[3], "${row[4]}  •  Залишок: ${formatQty(balance)}  •  NSN ${row[1].ifBlank { "—" }}") { showMaterialActions(id, row) }
         }
         if (rows.isEmpty()) addEmptyState(root, if (query.isBlank()) "Номенклатура порожня" else "Нічого не знайдено", if (query.isBlank()) "Додайте матеріали перед створенням документів." else "Змініть пошуковий запит.")
         setContentView(root)
@@ -793,7 +793,7 @@ class MainActivity : Activity() {
         val allRows = db.movementRows()
         val wanted = if (type == "TRANSFER") listOf("TRANSFER_OUT", "TRANSFER_IN") else listOf(type)
         val rows = allRows.filter { it[2] in wanted }
-        addScreenSummary(root, "РУХ МАЙНА", title, "\${rows.size} записів у журналі")
+        addScreenSummary(root, "РУХ МАЙНА", title, "${rows.size} записів у журналі")
         addAction(root, "＋  Створити документ") {
             val mats = db.list("materials")
             val warehouses = db.warehouseRows()
@@ -805,7 +805,7 @@ class MainActivity : Activity() {
                 showError("Спочатку додайте хоча б один склад.")
                 return@addAction
             }
-            val names = mats.map { "\${it[3]} (\${it[4]})" }.toTypedArray()
+            val names = mats.map { "${it[3]} (${it[4]})" }.toTypedArray()
             AlertDialog.Builder(this)
                 .setTitle("Оберіть матеріал")
                 .setItems(names) { _, which ->
@@ -817,9 +817,9 @@ class MainActivity : Activity() {
                 .show()
         }
         rows.forEach {
-            val route = if (it[2].startsWith("TRANSFER")) " • \${it[5]} → \${it[6]}" else " • Склад: \${if (it[6] != "—") it[6] else it[5]}"
-            val location = if (it[2].startsWith("TRANSFER")) " • Комірки: \${it[7]} → \${it[8]}" else if (it[2] == "RECEIPT") " • Комірка: \${it[8]}" else " • Комірка: \${it[7]}"
-            addRow(root, "\${typeLabel(it[2])}  ·  \${it[1]}", "\${it[0]}  •  Кількість: \${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  •  Документ: \${it[4]}\${route}\${location}")
+            val route = if (it[2].startsWith("TRANSFER")) " • ${it[5]} → ${it[6]}" else " • Склад: ${if (it[6] != "—") it[6] else it[5]}"
+            val location = if (it[2].startsWith("TRANSFER")) " • Комірки: ${it[7]} → ${it[8]}" else if (it[2] == "RECEIPT") " • Комірка: ${it[8]}" else " • Комірка: ${it[7]}"
+            addRow(root, "${typeLabel(it[2])}  ·  ${it[1]}", "${it[0]}  •  Кількість: ${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  •  Документ: ${it[4]}${route}${location}")
         }
         if (rows.isEmpty()) addEmptyState(root, "Операцій ще немає", "Створіть перший документ руху майна. Реальні залишки не підставляються автоматично.")
         setContentView(root)
@@ -974,11 +974,11 @@ class MainActivity : Activity() {
         val root = base("Журнал руху")
         val all = db.movementRows()
         val rows = all.filter { row -> query.isBlank() || row.any { value -> value.contains(query, true) } }
-        addScreenSummary(root, "ІСТОРІЯ ОПЕРАЦІЙ", "Журнал руху майна", "\${all.size} записів")
+        addScreenSummary(root, "ІСТОРІЯ ОПЕРАЦІЙ", "Журнал руху майна", "${all.size} записів")
         addAction(root, "⌕  Пошук у журналі") { searchDialog("Пошук у журналі", query) { q -> showJournal(q) } }
         rows.forEach {
-            val route = if (it[2].startsWith("TRANSFER")) " • \${it[5]} → \${it[6]}" else if (it[2] == "RECEIPT") " • \${it[6]}" else " • \${it[5]}"
-            addRow(root, "\${typeLabel(it[2])}  ·  \${it[1]}", "\${it[0]}  •  Кількість: \${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  •  Документ \${it[4]}\${route}\${if (it[9].isNotBlank()) " • \${it[9]}" else ""}")
+            val route = if (it[2].startsWith("TRANSFER")) " • ${it[5]} → ${it[6]}" else if (it[2] == "RECEIPT") " • ${it[6]}" else " • ${it[5]}"
+            addRow(root, "${typeLabel(it[2])}  ·  ${it[1]}", "${it[0]}  •  Кількість: ${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  •  Документ ${it[4]}${route}${if (it[9].isNotBlank()) " • ${it[9]}" else ""}")
         }
         if (rows.isEmpty()) addEmptyState(root, if (query.isBlank()) "Журнал порожній" else "Нічого не знайдено", if (query.isBlank()) "Документи руху з’являться після першої операції." else "Змініть пошуковий запит.")
         setContentView(root)
