@@ -1370,13 +1370,30 @@ class MainActivity : Activity() {
             val box=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;background=rounded(Color.rgb(16,28,30),10);setPadding(dp(3),dp(7),dp(3),dp(7))}
             box.addView(DashboardIconView(this,item.first,if(index==0)gold else Color.LTGRAY),LinearLayout.LayoutParams(dp(24),dp(24)))
             box.addView(TextView(this).apply{text=item.second;textSize=9f;gravity=Gravity.CENTER;setTextColor(muted)})
-            box.addView(TextView(this).apply{text=item.third;textSize=16f;setTypeface(null,Typeface.BOLD);gravity=Gravity.CENTER;setTextColor(Color.WHITE)})
+            box.addView(TextView(this).apply{
+                text=when(index){
+                    1 -> java.text.NumberFormat.getNumberInstance(Locale("uk","UA")).format(qty+importedQty)
+                    2 -> if(importedStock.isEmpty()) "—" else java.text.NumberFormat.getNumberInstance(Locale.US).apply{minimumFractionDigits=2;maximumFractionDigits=2}.format(importedValue)
+                    else -> item.third
+                }
+                textSize=when { text.length>12 -> 10f; text.length>8 -> 12f; else -> 16f }
+                setTypeface(null,Typeface.BOLD);gravity=Gravity.CENTER;setTextColor(Color.WHITE);maxLines=1;includeFontPadding=false
+                setPadding(dp(1),dp(2),dp(1),0)
+            })
             stats.addView(box,LinearLayout.LayoutParams(0,dp(78),1f).apply{if(index<2)rightMargin=dp(5)})
         }
         page.addView(stats,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
         val tabs=listOf("Номенклатура","Залишки","Рух майна","Документи","Інформація")
         val tabRow=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
-        tabs.forEach{tab->tabRow.addView(TextView(this).apply{text=tab;textSize=8f;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;gravity=Gravity.CENTER;setTextColor(if(tab==selectedTab)gold else muted);background=rounded(if(tab==selectedTab)Color.rgb(63,51,27) else Color.rgb(15,26,29),8);setPadding(dp(3),dp(8),dp(3),dp(8));setOnClickListener{showWarehouseDetail(warehouseId,tab)}},LinearLayout.LayoutParams(0,dp(40),1f).apply{if(tab!=tabs.last())rightMargin=dp(3)})}
+        tabs.forEach{tab->tabRow.addView(TextView(this).apply{
+            text=tab;textSize=9.5f;maxLines=2;ellipsize=android.text.TextUtils.TruncateAt.END;gravity=Gravity.CENTER
+            setTypeface(null,if(tab==selectedTab)Typeface.BOLD else Typeface.NORMAL)
+            setTextColor(if(tab==selectedTab)gold else muted)
+            background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                if(tab==selectedTab) intArrayOf(Color.rgb(63,51,27),Color.rgb(43,36,23)) else intArrayOf(Color.rgb(19,31,33),Color.rgb(13,23,25))
+            ).apply{cornerRadius=dp(9).toFloat();setStroke(dp(1),if(tab==selectedTab)Color.rgb(126,101,48) else Color.rgb(31,45,45))}
+            setPadding(dp(2),dp(5),dp(2),dp(5));setOnClickListener{showWarehouseDetail(warehouseId,tab)}
+        },LinearLayout.LayoutParams(0,dp(42),1f).apply{if(tab!=tabs.last())rightMargin=dp(3)})}
         page.addView(tabRow,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
         if(selectedTab=="Залишки" && db.initialStockCount()>0){
             val stockRows=db.initialStockRows(w.getOrNull(6).orEmpty().ifBlank{title})
