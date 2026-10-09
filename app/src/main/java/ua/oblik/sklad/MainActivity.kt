@@ -2045,7 +2045,10 @@ class MainActivity : Activity() {
                     cornerRadius = dp(11).toFloat()
                     setStroke(dp(1), Color.rgb(238, 207, 122))
                 }
-                setPadding(dp(8), 0, dp(8), 0)
+                setPadding(dp(10), 0, dp(10), 0)
+                minHeight = dp(44)
+                elevation = dp(2).toFloat()
+                letterSpacing = 0.005f
                 setOnClickListener { item.second() }
             }
             row.addView(button, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
