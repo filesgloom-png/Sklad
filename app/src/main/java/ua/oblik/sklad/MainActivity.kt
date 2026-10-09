@@ -1728,6 +1728,7 @@ class MainActivity : Activity() {
                 minHeight = dp(48)
                 maxLines = 2
                 setLineSpacing(dp(2).toFloat(), 1f)
+                contentDescription = "Кількість: $quantity $unit".trim()
             }
             values.addView(qtyBadge, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(7) })
             val priceBadge = TextView(this).apply {
@@ -1741,6 +1742,7 @@ class MainActivity : Activity() {
                 minHeight = dp(48)
                 maxLines = 2
                 setLineSpacing(dp(2).toFloat(), 1f)
+                contentDescription = "Ціна: $price"
             }
             values.addView(priceBadge, LinearLayout.LayoutParams(0, -2, 1f))
             item.addView(values)
