@@ -1400,8 +1400,25 @@ class MainActivity : Activity() {
             action.addView(TextView(this).apply{text="+ Додати";textSize=11f;setTextColor(Color.rgb(20,22,17));gravity=Gravity.CENTER;background=rounded(gold,8);setOnClickListener{showMovement("RECEIPT","Надходження")}},LinearLayout.LayoutParams(dp(88),dp(36)))
             page.addView(action)
             val items=materials.mapNotNull{m->val balance=db.warehouseBalance(m[0].toLongOrNull()?:return@mapNotNull null,warehouseId);if(balance==0.0)null else Pair(m,balance)}
-            if(items.isEmpty())page.addView(TextView(this).apply{text="На складі поки немає проведених залишків.\nРеальні дані не підставляються автоматично.";textSize=13f;gravity=Gravity.CENTER;textAlignment=View.TEXT_ALIGNMENT_CENTER;setTextColor(muted);setPadding(dp(12),dp(30),dp(12),dp(30));background=rounded(Color.rgb(14,25,27),12)},LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(5)})
-            else items.forEachIndexed{index,item->page.addView(TextView(this).apply{text=(index+1).toString()+".  "+item.first[3]+"     "+formatQty(item.second)+" "+item.first[4];textSize=12f;setTextColor(Color.WHITE);setPadding(dp(10),dp(12),dp(10),dp(12));background=rounded(Color.rgb(14,25,27),8)},LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(3)})}
+            val warehouseCode=w.getOrNull(6).orEmpty().ifBlank{w[1]}
+            val importedRows=db.initialStockRows(warehouseCode,"ALL","")
+            if(importedRows.isNotEmpty()){
+                page.addView(TextView(this).apply{text="ПОЧАТКОВІ ЗАЛИШКИ З EXCEL  •  ${importedRows.size} рядків";textSize=11f;setTypeface(null,Typeface.BOLD);setTextColor(gold);setPadding(dp(2),dp(10),dp(2),dp(6))})
+                importedRows.take(500).forEachIndexed{index,r->
+                    val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;background=rounded(Color.rgb(14,25,27),9);setPadding(dp(10),dp(9),dp(10),dp(9))}
+                    card.addView(TextView(this).apply{text=(index+1).toString()+". "+r[5].ifBlank{"Найменування не вказано"};textSize=12f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE)})
+                    card.addView(TextView(this).apply{text="Матеріал: "+r[4]+" • NSN: "+r[6];textSize=10f;setTextColor(muted);setPadding(0,dp(4),0,0)})
+                    card.addView(TextView(this).apply{text="Тип: "+r[2]+" • Місце: "+r[3]+" • Розмір: "+r[7];textSize=10f;setTextColor(gold);setPadding(0,dp(3),0,0)})
+                    card.addView(TextView(this).apply{text="Партія: "+r[8]+" • Залишок: "+r[10]+" "+r[9]+" • Ціна: "+r[11];textSize=10f;setTextColor(muted);setPadding(0,dp(3),0,0)})
+                    page.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(5)})
+                }
+                if(importedRows.size>500)page.addView(TextView(this).apply{text="Показано перші 500 рядків. Повний список доступний у вкладці «Залишки».";textSize=10f;setTextColor(muted);setPadding(dp(4),dp(4),dp(4),dp(8))})
+            }
+            if(items.isNotEmpty()){
+                page.addView(TextView(this).apply{text="ПРОВЕДЕНІ ОПЕРАЦІЇ";textSize=11f;setTypeface(null,Typeface.BOLD);setTextColor(gold);setPadding(dp(2),dp(10),dp(2),dp(6))})
+                items.forEachIndexed{index,item->page.addView(TextView(this).apply{text=(index+1).toString()+".  "+item.first[3]+"     "+formatQty(item.second)+" "+item.first[4];textSize=12f;setTextColor(Color.WHITE);setPadding(dp(10),dp(12),dp(10),dp(12));background=rounded(Color.rgb(14,25,27),8)},LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(3)})}
+            }
+            if(importedRows.isEmpty()&&items.isEmpty())page.addView(TextView(this).apply{text="У цьому складі поки немає імпортованих або проведених залишків.";textSize=13f;gravity=Gravity.CENTER;textAlignment=View.TEXT_ALIGNMENT_CENTER;setTextColor(muted);setPadding(dp(12),dp(30),dp(12),dp(30));background=rounded(Color.rgb(14,25,27),12)},LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(5)})
         }else if(selectedTab=="Рух майна"){
             val rows=db.movementRows().filter{it.getOrNull(5)==w[1]||it.getOrNull(6)==w[1]}
             if(rows.isEmpty())page.addView(TextView(this).apply{text="Документів руху поки немає.";textSize=13f;gravity=Gravity.CENTER;setTextColor(muted);setPadding(0,dp(28),0,dp(28))})
