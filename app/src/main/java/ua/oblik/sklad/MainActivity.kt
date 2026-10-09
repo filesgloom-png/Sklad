@@ -1689,6 +1689,7 @@ class MainActivity : Activity() {
                 setTextColor(Color.WHITE)
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
+                contentDescription = "Найменування: ${r.getOrNull(4).orEmpty()}, номенклатурний номер: ${r.getOrNull(6).orEmpty()}"
             }, LinearLayout.LayoutParams(0, -2, 1f))
             item.addView(titleRow)
             val locationMeta = TextView(this).apply {
