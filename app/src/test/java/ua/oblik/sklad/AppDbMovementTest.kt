@@ -22,7 +22,7 @@ class AppDbMovementTest {
 
     @Before
     fun setUp() {
-        val context = RuntimeEnvironment.getApplication<Application>()
+        val context = RuntimeEnvironment.getApplication()
         context.deleteDatabase("oblik_sklad.db")
         db = AppDb(context)
         db.writableDatabase
@@ -37,7 +37,7 @@ class AppDbMovementTest {
     @After
     fun tearDown() {
         db.close()
-        RuntimeEnvironment.getApplication<Application>().deleteDatabase("oblik_sklad.db")
+        RuntimeEnvironment.getApplication().deleteDatabase("oblik_sklad.db")
     }
 
     @Test
