@@ -196,10 +196,32 @@ class MainActivity : Activity() {
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
         db = AppDb(this)
+        preloadBundledStockIfNeeded()
         window.statusBarColor = Color.rgb(7, 18, 21)
         window.navigationBarColor = Color.rgb(7, 18, 21)
         window.decorView.systemUiVisibility = 0
         showHome()
+    }
+
+    private fun preloadBundledStockIfNeeded() {
+        val prefs = getSharedPreferences("stock_import", MODE_PRIVATE)
+        if (prefs.getBoolean("bundled_stock_attempted", false) || db.initialStockCount() > 0) return
+        try {
+            val temp = File.createTempFile("bundled-stock-", ".xlsx", cacheDir)
+            try {
+                assets.open("Залишки.XLSX").use { input ->
+                    temp.outputStream().use { output -> input.copyTo(output) }
+                }
+                val rows = parseInitialStock(Uri.fromFile(temp))
+                val saved = db.replaceInitialStock(rows)
+                prefs.edit().putBoolean("bundled_stock_attempted", true).apply()
+                Toast.makeText(this, "Завантажено початкові залишки: $saved позицій", Toast.LENGTH_LONG).show()
+            } finally {
+                temp.delete()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Не вдалося завантажити вбудовані залишки: ${e.message ?: "помилка файлу"}", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun base(title: String): LinearLayout {
