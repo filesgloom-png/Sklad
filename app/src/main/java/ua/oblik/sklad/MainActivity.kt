@@ -796,7 +796,7 @@ class MainActivity : Activity() {
         }
         rows.forEach {
             val id = it[0].toLong()
-            addManageRow(root, it[1], "Місце зберігання • ${it.getOrNull(2).orEmpty().ifBlank { "Без примітки" }}") {
+            addRecordCard(root, it[1], it.getOrNull(2).orEmpty().ifBlank { "Без примітки" }, "КОМІРКА") {
                 showLocationActions(warehouseId, warehouseName, id, it[1], it.getOrNull(2) ?: "")
             }
         }
@@ -1952,6 +1952,52 @@ class MainActivity : Activity() {
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(246,218,133),Color.rgb(179,143,56))).apply{cornerRadius=dp(12).toFloat();setStroke(dp(1),Color.rgb(238,207,122))}
             setPadding(dp(12),0,dp(12),0);setOnClickListener{action()}
         },LinearLayout.LayoutParams(-1,dp(50)).apply{bottomMargin=dp(10)})
+    }
+
+    private fun addRecordCard(root: LinearLayout, title: String, subtitle: String, badge: String, action: () -> Unit) {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(13), dp(12), dp(12), dp(12))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(22, 35, 34), Color.rgb(12, 24, 26))
+            ).apply {
+                cornerRadius = dp(12).toFloat()
+                setStroke(dp(1), Color.rgb(43, 59, 54))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
+        val details = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        details.addView(TextView(this).apply {
+            text = title
+            textSize = 14f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        details.addView(TextView(this).apply {
+            text = subtitle
+            textSize = 12f
+            setTextColor(Color.rgb(164, 179, 178))
+            setPadding(0, dp(4), 0, 0)
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        card.addView(details, LinearLayout.LayoutParams(0, -2, 1f))
+        card.addView(TextView(this).apply {
+            text = badge
+            textSize = 10f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(226, 195, 111))
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(43, 40, 28), 8)
+            setPadding(dp(8), dp(7), dp(8), dp(7))
+        }, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
+        root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
     }
 
     private fun addNomenclatureCard(root: LinearLayout, title: String, subtitle: String, metric: String, action: () -> Unit) {
