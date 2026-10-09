@@ -111,6 +111,36 @@ class AppDbMovementTest {
         assertEquals(0.0, db.locationBalance(material, locationB), 0.000001)
     }
 
+
+    @Test
+    fun movementWithLocationFromAnotherWarehouseIsRejected() {
+        var rejected = false
+        try {
+            db.insertMovement(material, "RECEIPT", 2.0, null, warehouseA, null, locationB, "TEST-WRONG-LOCATION", "2026-10-09", "")
+        } catch (_: SQLiteException) {
+            rejected = true
+        }
+
+        assertTrue("Комірка іншого складу не повинна приймати надходження", rejected)
+        assertEquals(0.0, db.materialBalance(material), 0.000001)
+        assertEquals(0.0, db.warehouseBalance(material, warehouseA), 0.000001)
+        assertEquals(0.0, db.warehouseBalance(material, warehouseB), 0.000001)
+    }
+
+    @Test
+    fun unknownMovementTypeIsRejectedWithoutChangingStock() {
+        var rejected = false
+        try {
+            db.insertMovement(material, "CORRECTION", 2.0, null, warehouseA, null, null, "TEST-UNKNOWN-TYPE", "2026-10-09", "")
+        } catch (_: SQLiteException) {
+            rejected = true
+        }
+
+        assertTrue("Невідомий тип руху має відхилятися", rejected)
+        assertEquals(0.0, db.materialBalance(material), 0.000001)
+        assertEquals(0.0, db.warehouseBalance(material, warehouseA), 0.000001)
+    }
+
     private fun receipt(quantity: Double) {
         db.insertMovement(material, "RECEIPT", quantity, null, warehouseA, null, locationA, "TEST-RECEIPT", "2026-10-09", "")
     }
