@@ -1533,11 +1533,33 @@ class MainActivity : Activity() {
         addScreenSummary(root, "ЗАЛИШКИ", "Імпортоване майно",
             "Рядків: ${all.size} • ${warehouseLabel} • ${mvoLabel} • Кількість: ${formatQty(qty)} • Вартість: ${String.format(Locale.US, "%.2f", value)}")
 
+        val typeFilterScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
+        val typeFilterRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         listOf("ALL", "005", "902", "922").forEach { t ->
-            addAction(root, if (t == "ALL") "Усі типи" else "Тип $t") {
-                showAllInitialStock(t, query, warehouseCode, mvo)
-            }
+            val selected = t == type
+            val label = if (t == "ALL") "Усі типи" else "Тип $t"
+            typeFilterRow.addView(TextView(this).apply {
+                text = label
+                textSize = 12f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setTextColor(if (selected) Color.rgb(25, 25, 19) else Color.rgb(188, 198, 198))
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    if (selected) intArrayOf(Color.rgb(246, 218, 133), Color.rgb(179, 143, 56))
+                    else intArrayOf(Color.rgb(20, 32, 32), Color.rgb(12, 23, 25))
+                ).apply {
+                    cornerRadius = dp(10).toFloat()
+                    setStroke(dp(1), if (selected) Color.rgb(238, 207, 122) else Color.rgb(43, 57, 54))
+                }
+                setPadding(dp(14), dp(9), dp(14), dp(9))
+                setOnClickListener { showAllInitialStock(t, query, warehouseCode, mvo) }
+            }, LinearLayout.LayoutParams(-2, dp(40)).apply { rightMargin = dp(7) })
         }
+        typeFilterScroll.addView(typeFilterRow)
+        root.addView(typeFilterScroll, LinearLayout.LayoutParams(-1, dp(42)).apply {
+            bottomMargin = dp(8)
+        })
         val codes = sourceRows.map { it.getOrNull(1).orEmpty() }.filter { it.isNotBlank() }.distinct().sorted()
         val warehouseOptions = listOf("Усі склади") + codes.map { code ->
             val name = warehouseByCode[code.uppercase(Locale.ROOT)]?.getOrNull(1).orEmpty()
