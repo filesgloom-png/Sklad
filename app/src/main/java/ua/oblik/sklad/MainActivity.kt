@@ -1055,27 +1055,44 @@ class MainActivity : Activity() {
 
     private fun showWarehouseActions(id: Long, name: String, address: String, responsibleId: Long?, note: String) {
         AlertDialog.Builder(this).setTitle(name)
-            .setItems(arrayOf("Редагувати", "Видалити")) { _, which ->
-                if (which == 0) editWarehouse(id, name, address, responsibleId, note) else {
-                    if (db.warehouseHasMovements(id)) showError("Склад має документи руху і не може бути видалений.")
-                    else if (db.warehouseHasLocations(id)) showError("Спочатку видаліть комірки цього складу.")
-                    else { db.deleteWarehouse(id); showWarehouses() }
+            .setItems(arrayOf("Редагувати", "Комірки та місця зберігання", "Видалити")) { _, which ->
+                when (which) {
+                    0 -> editWarehouse(id, name, address, responsibleId, note)
+                    1 -> showLocations(id, name)
+                    else -> {
+                        if (db.warehouseHasMovements(id)) showError("Склад має документи руху і не може бути видалений.")
+                        else if (db.warehouseHasLocations(id)) showError("Спочатку видаліть комірки цього складу.")
+                        else { db.deleteWarehouse(id); showWarehouses() }
+                    }
                 }
             }.show()
     }
 
     private fun editWarehouse(id: Long, name: String, address: String, responsibleId: Long?, note: String) {
+        val row = db.warehouseRows().firstOrNull { it[0].toLongOrNull() == id }
+        val number = row?.getOrNull(6).orEmpty()
+        val propertyType = row?.getOrNull(7).orEmpty()
+        val active = row?.getOrNull(8) != "0"
         val persons = db.list("responsible_persons")
-        val labels = mutableListOf("Без призначеного МВО")
+        val labels = mutableListOf("Не призначено")
         labels += persons.map { it[1] }
         val current = persons.indexOfFirst { it[0].toLongOrNull() == responsibleId } + 1
-        AlertDialog.Builder(this).setTitle("МВО складу")
-            .setSingleChoiceItems(labels.toTypedArray(), current.coerceAtLeast(0)) { dialog, selected ->
+        AlertDialog.Builder(this).setTitle("Матеріально відповідальна особа")
+            .setItems(labels.toTypedArray()) { _, selected ->
                 val rid = if (selected == 0) null else persons[selected - 1][0].toLongOrNull()
-                dialog.dismiss()
-                formDialog("Редагувати склад", listOf("Назва", "Адреса", "Примітка"), initialValues = listOf(name, address, note)) { v ->
+                formDialog(
+                    "Редагувати склад",
+                    listOf("Назва складу", "Номер складу", "Тип майна", "Місце розташування", "Примітка", "Активність: так / ні"),
+                    initialValues = listOf(name, number, propertyType, address, note, if (active) "так" else "ні")
+                ) { v ->
                     if (v[0].isBlank()) showError("Назва складу не може бути порожньою.")
-                    else { db.updateWarehouse(id, v[0], v[1], v[2], rid); showWarehouses() }
+                    else if (v[1].isBlank()) showError("Номер складу не може бути порожнім.")
+                    else if (v[5].lowercase() !in listOf("так", "ні", "yes", "no", "1", "0")) showError("Активність вкажіть як «так» або «ні».")
+                    else {
+                        val enabled = v[5].lowercase() in listOf("так", "yes", "1")
+                        db.updateWarehouse(id, v[0], v[3], v[4], rid, v[1], v[2], enabled)
+                        showWarehouseDetail(id)
+                    }
                 }
             }.show()
     }
