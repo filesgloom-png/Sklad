@@ -1660,12 +1660,13 @@ class MainActivity : Activity() {
             val price = r.getOrNull(11).orEmpty().ifBlank { "—" }
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(13), dp(12), dp(13), dp(12))
+                setPadding(dp(14), dp(13), dp(14), dp(13))
                 background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.rgb(23, 36, 36), Color.rgb(13, 25, 27))).apply {
-                    cornerRadius = dp(14).toFloat()
-                    setStroke(dp(1), Color.rgb(48, 65, 62))
+                    intArrayOf(Color.rgb(25, 39, 38), Color.rgb(13, 25, 27))).apply {
+                    cornerRadius = dp(15).toFloat()
+                    setStroke(dp(1), Color.rgb(53, 72, 67))
                 }
+                elevation = dp(1).toFloat()
             }
             val titleRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
