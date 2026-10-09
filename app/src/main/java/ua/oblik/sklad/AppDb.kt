@@ -5,7 +5,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null, 6) {
+class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null, 7) {
     override fun onConfigure(db: SQLiteDatabase) {
         super.onConfigure(db)
         db.setForeignKeyConstraintsEnabled(true)
@@ -76,6 +76,24 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             )
         """.trimIndent())
         createIndexes(db)
+        db.execSQL("""
+            CREATE TABLE initial_stock(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_key TEXT NOT NULL UNIQUE,
+                warehouse_code TEXT NOT NULL,
+                app_warehouse_code TEXT NOT NULL,
+                storage_type TEXT DEFAULT '',
+                storage_location TEXT DEFAULT '',
+                material_code TEXT DEFAULT '',
+                description TEXT DEFAULT '',
+                nsn TEXT DEFAULT '',
+                size TEXT DEFAULT '',
+                batch TEXT DEFAULT '',
+                unit TEXT DEFAULT '',
+                quantity REAL DEFAULT 0,
+                price REAL DEFAULT 0
+            )
+        """.trimIndent())
         seedReferenceData(db)
     }
 
@@ -113,6 +131,14 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             db.execSQL("ALTER TABLE warehouses ADD COLUMN is_active INTEGER DEFAULT 1")
         }
         if (oldVersion < 6) seedReferenceData(db)
+        if (oldVersion < 7) db.execSQL("""CREATE TABLE IF NOT EXISTS initial_stock(
+            id INTEGER PRIMARY KEY AUTOINCREMENT, source_key TEXT NOT NULL UNIQUE,
+            warehouse_code TEXT NOT NULL, app_warehouse_code TEXT NOT NULL,
+            storage_type TEXT DEFAULT '', storage_location TEXT DEFAULT '',
+            material_code TEXT DEFAULT '', description TEXT DEFAULT '', nsn TEXT DEFAULT '',
+            size TEXT DEFAULT '', batch TEXT DEFAULT '', unit TEXT DEFAULT '',
+            quantity REAL DEFAULT 0, price REAL DEFAULT 0
+        )""".trimIndent())
     }
 
 
@@ -244,6 +270,51 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             }
         }
     }
+
+    fun replaceInitialStock(rows: List<Array<String>>): Int {
+        val database = writableDatabase
+        database.beginTransaction()
+        try {
+            database.delete("initial_stock", null, null)
+            rows.forEach { row ->
+                database.insertOrThrow("initial_stock", null, ContentValues().apply {
+                    put("source_key", row[0])
+                    put("warehouse_code", row[1])
+                    put("app_warehouse_code", row[2])
+                    put("storage_type", row[3])
+                    put("storage_location", row[4])
+                    put("material_code", row[5])
+                    put("description", row[6])
+                    put("nsn", row[7])
+                    put("size", row[8])
+                    put("batch", row[9])
+                    put("unit", row[10])
+                    put("quantity", row[11].replace(',', '.').toDoubleOrNull() ?: 0.0)
+                    put("price", row[12].replace(',', '.').toDoubleOrNull() ?: 0.0)
+                })
+            }
+            database.setTransactionSuccessful()
+        } finally { database.endTransaction() }
+        return rows.size
+    }
+
+    fun initialStockRows(appWarehouseCode: String, type: String = "ALL", query: String = ""): List<Array<String>> {
+        val result = mutableListOf<Array<String>>()
+        val sql = StringBuilder("SELECT warehouse_code, app_warehouse_code, storage_type, storage_location, material_code, description, nsn, size, batch, unit, quantity, price FROM initial_stock WHERE app_warehouse_code=?")
+        val args = mutableListOf(appWarehouseCode)
+        if (type != "ALL") { sql.append(" AND storage_type=?"); args.add(type) }
+        if (query.isNotBlank()) {
+            sql.append(" AND (description LIKE ? OR material_code LIKE ? OR nsn LIKE ? OR size LIKE ? OR batch LIKE ? OR storage_location LIKE ?)")
+            repeat(6) { args.add("%$query%") }
+        }
+        sql.append(" ORDER BY storage_type, description, size, batch")
+        readableDatabase.rawQuery(sql.toString(), args.toTypedArray()).use { c ->
+            while (c.moveToNext()) result += Array(c.columnCount) { i -> c.getString(i) ?: "" }
+        }
+        return result
+    }
+
+    fun initialStockCount(): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM initial_stock", null).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
 
     fun insertWarehouse(name: String, address: String, note: String, responsiblePersonId: Long?, number: String = "", propertyType: String = "", active: Boolean = true) =
         writableDatabase.insertOrThrow("warehouses", null, ContentValues().apply {
