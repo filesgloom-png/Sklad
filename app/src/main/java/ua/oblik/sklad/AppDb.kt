@@ -5,7 +5,7 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
-class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null, 5) {
+class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null, 6) {
     override fun onConfigure(db: SQLiteDatabase) {
         super.onConfigure(db)
         db.setForeignKeyConstraintsEnabled(true)
@@ -76,6 +76,7 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             )
         """.trimIndent())
         createIndexes(db)
+        seedReferenceData(db)
     }
 
     private fun createIndexes(db: SQLiteDatabase) {
@@ -110,6 +111,137 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             db.execSQL("ALTER TABLE warehouses ADD COLUMN warehouse_number TEXT DEFAULT ''")
             db.execSQL("ALTER TABLE warehouses ADD COLUMN property_type TEXT DEFAULT ''")
             db.execSQL("ALTER TABLE warehouses ADD COLUMN is_active INTEGER DEFAULT 1")
+        }
+        if (oldVersion < 6) seedReferenceData(db)
+    }
+
+
+    /**
+     * Import the supplied warehouse and responsible-person reference lists once.
+     * Existing user records are preserved; warehouse codes and exact person names
+     * are used to avoid duplicate imports.
+     */
+    private fun seedReferenceData(db: SQLiteDatabase) {
+        val people = listOf(
+            "Гілявська Т.А. мол.сержант" to "мол.сержант",
+            "Гладун Р.М. штаб-сержант" to "штаб-сержант",
+            "Душин К.В солдат" to "солдат",
+            "Бачинський Є.Л. штаб-сержант" to "штаб-сержант",
+            "Іванішина Н.Д. пр.ЗСУ" to "пр.ЗСУ",
+            "Журавський О.В. головний сержант" to "головний сержант",
+            "Ковальська Т.І. пр.ЗСУ" to "пр.ЗСУ",
+            "Лиса Г.В. мол.сержант" to "мол.сержант",
+            "Робул С.В. пр.ЗСУ" to "пр.ЗСУ",
+            "Зюбін С.В. пр.ЗСУ" to "пр.ЗСУ",
+            "Стінська В.В. пр.ЗСУ" to "пр.ЗСУ",
+            "Цюцькома Л.П. пр.ЗСУ" to "пр.ЗСУ",
+            "Яриновська М.Ф. пр.ЗСУ" to "пр.ЗСУ",
+            "Гончар" to ""
+        )
+        val personIds = mutableMapOf<String, Long>()
+        people.forEach { (fullName, position) ->
+            var id: Long? = null
+            db.rawQuery("SELECT id FROM responsible_persons WHERE full_name=?", arrayOf(fullName)).use { c ->
+                if (c.moveToFirst()) id = c.getLong(0)
+            }
+            if (id == null) {
+                val values = ContentValues().apply {
+                    put("full_name", fullName)
+                    put("position", position)
+                    put("phone", "")
+                    put("note", "")
+                }
+                id = db.insertOrThrow("responsible_persons", null, values)
+            }
+            personIds[fullName] = id!!
+        }
+
+        val warehouses = listOf(
+            "202A" to "Р№25 Гілявська",
+            "20CA" to "КЕУ28-81 Гілявсь",
+            "21DA" to "№44Ковальська",
+            "22CA" to "№95 PRD Бачинськ",
+            "22DA" to "Бачинський(L)",
+            "22MA" to "Душин №36(L)",
+            "22NA" to "Душин №29(3)",
+            "22QA" to "Душин №CR",
+            "22RA" to "Гладун №88(Прд)",
+            "22UA" to "Журав (CR)",
+            "22VA" to "№19 Гілявська",
+            "24BA" to "Душин(ROZD)",
+            "24CA" to "CR Лиса",
+            "24DA" to "№39 Ковальська",
+            "253A" to "Р№14 Гладун",
+            "254A" to "Р№19 Душин",
+            "255A" to "№22 Душин",
+            "256A" to "№23 Душин",
+            "257A" to "Р№24 Журав.",
+            "258A" to "Стінська №14",
+            "25BA" to "Журавський(ROZD)",
+            "25CA" to "№19 Цюцькома Л.П",
+            "260A" to "Р№29 Яриновська",
+            "261A" to "№96Прод Гладун",
+            "262A" to "№92Прод Гладун",
+            "263A" to "Р№40 Цюцькома",
+            "264A" to "№1 Цив-ий Душин",
+            "265A" to "Р№42 Робул",
+            "266A" to "№90 PRD Бачинськ",
+            "267A" to "Р№42 Душин",
+            "268A" to "№43 Журав",
+            "269A" to "№26 ПММ Душин",
+            "26BA" to "Гончар(ROZD)",
+            "26CA" to "№1KRN Бачинський",
+            "26DA" to "26DA",
+            "270A" to "Р№46 Ковальська",
+            "271A" to "Р№47 Лиса",
+            "272A" to "Р№41 Яриновська",
+            "273A" to "№41 Зюбін",
+            "274A" to "№48 Зюбін",
+            "275A" to "№49 Душин",
+            "276A" to "Р№50 Душин",
+            "27BA" to "Зюбін ROZD",
+            "27CA" to "№1SLA Душин",
+            "27DA" to "UMAN Гладун",
+            "28BA" to "28BA",
+            "28CA" to "№41РМ Душин",
+            "28DA" to "ROZD Чернега",
+            "29BA" to "Лиса ROZD",
+            "29CA" to "№47Гілявська"
+        )
+        val ownerMatchers = listOf(
+            "Гілявськ" to "Гілявська Т.А. мол.сержант",
+            "Гладун" to "Гладун Р.М. штаб-сержант",
+            "Душин" to "Душин К.В солдат",
+            "Бачинськ" to "Бачинський Є.Л. штаб-сержант",
+            "Журав" to "Журавський О.В. головний сержант",
+            "Ковальськ" to "Ковальська Т.І. пр.ЗСУ",
+            "Лис" to "Лиса Г.В. мол.сержант",
+            "Робул" to "Робул С.В. пр.ЗСУ",
+            "Зюбін" to "Зюбін С.В. пр.ЗСУ",
+            "Стінськ" to "Стінська В.В. пр.ЗСУ",
+            "Цюцьком" to "Цюцькома Л.П. пр.ЗСУ",
+            "Яриновськ" to "Яриновська М.Ф. пр.ЗСУ",
+            "Гончар" to "Гончар"
+        )
+        warehouses.forEach { (code, description) ->
+            var exists = false
+            db.rawQuery("SELECT 1 FROM warehouses WHERE warehouse_number=?", arrayOf(code)).use { c ->
+                exists = c.moveToFirst()
+            }
+            if (!exists) {
+                val owner = ownerMatchers.firstOrNull { description.contains(it.first, ignoreCase = true) }?.second
+                val values = ContentValues().apply {
+                    put("name", description)
+                    put("address", "")
+                    put("note", "")
+                    put("warehouse_number", code)
+                    put("property_type", "")
+                    put("is_active", 1)
+                    val ownerId = owner?.let { personIds[it] }
+                    if (ownerId == null) putNull("responsible_person_id") else put("responsible_person_id", ownerId)
+                }
+                db.insertOrThrow("warehouses", null, values)
+            }
         }
     }
 
