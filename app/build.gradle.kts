@@ -36,3 +36,8 @@ android {
 tasks.named("preBuild").configure {
     dependsOn("prepareBundledStockAssets")
 }
+
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+}
