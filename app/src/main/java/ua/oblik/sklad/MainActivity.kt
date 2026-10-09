@@ -790,7 +790,11 @@ class MainActivity : Activity() {
 
     private fun showMovement(type: String, title: String) {
         val root = base(title)
-        addAction(root, "Створити документ") {
+        val allRows = db.movementRows()
+        val wanted = if (type == "TRANSFER") listOf("TRANSFER_OUT", "TRANSFER_IN") else listOf(type)
+        val rows = allRows.filter { it[2] in wanted }
+        addScreenSummary(root, "РУХ МАЙНА", title, "\${rows.size} записів у журналі")
+        addAction(root, "＋  Створити документ") {
             val mats = db.list("materials")
             val warehouses = db.warehouseRows()
             if (mats.isEmpty()) {
@@ -801,7 +805,7 @@ class MainActivity : Activity() {
                 showError("Спочатку додайте хоча б один склад.")
                 return@addAction
             }
-            val names = mats.map { "${it[3]} (${it[4]})" }.toTypedArray()
+            val names = mats.map { "\${it[3]} (\${it[4]})" }.toTypedArray()
             AlertDialog.Builder(this)
                 .setTitle("Оберіть матеріал")
                 .setItems(names) { _, which ->
@@ -812,13 +816,12 @@ class MainActivity : Activity() {
                 }
                 .show()
         }
-
-        val wanted = if (type == "TRANSFER") listOf("TRANSFER_OUT", "TRANSFER_IN") else listOf(type)
-        db.movementRows().filter { it[2] in wanted }.forEach {
-            val route = if (it[2].startsWith("TRANSFER")) " • ${it[5]} → ${it[6]}" else " • Склад: ${if (it[6] != "—") it[6] else it[5]}"
-            val location = if (it[2].startsWith("TRANSFER")) " • Комірки: ${it[7]} → ${it[8]}" else if (it[2] == "RECEIPT") " • Комірка: ${it[8]}" else " • Комірка: ${it[7]}"
-            addRow(root, "${it[0]} • ${it[1]}", "Кількість: ${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  |  Документ: ${it[4]}${route}${location}")
+        rows.forEach {
+            val route = if (it[2].startsWith("TRANSFER")) " • \${it[5]} → \${it[6]}" else " • Склад: \${if (it[6] != "—") it[6] else it[5]}"
+            val location = if (it[2].startsWith("TRANSFER")) " • Комірки: \${it[7]} → \${it[8]}" else if (it[2] == "RECEIPT") " • Комірка: \${it[8]}" else " • Комірка: \${it[7]}"
+            addRow(root, "\${typeLabel(it[2])}  ·  \${it[1]}", "\${it[0]}  •  Кількість: \${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  •  Документ: \${it[4]}\${route}\${location}")
         }
+        if (rows.isEmpty()) addEmptyState(root, "Операцій ще немає", "Створіть перший документ руху майна. Реальні залишки не підставляються автоматично.")
         setContentView(root)
     }
 
