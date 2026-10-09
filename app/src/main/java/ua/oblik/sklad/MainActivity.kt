@@ -914,21 +914,21 @@ class MainActivity : Activity() {
                 return@formDialog
             }
 
-            if (type == "RECEIPT") {
+            val saved = if (type == "RECEIPT") {
                 safeDb { db.insertMovement(materialId, type, qty, null, fromWarehouse, null, toLocation, documentNo, date, v[3]) }
             } else if (type == "TRANSFER") {
+                val targetWarehouse = toWarehouse
+                if (targetWarehouse == null) {
+                    showError("Не обрано склад-отримувач.")
+                    return@formDialog
+                }
                 val current = if (fromLocation != null) db.locationBalance(materialId, fromLocation) else db.warehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
                     val scope = if (fromLocation != null) "комірці" else "складі-відправнику"
                     showError("Недостатньо залишку на $scope. Доступно: ${formatQty(current)}.")
                     return@formDialog
                 }
-                safeDb { val targetWarehouse = toWarehouse
-                if (targetWarehouse == null) {
-                    showError("Не обрано склад-отримувач.")
-                    return@safeDb
-                }
-                db.insertTransfer(materialId, qty, fromWarehouse, targetWarehouse, fromLocation, toLocation, documentNo, date, v[3]) }
+                safeDb { db.insertTransfer(materialId, qty, fromWarehouse, targetWarehouse, fromLocation, toLocation, documentNo, date, v[3]) }
             } else {
                 val current = if (fromLocation != null) db.locationBalance(materialId, fromLocation) else db.warehouseBalance(materialId, fromWarehouse)
                 if (qty > current) {
@@ -938,7 +938,7 @@ class MainActivity : Activity() {
                 }
                 safeDb { db.insertMovement(materialId, type, qty, fromWarehouse, null, fromLocation, null, documentNo, date, v[3]) }
             }
-            showMovement(type, title)
+            if (saved) showMovement(type, title)
         }
     }
 
@@ -1258,8 +1258,14 @@ class MainActivity : Activity() {
         false
     }
 
-    private fun safeDb(action: () -> Unit) {
-        try { action() } catch (e: SQLiteException) { showError("Не вдалося виконати операцію: ${e.message ?: "помилка бази даних"}.") }
+    private fun safeDb(action: () -> Unit): Boolean {
+        return try {
+            action()
+            true
+        } catch (e: SQLiteException) {
+            showError("Не вдалося виконати операцію: ${e.message ?: "помилка бази даних"}.")
+            false
+        }
     }
 
     private fun formatQty(value: Double): String =
