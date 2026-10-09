@@ -1010,7 +1010,7 @@ class MainActivity : Activity() {
 
     private fun showWarehouseDetail(warehouseId: Long, selectedTab: String = "Номенклатура") {
         val w = db.warehouseRows().firstOrNull { it[0].toLongOrNull() == warehouseId } ?: run { showWarehouses(); return }
-        val title = w.getOrNull(6).orEmpty().ifBlank { w[1] }
+        val title = w[1].ifBlank { w.getOrNull(6).orEmpty() }
         val type = w.getOrNull(7).orEmpty().ifBlank { "Тип майна не вказано" }
         val active = w.getOrNull(8) != "0"
         val gold=Color.rgb(226,195,111); val muted=Color.rgb(174,184,188)
@@ -1024,14 +1024,14 @@ class MainActivity : Activity() {
         hero.addView(View(this).apply{background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.TRANSPARENT,Color.argb(225,7,18,21)))},FrameLayout.LayoutParams(-1,dp(116)))
         hero.addView(TextView(this).apply{text="←";textSize=30f;gravity=Gravity.CENTER;setTextColor(gold);setOnClickListener{showWarehouses()}},FrameLayout.LayoutParams(dp(45),dp(52)).apply{leftMargin=dp(2);topMargin=dp(8)})
         hero.addView(DashboardIconView(this,"home",gold),FrameLayout.LayoutParams(dp(46),dp(46)).apply{leftMargin=dp(50);topMargin=dp(18)})
-        hero.addView(TextView(this).apply{text="Склад №"+title;textSize=21f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);maxLines=1},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(102);topMargin=dp(17);rightMargin=dp(5)})
+        hero.addView(TextView(this).apply{text="Склад №"+title;textSize=19f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);maxLines=1},FrameLayout.LayoutParams(-1,-2).apply{leftMargin=dp(102);rightMargin=dp(108);topMargin=dp(17)})
         hero.addView(TextView(this).apply{text=type;textSize=12f;setTextColor(Color.LTGRAY)},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(102);topMargin=dp(50)})
         hero.addView(TextView(this).apply{text=if(active)"● Активний" else "● Неактивний";textSize=10f;setTextColor(if(active)Color.rgb(23,220,151) else muted);background=rounded(if(active)Color.rgb(10,56,46) else Color.rgb(35,43,47),9);setPadding(dp(8),dp(4),dp(8),dp(4))},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(102);topMargin=dp(76)})
         hero.addView(TextView(this).apply{text="✎ Редагувати";textSize=10f;setTextColor(Color.WHITE);gravity=Gravity.CENTER;background=rounded(Color.rgb(65,54,29),9);setOnClickListener{showWarehouseActions(warehouseId,w[1],w[2],w[4].toLongOrNull(),w.getOrNull(5).orEmpty())}},FrameLayout.LayoutParams(dp(96),dp(38)).apply{rightMargin=dp(7);topMargin=dp(16);gravity=Gravity.RIGHT})
         page.addView(hero,LinearLayout.LayoutParams(-1,dp(116)).apply{bottomMargin=dp(8)})
         val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;background=rounded(Color.rgb(14,25,27),12);setPadding(dp(12),dp(8),dp(12),dp(8))}
         fun infoLine(label:String,value:String){info.addView(LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;addView(TextView(this@MainActivity).apply{text=label;textSize=11f;setTextColor(muted)},LinearLayout.LayoutParams(dp(135),-2));addView(TextView(this@MainActivity).apply{text=value.ifBlank{"—"};textSize=12f;setTextColor(Color.WHITE)},LinearLayout.LayoutParams(0,-2,1f))},LinearLayout.LayoutParams(-1,dp(27)))}
-        infoLine("Номер складу",title);infoLine("Тип майна",type);infoLine("Місце розташування",w[2]);infoLine("МВО",w[3]);infoLine("Примітка",w.getOrNull(5).orEmpty())
+        infoLine("Номер складу",w.getOrNull(6).orEmpty().ifBlank { title });infoLine("Тип майна",type);infoLine("Місце розташування",w[2]);infoLine("МВО",w[3]);infoLine("Примітка",w.getOrNull(5).orEmpty())
         page.addView(info,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
         val materials=db.list("materials");var pos=0;var qty=0.0
         materials.forEach{m->val balance=db.warehouseBalance(m[0].toLongOrNull()?:return@forEach,warehouseId);if(balance!=0.0){pos++;qty+=balance}}
@@ -1046,7 +1046,7 @@ class MainActivity : Activity() {
         page.addView(stats,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
         val tabs=listOf("Номенклатура","Залишки","Рух майна","Документи","Інформація")
         val tabRow=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
-        tabs.forEach{tab->tabRow.addView(TextView(this).apply{text=tab;textSize=9f;gravity=Gravity.CENTER;setTextColor(if(tab==selectedTab)gold else muted);background=rounded(if(tab==selectedTab)Color.rgb(63,51,27) else Color.rgb(15,26,29),8);setPadding(dp(3),dp(8),dp(3),dp(8));setOnClickListener{showWarehouseDetail(warehouseId,tab)}},LinearLayout.LayoutParams(0,dp(40),1f).apply{if(tab!=tabs.last())rightMargin=dp(3)})}
+        tabs.forEach{tab->tabRow.addView(TextView(this).apply{text=tab;textSize=8f;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;gravity=Gravity.CENTER;setTextColor(if(tab==selectedTab)gold else muted);background=rounded(if(tab==selectedTab)Color.rgb(63,51,27) else Color.rgb(15,26,29),8);setPadding(dp(3),dp(8),dp(3),dp(8));setOnClickListener{showWarehouseDetail(warehouseId,tab)}},LinearLayout.LayoutParams(0,dp(40),1f).apply{if(tab!=tabs.last())rightMargin=dp(3)})}
         page.addView(tabRow,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
         if(selectedTab=="Номенклатура"||selectedTab=="Залишки"){
             val action=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
