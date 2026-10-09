@@ -378,18 +378,44 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         documentNo: String,
         date: String,
         note: String
-    ) = writableDatabase.insertOrThrow("movements", null, ContentValues().apply {
-        put("material_id", materialId)
-        put("type", type)
-        put("quantity", quantity)
-        if (fromWarehouse == null) putNull("from_warehouse_id") else put("from_warehouse_id", fromWarehouse)
-        if (toWarehouse == null) putNull("to_warehouse_id") else put("to_warehouse_id", toWarehouse)
-        if (fromLocation == null) putNull("from_location_id") else put("from_location_id", fromLocation)
-        if (toLocation == null) putNull("to_location_id") else put("to_location_id", toLocation)
-        put("document_no", documentNo)
-        put("movement_date", date)
-        put("note", note)
-    })
+    ): Long {
+        val database = writableDatabase
+        val ownsTransaction = !database.inTransaction()
+        if (ownsTransaction) database.beginTransaction()
+        try {
+            if (!quantity.isFinite() || quantity <= 0.0) {
+                throw SQLiteException("Кількість має бути числом більше 0.")
+            }
+            if (type in listOf("ISSUE", "WRITE_OFF", "TRANSFER_OUT")) {
+                val sourceWarehouse = fromWarehouse
+                    ?: throw SQLiteException("Не вказано склад-відправник.")
+                val available = if (fromLocation != null) {
+                    locationBalance(materialId, fromLocation)
+                } else {
+                    unassignedWarehouseBalance(materialId, sourceWarehouse)
+                }
+                if (quantity > available + 1e-9) {
+                    throw SQLiteException("Недостатньо залишку. Доступно: $available.")
+                }
+            }
+            val id = database.insertOrThrow("movements", null, ContentValues().apply {
+                put("material_id", materialId)
+                put("type", type)
+                put("quantity", quantity)
+                if (fromWarehouse == null) putNull("from_warehouse_id") else put("from_warehouse_id", fromWarehouse)
+                if (toWarehouse == null) putNull("to_warehouse_id") else put("to_warehouse_id", toWarehouse)
+                if (fromLocation == null) putNull("from_location_id") else put("from_location_id", fromLocation)
+                if (toLocation == null) putNull("to_location_id") else put("to_location_id", toLocation)
+                put("document_no", documentNo)
+                put("movement_date", date)
+                put("note", note)
+            })
+            if (ownsTransaction) database.setTransactionSuccessful()
+            return id
+        } finally {
+            if (ownsTransaction) database.endTransaction()
+        }
+    }
 
     fun insertTransfer(
         materialId: Long,
@@ -402,8 +428,15 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         date: String,
         note: String
     ) {
+        if (fromWarehouse == toWarehouse) {
+            throw SQLiteException("Склад-відправник і склад-отримувач мають бути різними.")
+        }
+        if (!quantity.isFinite() || quantity <= 0.0) {
+            throw SQLiteException("Кількість має бути числом більше 0.")
+        }
         writableDatabase.beginTransaction()
         try {
+            // insertMovement joins this transaction, so the balance check and both transfer rows are atomic.
             insertMovement(materialId, "TRANSFER_OUT", quantity, fromWarehouse, toWarehouse, fromLocation, toLocation, documentNo, date, note)
             insertMovement(materialId, "TRANSFER_IN", quantity, fromWarehouse, toWarehouse, fromLocation, toLocation, documentNo, date, note)
             writableDatabase.setTransactionSuccessful()
@@ -495,19 +528,21 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
     fun locationsForWarehouse(warehouseId: Long): List<Array<String>> = locationRows(warehouseId)
 
     fun materialBalance(materialId: Long): Double {
-        var balance = 0.0
-        readableDatabase.rawQuery(
-            "SELECT type, quantity FROM movements WHERE material_id=?",
-            arrayOf(materialId.toString())
-        ).use { c ->
-            while (c.moveToNext()) {
-                when (c.getString(0)) {
-                    "RECEIPT" -> balance += c.getDouble(1)
-                    "ISSUE", "WRITE_OFF" -> balance -= c.getDouble(1)
-                }
-            }
+        // Transfers only change the location of stock; they must not change the material's total balance.
+        val sql = """
+            SELECT COALESCE(SUM(
+                CASE
+                    WHEN type = 'RECEIPT' THEN quantity
+                    WHEN type IN ('ISSUE', 'WRITE_OFF') THEN -quantity
+                    ELSE 0
+                END
+            ), 0)
+            FROM movements
+            WHERE material_id = ?
+        """.trimIndent()
+        readableDatabase.rawQuery(sql, arrayOf(materialId.toString())).use { cursor ->
+            return if (cursor.moveToFirst()) cursor.getDouble(0) else 0.0
         }
-        return balance
     }
 
     fun locationBalance(materialId: Long, locationId: Long): Double {
