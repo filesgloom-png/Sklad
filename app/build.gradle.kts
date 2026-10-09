@@ -3,7 +3,15 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val bundledStockAssets = layout.buildDirectory.dir("generated/stock-assets")
+
+tasks.register<Copy>("prepareBundledStockAssets") {
+    from(rootProject.file("Залишки.XLSX"))
+    into(bundledStockAssets)
+}
+
 android {
+    sourceSets.getByName("main").assets.srcDir(bundledStockAssets)
     namespace = "ua.oblik.sklad"
     compileSdk = 35
 
@@ -23,4 +31,8 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn("prepareBundledStockAssets")
 }
