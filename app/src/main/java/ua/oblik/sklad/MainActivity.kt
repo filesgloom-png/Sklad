@@ -1565,7 +1565,7 @@ class MainActivity : Activity() {
             val name = warehouseByCode[code.uppercase(Locale.ROOT)]?.getOrNull(1).orEmpty()
             if (name.isBlank()) code else "$name • $code"
         }
-        addAction(root, "Склад: $warehouseLabel") {
+        val openWarehouseFilter = {
             AlertDialog.Builder(this).setTitle("Фільтр за складом")
                 .setItems(warehouseOptions.toTypedArray()) { _, which ->
                     val selected = if (which == 0) "ALL" else codes[which - 1]
@@ -1576,18 +1576,27 @@ class MainActivity : Activity() {
             warehouseByCode[code.uppercase(Locale.ROOT)]?.getOrNull(3)?.takeIf { it.isNotBlank() && it != "Не призначено" }
         }.distinct().sorted()
         val mvoOptions = listOf("Усі МВО") + mvoNames
-        addAction(root, "МВО: $mvoLabel") {
+        val openMvoFilter = {
             AlertDialog.Builder(this).setTitle("Фільтр за МВО")
                 .setItems(mvoOptions.toTypedArray()) { _, which ->
                     val selected = if (which == 0) "ALL" else mvoNames[which - 1]
                     showAllInitialStock(type, query, warehouseCode, selected)
                 }.setNegativeButton("Скасувати", null).show()
         }
-        addAction(root, "Пошук: ${query.ifBlank { "усі позиції" }}") {
+        addActionRow(root, listOf(
+            "Склад: $warehouseLabel" to { openWarehouseFilter() },
+            "МВО: $mvoLabel" to { openMvoFilter() }
+        ))
+        val searchAction: () -> Unit = {
             searchDialog("Пошук залишків", query) { q -> showAllInitialStock(type, q, warehouseCode, mvo) }
         }
         if (warehouseCode != "ALL" || mvo != "ALL" || query.isNotBlank()) {
-            addAction(root, "Скинути фільтри") { showAllInitialStock(type) }
+            addActionRow(root, listOf(
+                "⌕  Пошук: ${query.ifBlank { "усі позиції" }}" to { searchAction() },
+                "↺  Скинути фільтри" to { showAllInitialStock(type) }
+            ))
+        } else {
+            addActionRow(root, listOf("⌕  Пошук залишків" to { searchAction() }))
         }
         if (all.isEmpty()) addEmptyState(root, "Залишки не знайдено",
             "Змініть склад, МВО, тип зберігання або пошуковий запит.")
