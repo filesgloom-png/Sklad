@@ -666,7 +666,7 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
-    private fun showWarehouses(query:String="",filter:String="ALL"){
+    private fun showWarehouses(query:String="",filter:String="ALL",sortMode:Int=0){
         window.statusBarColor=Color.rgb(7,18,21); window.navigationBarColor=Color.rgb(7,18,21); window.decorView.systemUiVisibility=0
         val root=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundColor(Color.rgb(7,18,21))}
         root.setOnApplyWindowInsetsListener{v,i->val b=i.getInsets(android.view.WindowInsets.Type.systemBars());v.setPadding(0,b.top,0,b.bottom);i}
@@ -691,23 +691,23 @@ class MainActivity : Activity() {
         val chips=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         fun chip(t:String,sel:Boolean,act:()->Unit)=TextView(this).apply{text=t;textSize=10.5f;setTypeface(null,Typeface.BOLD);setTextColor(if(sel)Color.rgb(245,221,151)else Color.rgb(180,190,194));gravity=Gravity.CENTER;background=rounded(if(sel)Color.rgb(75,61,30)else Color.rgb(17,28,31),10);if(sel)(background as GradientDrawable).setStroke(dp(1),Color.rgb(180,145,61));setOnClickListener{act()}}
         chips.addView(chip("Всі (${rows.size})",filter=="ALL"){showWarehouses(query,"ALL")},LinearLayout.LayoutParams(0,dp(42),1f).apply{rightMargin=dp(4)})
-        chips.addView(chip("●  Активні (${rows.size})",filter=="ACTIVE"){showWarehouses(query,"ACTIVE")},LinearLayout.LayoutParams(0,dp(42),1.15f).apply{rightMargin=dp(4)})
-        chips.addView(chip("●  Неактивні (0)",filter=="INACTIVE"){showWarehouses(query,"INACTIVE")},LinearLayout.LayoutParams(0,dp(42),1.15f))
+        chips.addView(chip("●  Активні (${rows.count{it.getOrNull(8) != "0"}})",filter=="ACTIVE"){showWarehouses(query,"ACTIVE")},LinearLayout.LayoutParams(0,dp(42),1.15f).apply{rightMargin=dp(4)})
+        chips.addView(chip("●  Неактивні (${rows.count{it.getOrNull(8) == "0"}})",filter=="INACTIVE"){showWarehouses(query,"INACTIVE")},LinearLayout.LayoutParams(0,dp(42),1.15f))
                 page.addView(chips,LinearLayout.LayoutParams(-1,dp(42)).apply{bottomMargin=dp(6)})
-        val sort=TextView(this).apply{text="⇅  За номером ⌄";textSize=10.5f;setTextColor(Color.rgb(180,190,194));gravity=Gravity.CENTER;background=rounded(Color.rgb(17,28,31),10);setOnClickListener{AlertDialog.Builder(this@MainActivity).setTitle("Сортування").setItems(arrayOf("За номером","За назвою")){_,_->showWarehouses(query,filter)}.show()}}
+        val sort=TextView(this).apply{text="⇅  За номером ⌄";textSize=10.5f;setTextColor(Color.rgb(180,190,194));gravity=Gravity.CENTER;background=rounded(Color.rgb(17,28,31),10);setOnClickListener{AlertDialog.Builder(this@MainActivity).setTitle("Сортування").setItems(arrayOf("За номером","За назвою")){_,which->showWarehouses(query,filter,which)}.show()}}
         page.addView(sort,LinearLayout.LayoutParams(dp(125),dp(38)).apply{gravity=Gravity.RIGHT;bottomMargin=dp(7)})
-        val visible=rows.filter{val q=query.trim();q.isBlank()||it.any{v->v.contains(q,true)}}
+        val visible=rows.filter{(filter=="ALL" || (filter=="ACTIVE" && it.getOrNull(8)!="0") || (filter=="INACTIVE" && it.getOrNull(8)=="0")) && (query.isBlank() || it.any{v->v.contains(query.trim(),true)})}.let{if(sortMode==1)it.sortedBy{row->row[1].lowercase()}else it.sortedWith(compareBy({row->row.getOrNull(6)?.toIntOrNull()?:Int.MAX_VALUE},{row->row[0].toLongOrNull()?:0L}))}
         visible.forEach{row->
             val id=row[0].toLong();val name=row[1];var qty=0.0;var pos=0;materials.forEach{m->val b=db.warehouseBalance(m[0].toLongOrNull()?:return@forEach,id);if(b!=0.0){pos++;qty+=b}}
             val card=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(8),dp(8),dp(6),dp(8));background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(25,32,31),Color.rgb(11,21,23))).apply{cornerRadius=dp(15).toFloat();setStroke(dp(1),Color.rgb(47,60,59))};setOnClickListener{showWarehouseActions(id,name,row[2],row[4].toLongOrNull(),row.getOrNull(5)?:"")}}
             val thumb=FrameLayout(this).apply{background=rounded(Color.rgb(43,51,49),9);addView(WarehouseBannerView(this@MainActivity),FrameLayout.LayoutParams(-1,-1))};card.addView(thumb,LinearLayout.LayoutParams(dp(92),dp(92)))
-            val mid=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(9),0,dp(3),0)};mid.addView(TextView(this).apply{text=name;textSize=16f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);maxLines=1});mid.addView(TextView(this).apply{text=if(row[5].isNotBlank())row[5] else if(row[2].isNotBlank())row[2] else "Речове майно";textSize=12f;setTextColor(Color.rgb(172,184,187));maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;setPadding(0,dp(3),0,0)});mid.addView(TextView(this).apply{text="⌖  ОЦЗ, територія частини";textSize=10.5f;setTextColor(Color.rgb(164,176,179));setPadding(0,dp(3),0,0)});card.addView(mid,LinearLayout.LayoutParams(0,dp(92),1f))
+            val mid=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(9),0,dp(3),0)};mid.addView(TextView(this).apply{text=name;textSize=16f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);maxLines=1});mid.addView(TextView(this).apply{text=if(row.getOrNull(7).orEmpty().isNotBlank())row[7] else "Тип майна не вказано";textSize=12f;setTextColor(Color.rgb(172,184,187));maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;setPadding(0,dp(3),0,0)});mid.addView(TextView(this).apply{text="⌖  "+(if(row[2].isNotBlank())row[2] else "Місце не вказано");textSize=10.5f;setTextColor(Color.rgb(164,176,179));setPadding(0,dp(3),0,0)});card.addView(mid,LinearLayout.LayoutParams(0,dp(92),1f))
             val posLabel=if(pos==0) "—" else pos.toString()
             val qtyLabel=if(qty==0.0) "—" else formatQty(qty)
             val right=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL;minimumWidth=dp(88)}
-            right.addView(TextView(this@MainActivity).apply{text="●  Активний";textSize=9.5f;setTypeface(null,Typeface.BOLD);setTextColor(Color.rgb(23,220,151));gravity=Gravity.CENTER;background=rounded(Color.rgb(10,56,46),10);setPadding(dp(7),dp(5),dp(7),dp(5))})
-            right.addView(TextView(this@MainActivity).apply{text="▦  Позиції  $"+posLabel;textSize=10.5f;setTextColor(Color.rgb(188,197,199));setPadding(0,dp(6),0,0)})
-            right.addView(TextView(this@MainActivity).apply{text="▦  Кількість  $"+qtyLabel;textSize=10.5f;setTextColor(Color.rgb(188,197,199));setPadding(0,dp(3),0,0)})
+            right.addView(TextView(this@MainActivity).apply{text=if(row.getOrNull(8)=="0")"●  Неактивний" else "●  Активний";textSize=9.5f;setTypeface(null,Typeface.BOLD);setTextColor(if(row.getOrNull(8)=="0")Color.rgb(174,184,188) else Color.rgb(23,220,151));gravity=Gravity.CENTER;background=rounded(if(row.getOrNull(8)=="0")Color.rgb(35,43,47) else Color.rgb(10,56,46),10);setPadding(dp(7),dp(5),dp(7),dp(5))})
+            right.addView(TextView(this@MainActivity).apply{text="▦  Позиції  "+posLabel;textSize=10.5f;setTextColor(Color.rgb(188,197,199));setPadding(0,dp(6),0,0)})
+            right.addView(TextView(this@MainActivity).apply{text="▦  Кількість  "+qtyLabel;textSize=10.5f;setTextColor(Color.rgb(188,197,199));setPadding(0,dp(3),0,0)})
             card.addView(right,LinearLayout.LayoutParams(dp(88),dp(92)))
             card.addView(TextView(this@MainActivity).apply{text="›";textSize=29f;setTextColor(Color.rgb(226,195,111));gravity=Gravity.CENTER},LinearLayout.LayoutParams(dp(18),dp(92)))
             page.addView(card,LinearLayout.LayoutParams(-1,dp(108)).apply{bottomMargin=dp(7)})
