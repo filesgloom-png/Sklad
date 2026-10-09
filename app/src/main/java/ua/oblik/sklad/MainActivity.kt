@@ -684,7 +684,29 @@ class MainActivity : Activity() {
         val sort=TextView(this).apply{text="⇅  За номером ⌄";textSize=10.5f;setTextColor(Color.rgb(180,190,194));gravity=Gravity.CENTER;background=rounded(Color.rgb(17,28,31),10);setOnClickListener{AlertDialog.Builder(this@MainActivity).setTitle("Сортування").setItems(arrayOf("За номером","За назвою")){_,which->showWarehouses(query,filter,which)}.show()}}
         page.addView(sort,LinearLayout.LayoutParams(dp(125),dp(38)).apply{gravity=Gravity.RIGHT;bottomMargin=dp(7)})
         val visible=rows.filter{(filter=="ALL" || (filter=="ACTIVE" && it.getOrNull(8)!="0") || (filter=="INACTIVE" && it.getOrNull(8)=="0")) && (query.isBlank() || it.any{v->v.contains(query.trim(),true)})}.let{if(sortMode==1)it.sortedBy{row->row[1].lowercase()}else it.sortedWith(compareBy({row->row.getOrNull(6)?.toIntOrNull()?:Int.MAX_VALUE},{row->row[0].toLongOrNull()?:0L}))}
-        visible.forEach{row->
+        visible.groupBy { it[3].ifBlank { "Не призначено" } }.toSortedMap().forEach { (ownerName, ownerRows) ->
+            val ownerHeader = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(10), dp(12), dp(10))
+                background = rounded(Color.rgb(34, 39, 32), 11)
+            }
+            ownerHeader.addView(TextView(this).apply {
+                text = "♙  $ownerName"
+                textSize = 15f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(226, 195, 111))
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            ownerHeader.addView(TextView(this).apply {
+                text = "${ownerRows.size} складів"
+                textSize = 11f
+                setTextColor(Color.rgb(180, 190, 194))
+            })
+            page.addView(ownerHeader, LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dp(8)
+                bottomMargin = dp(6)
+            })
+            ownerRows.forEach{row->
             val id=row[0].toLong();val name=row[1];var qty=0.0;var pos=0;materials.forEach{m->val b=db.warehouseBalance(m[0].toLongOrNull()?:return@forEach,id);if(b!=0.0){pos++;qty+=b}}
             val card=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(8),dp(8),dp(6),dp(8));background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(25,32,31),Color.rgb(11,21,23))).apply{cornerRadius=dp(15).toFloat();setStroke(dp(1),Color.rgb(47,60,59))};setOnClickListener{showWarehouseDetail(id)}}
             val thumb=FrameLayout(this).apply{background=rounded(Color.rgb(43,51,49),9);addView(WarehouseBannerView(this@MainActivity),FrameLayout.LayoutParams(-1,-1))};card.addView(thumb,LinearLayout.LayoutParams(dp(92),dp(92)))
@@ -698,6 +720,7 @@ class MainActivity : Activity() {
             card.addView(right,LinearLayout.LayoutParams(dp(88),dp(92)))
             card.addView(TextView(this@MainActivity).apply{text="›";textSize=29f;setTextColor(Color.rgb(226,195,111));gravity=Gravity.CENTER},LinearLayout.LayoutParams(dp(18),dp(92)))
             page.addView(card,LinearLayout.LayoutParams(-1,dp(108)).apply{bottomMargin=dp(7)})
+            }
         }
         if(visible.isEmpty())page.addView(TextView(this).apply{text="Складів не знайдено";textSize=16f;setTextColor(Color.LTGRAY);gravity=Gravity.CENTER;setPadding(0,dp(30),0,dp(30))})
         scroll.addView(page);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
@@ -746,8 +769,8 @@ class MainActivity : Activity() {
         val root = base("Матеріально відповідальні особи")
         val all = db.list("responsible_persons")
         val rows = all.filter { query.isBlank() || it.any { value -> value.contains(query, true) } }
-        addScreenSummary(root, "ОБЛІКОВИЙ СКЛАД", "Відповідальні особи", "${all.size} осіб")
-        addAction(root, "⌕  Пошук МВО") { searchDialog("Пошук МВО", query) { q -> showPersons(q) } }
+        addScreenSummary(content, "ОБЛІКОВИЙ СКЛАД", "Відповідальні особи", "${all.size} осіб")
+        addAction(content, "⌕  Пошук МВО") { searchDialog("Пошук МВО", query) { q -> showPersons(q) } }
         addAction(root, "＋  Додати МВО") {
             formDialog("Нова МВО", listOf("ПІБ", "Посада", "Телефон")) { v ->
                 if (v[0].isBlank()) showError("ПІБ не може бути порожнім.")
@@ -756,11 +779,11 @@ class MainActivity : Activity() {
         }
         rows.forEach {
             val id = it[0].toLong()
-            addManageRow(root, it[1], listOf(it.getOrNull(2).orEmpty(), it.getOrNull(3).orEmpty()).filter { x -> x.isNotBlank() }.joinToString("  • ").ifBlank { "Посаду та телефон не вказано" }) {
+            addManageRow(content, it[1], listOf(it.getOrNull(2).orEmpty(), it.getOrNull(3).orEmpty()).filter { x -> x.isNotBlank() }.joinToString("  • ").ifBlank { "Посаду та телефон не вказано" }) {
                 showPersonActions(id, it[1], it.getOrNull(2) ?: "", it.getOrNull(3) ?: "")
             }
         }
-        if (rows.isEmpty()) addEmptyState(root, if (query.isBlank()) "МВО ще немає" else "Нічого не знайдено", if (query.isBlank()) "Додайте відповідальну особу перед призначенням на склад." else "Спробуйте змінити пошуковий запит.")
+        if (rows.isEmpty()) addEmptyState(content, if (query.isBlank()) "МВО ще немає" else "Нічого не знайдено", if (query.isBlank()) "Додайте відповідальну особу перед призначенням на склад." else "Спробуйте змінити пошуковий запит.")
         setContentView(root)
     }
 
