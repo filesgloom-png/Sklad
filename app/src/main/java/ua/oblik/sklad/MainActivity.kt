@@ -1230,11 +1230,38 @@ class MainActivity : Activity() {
         }
         addScreenSummary(root, "ІСТОРІЯ ОПЕРАЦІЙ", "Журнал руху майна", "${rows.size} записів • ${filterLabel}")
         addAction(root, "⌕  Пошук у журналі") { searchDialog("Пошук у журналі", query) { q -> showJournal(q, filter) } }
-        addAction(root, "▤  Усі операції") { showJournal(query, "ALL") }
-        addAction(root, "↓  Надходження") { showJournal(query, "RECEIPT") }
-        addAction(root, "↑  Видача") { showJournal(query, "ISSUE") }
-        addAction(root, "⇄  Переміщення") { showJournal(query, "TRANSFER") }
-        addAction(root, "×  Списання") { showJournal(query, "WRITE_OFF") }
+        val filterScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
+        val filterRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        listOf(
+            "ALL" to "Усі",
+            "RECEIPT" to "↓ Надходження",
+            "ISSUE" to "↑ Видача",
+            "TRANSFER" to "⇄ Переміщення",
+            "WRITE_OFF" to "× Списання"
+        ).forEach { option ->
+            val selected = option.first == filter
+            filterRow.addView(TextView(this).apply {
+                text = option.second
+                textSize = 11f
+                setTypeface(null, Typeface.BOLD)
+                gravity = Gravity.CENTER
+                setTextColor(if (selected) Color.rgb(25, 25, 19) else Color.rgb(188, 198, 198))
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    if (selected) intArrayOf(Color.rgb(246, 218, 133), Color.rgb(179, 143, 56))
+                    else intArrayOf(Color.rgb(20, 32, 32), Color.rgb(12, 23, 25))
+                ).apply {
+                    cornerRadius = dp(10).toFloat()
+                    setStroke(dp(1), if (selected) Color.rgb(238, 207, 122) else Color.rgb(43, 57, 54))
+                }
+                setPadding(dp(12), dp(10), dp(12), dp(10))
+                setOnClickListener { showJournal(query, option.first) }
+            }, LinearLayout.LayoutParams(-2, dp(38)).apply { rightMargin = dp(6) })
+        }
+        filterScroll.addView(filterRow)
+        root.addView(filterScroll, LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = dp(10)
+        })
         rows.forEach {
             val route = if (it[2].startsWith("TRANSFER")) " • ${it[5]} → ${it[6]}" else if (it[2] == "RECEIPT") " • ${it[6]}" else " • ${it[5]}"
             addRow(root, "${typeLabel(it[2])}  ·  ${it[1]}", "${it[0]}  •  Кількість: ${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  •  Документ: ${it[4]}${route}${if (it[9].isNotBlank()) " • ${it[9]}" else ""}")
