@@ -393,6 +393,22 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             if (!quantity.isFinite() || quantity <= 0.0) {
                 throw SQLiteException("Кількість має бути числом більше 0.")
             }
+            if (type !in setOf("RECEIPT", "ISSUE", "WRITE_OFF", "TRANSFER_OUT", "TRANSFER_IN")) {
+                throw SQLiteException("Невідомий тип руху майна: $type.")
+            }
+            when (type) {
+                "RECEIPT" -> if (fromWarehouse != null || toWarehouse == null || fromLocation != null) {
+                    throw SQLiteException("Для надходження потрібно вказати лише склад-отримувач.")
+                }
+                "ISSUE", "WRITE_OFF" -> if (fromWarehouse == null || toWarehouse != null || toLocation != null) {
+                    throw SQLiteException("Для видачі або списання потрібно вказати лише склад-відправник.")
+                }
+                "TRANSFER_OUT", "TRANSFER_IN" -> if (
+                    fromWarehouse == null || toWarehouse == null || fromWarehouse == toWarehouse
+                ) {
+                    throw SQLiteException("Для переміщення потрібні два різні склади.")
+                }
+            }
             if (fromLocation != null && (fromWarehouse == null || !locationBelongsToWarehouse(fromLocation, fromWarehouse))) {
                 throw SQLiteException("Комірка-відправник не належить обраному складу.")
             }
