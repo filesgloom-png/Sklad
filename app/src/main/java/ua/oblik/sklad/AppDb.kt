@@ -340,6 +340,20 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         return balance
     }
 
+    fun unassignedWarehouseBalance(materialId: Long, warehouseId: Long): Double {
+        val total = warehouseBalance(materialId, warehouseId)
+        var assigned = 0.0
+        readableDatabase.rawQuery(
+            "SELECT id FROM storage_locations WHERE warehouse_id=?",
+            arrayOf(warehouseId.toString())
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                assigned += locationBalance(materialId, cursor.getLong(0))
+            }
+        }
+        return total - assigned
+    }
+
     fun movementRows(): List<Array<String>> {
         val rows = mutableListOf<Array<String>>()
         val sql = """
