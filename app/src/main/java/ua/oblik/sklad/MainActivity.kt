@@ -1567,6 +1567,25 @@ class MainActivity : Activity() {
         addScreenSummary(root, "ЗАЛИШКИ", "Імпортоване майно",
             "Рядків: ${all.size} • ${warehouseLabel} • ${mvoLabel} • Кількість: ${formatQty(qty)} • Вартість: ${String.format(Locale.US, "%.2f", value)}")
 
+        val filterHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        filterHeader.addView(TextView(this).apply {
+            text = "ТИП ЗБЕРІГАННЯ"
+            textSize = 10f
+            setTypeface(null, Typeface.BOLD)
+            letterSpacing = 0.08f
+            setTextColor(Color.rgb(146, 165, 161))
+        }, LinearLayout.LayoutParams(0, dp(24), 1f))
+        filterHeader.addView(TextView(this).apply {
+            text = "${all.size} рядків"
+            textSize = 10f
+            setTextColor(Color.rgb(226, 195, 111))
+            background = rounded(Color.rgb(43, 39, 27), 8)
+            setPadding(dp(8), dp(4), dp(8), dp(4))
+        })
+        root.addView(filterHeader, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
         val typeFilterScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
         val typeFilterRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         listOf("ALL", "005", "902", "922").forEach { t ->
@@ -1574,8 +1593,8 @@ class MainActivity : Activity() {
             val label = if (t == "ALL") "Усі типи" else "Тип $t"
             typeFilterRow.addView(TextView(this).apply {
                 text = label
-                textSize = 12f
-                setTypeface(null, Typeface.BOLD)
+                textSize = 11f
+                setTypeface(null, if (selected) Typeface.BOLD else Typeface.NORMAL)
                 gravity = Gravity.CENTER
                 setTextColor(if (selected) Color.rgb(25, 25, 19) else Color.rgb(188, 198, 198))
                 background = GradientDrawable(
@@ -1586,12 +1605,12 @@ class MainActivity : Activity() {
                     cornerRadius = dp(10).toFloat()
                     setStroke(dp(1), if (selected) Color.rgb(238, 207, 122) else Color.rgb(43, 57, 54))
                 }
-                setPadding(dp(14), dp(9), dp(14), dp(9))
+                setPadding(dp(13), dp(8), dp(13), dp(8))
                 setOnClickListener { showAllInitialStock(t, query, warehouseCode, mvo) }
-            }, LinearLayout.LayoutParams(-2, dp(40)).apply { rightMargin = dp(7) })
+            }, LinearLayout.LayoutParams(-2, dp(38)).apply { rightMargin = dp(6) })
         }
         typeFilterScroll.addView(typeFilterRow)
-        root.addView(typeFilterScroll, LinearLayout.LayoutParams(-1, dp(42)).apply {
+        root.addView(typeFilterScroll, LinearLayout.LayoutParams(-1, dp(40)).apply {
             bottomMargin = dp(8)
         })
         val codes = sourceRows.map { it.getOrNull(1).orEmpty() }.filter { it.isNotBlank() }.distinct().sorted()
