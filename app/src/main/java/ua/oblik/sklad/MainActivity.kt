@@ -1667,14 +1667,28 @@ class MainActivity : Activity() {
                     setStroke(dp(1), Color.rgb(48, 65, 62))
                 }
             }
-            item.addView(TextView(this).apply {
-                text = "${i + 1}. ${r.getOrNull(4).orEmpty()} • ${r.getOrNull(6).orEmpty()}"
+            val titleRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            titleRow.addView(TextView(this).apply {
+                text = String.format(Locale.ROOT, "%03d", i + 1)
+                textSize = 10f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(224, 194, 119))
+                gravity = Gravity.CENTER
+                background = rounded(Color.rgb(48, 42, 28), 7)
+                setPadding(dp(7), dp(5), dp(7), dp(5))
+            }, LinearLayout.LayoutParams(-2, -2).apply { rightMargin = dp(9) })
+            titleRow.addView(TextView(this).apply {
+                text = "${r.getOrNull(4).orEmpty()} • ${r.getOrNull(6).orEmpty()}"
                 textSize = 14f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.WHITE)
                 maxLines = 2
                 ellipsize = android.text.TextUtils.TruncateAt.END
-            })
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            item.addView(titleRow)
             item.addView(TextView(this).apply {
                 text = "Склад ${r.getOrNull(1).orEmpty()}  •  Тип ${r.getOrNull(2).orEmpty()}  •  Місце ${r.getOrNull(3).orEmpty()}"
                 textSize = 11f
