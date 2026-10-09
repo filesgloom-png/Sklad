@@ -197,8 +197,7 @@ class MainActivity : Activity() {
         super.onCreate(state)
         db = AppDb(this)
         preloadBundledStockIfNeeded()
-        window.statusBarColor = Color.rgb(7, 18, 21)        window.navigationBarColor = Color.rgb(7, 18, 21)
-        window.decorView.systemUiVisibility = 0
+        window.statusBarColor = Color.rgb(7, 18, 21)        window.navigationBarColor = Color.rgb(7, 18, 21)        window.decorView.systemUiVisibility = 0
         showHome()
     }
 
@@ -397,7 +396,6 @@ class MainActivity : Activity() {
             })
             page.addView(row)
         }
-
         fun darkCard(
             icon: String,
             titleText: String,
@@ -529,9 +527,9 @@ class MainActivity : Activity() {
         sectionHeader("КОНТРОЛЬ", "Журнали та аналітика")
         grid(
             Triple("journal", "Журнал руху", "Всі операції"),
-            Triple("chart", "Звіти", "Аналіз та звітність"),
+            Triple("chart", "Звіти", "Залишки по складах та типах"),
             Color.rgb(112, 55, 157), Color.rgb(13, 122, 133),
-            { showJournal() }, { showCards() }
+            { showJournal() }, { showReports() }
         )
 
         scroll.addView(page)
@@ -597,8 +595,7 @@ class MainActivity : Activity() {
                 .setPositiveButton("Обрати файл") { _, _ -> importBackup() }
                 .show()
         }
-        addAction(root, "Комірки та місця зберігання") { chooseWarehouseForLocations() }
-        addEmptyState(root, "Дані залишаються локально", "Резервне копіювання допомагає перенести облік на інший пристрій. Реальні дані не створюються автоматично.")
+        addAction(root, "Комірки та місця зберігання") { chooseWarehouseForLocations() }        addEmptyState(root, "Дані залишаються локально", "Резервне копіювання допомагає перенести облік на інший пристрій. Реальні дані не створюються автоматично.")
         setContentView(root)
     }
     private class WarehouseBannerView(context: android.content.Context) : View(context) {
@@ -798,7 +795,6 @@ class MainActivity : Activity() {
         if (rows.isEmpty()) addEmptyState(root, "Місць зберігання ще немає", "Додайте стелаж, комірку або інше місце для обліку майна на цьому складі.")
         setContentView(root)
     }
-
     private fun showPersons(query: String = "") {        val root = base("Матеріально відповідальні особи")
         val all = db.list("responsible_persons")
         val rows = all.filter { query.isBlank() || it.any { value -> value.contains(query, true) } }
@@ -997,8 +993,7 @@ class MainActivity : Activity() {
                     .setItems(names) { _, toIndex ->
                         if (fromIndex == toIndex) {
                             showError("Склад-відправник і склад-отримувач мають бути різними.")
-                        } else {
-                            val fromWarehouse = warehouses[fromIndex][0].toLong()                            val toWarehouse = warehouses[toIndex][0].toLong()
+                        } else {                            val fromWarehouse = warehouses[fromIndex][0].toLong()                            val toWarehouse = warehouses[toIndex][0].toLong()
                             chooseLocation(fromWarehouse, "Комірка-відправник", true) { fromLocation ->
                                 chooseLocation(toWarehouse, "Комірка-отримувач", true) { toLocation ->
                                     showMovementForm(materialId, "TRANSFER", title, fromWarehouse, toWarehouse, fromLocation, toLocation)
@@ -1078,6 +1073,68 @@ class MainActivity : Activity() {
             }
             if (saved) showMovement(type, title)
         }
+    }
+
+    private fun showReports() {
+        val root = base("Звіти")
+        val rows = db.initialStockRowsForAll()
+        val warehouses = db.warehouseRows()
+        val totalQty = rows.sumOf { it.getOrNull(10)?.replace(',', '.')?.toDoubleOrNull() ?: 0.0 }
+        val totalValue = rows.sumOf {
+            (it.getOrNull(10)?.replace(',', '.')?.toDoubleOrNull() ?: 0.0) *
+                (it.getOrNull(11)?.replace(',', '.')?.toDoubleOrNull() ?: 0.0)
+        }
+        val hasPrices = rows.any { (it.getOrNull(11)?.replace(',', '.')?.toDoubleOrNull() ?: 0.0) > 0.0 }
+        val positionCount = rows.map {
+            listOf(it.getOrNull(4).orEmpty(), it.getOrNull(5).orEmpty(), it.getOrNull(6).orEmpty(),
+                it.getOrNull(7).orEmpty(), it.getOrNull(8).orEmpty()).joinToString("|")
+        }.distinct().size
+
+        addScreenSummary(root, "АНАЛІТИКА", "Зведення залишків",
+            "${rows.size} рядків • ${positionCount} позицій • ${formatQty(totalQty)} од.")
+        addAction(root, "▦  Відкрити всі залишки") { showAllInitialStock() }
+        addAction(root, "⌕  Знайти номенклатуру") { showMaterials() }
+        addAction(root, "▤  Журнал руху") { showJournal() }
+
+        addScreenSummary(root, "ВАРТІСТЬ", "Оцінка за Excel",
+            if (hasPrices) String.format(Locale.US, "%.2f", totalValue) + " • за вказаними цінами"
+            else "У вихідному Excel немає цін для достовірного розрахунку.")
+
+        addScreenSummary(root, "ЗА ТИПОМ ЗБЕРІГАННЯ", "Структура залишків",
+            "Кількість рядків та обсяг за типами")
+        val typeGroups = rows.groupBy { it.getOrNull(2).orEmpty().ifBlank { "Не вказано" } }
+            .map { (type, items) ->
+                Triple(type, items.size, items.sumOf { it.getOrNull(10)?.replace(',', '.')?.toDoubleOrNull() ?: 0.0 })
+            }.sortedBy { it.first }
+        typeGroups.forEach { item ->
+            addManageRow(root, item.first, "${item.second} рядків • ${formatQty(item.third)} од.") {
+                showAllInitialStock()
+            }
+        }
+
+        addScreenSummary(root, "РОЗПОДІЛ ПО СКЛАДАХ", "Найбільші залишки",
+            "Підсумок згруповано за кодом складу з Excel")
+        val warehouseGroups = rows.groupBy { it.getOrNull(1).orEmpty().ifBlank { "Без коду" } }
+            .map { (code, items) ->
+                val quantity = items.sumOf { it.getOrNull(10)?.replace(',', '.')?.toDoubleOrNull() ?: 0.0 }
+                val positions = items.map {
+                    listOf(it.getOrNull(4).orEmpty(), it.getOrNull(5).orEmpty(), it.getOrNull(6).orEmpty(),
+                        it.getOrNull(7).orEmpty(), it.getOrNull(8).orEmpty()).joinToString("|")
+                }.distinct().size
+                val warehouse = warehouses.firstOrNull { it.getOrNull(6).orEmpty().equals(code, true) }
+                val name = warehouse?.getOrNull(1)?.takeIf { it.isNotBlank() } ?: "Склад $code"
+                val responsible = warehouse?.getOrNull(3)?.takeIf { it.isNotBlank() } ?: "МВО не вказано"
+                arrayOf(code, name, responsible, items.size.toString(), positions.toString(), quantity.toString())
+            }.sortedByDescending { it[5].toDoubleOrNull() ?: 0.0 }
+        warehouseGroups.take(30).forEach { item ->
+            addManageRow(root, "${item[1]} • ${item[0]}",
+                "МВО: ${item[2]} • ${item[3]} рядків • ${item[4]} позицій • ${formatQty(item[5].toDoubleOrNull() ?: 0.0)} од.") {
+                showAllInitialStock()
+            }
+        }
+        if (rows.isEmpty()) addEmptyState(root, "Дані для звіту відсутні",
+            "Спочатку імпортуйте файл «Залишки.XLSX». Звіт не створює та не вигадує складські дані.")
+        setContentView(root)
     }
 
     private fun showCards() {
@@ -1197,8 +1254,7 @@ class MainActivity : Activity() {
         hero.addView(TextView(this).apply{text=if(active)"● Активний" else "● Неактивний";textSize=10f;setTextColor(if(active)Color.rgb(23,220,151) else muted);background=rounded(if(active)Color.rgb(10,56,46) else Color.rgb(35,43,47),9);setPadding(dp(8),dp(4),dp(8),dp(4))},FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(102);topMargin=dp(76)})
         hero.addView(TextView(this).apply{text="✎ Редагувати";textSize=10f;setTextColor(Color.WHITE);gravity=Gravity.CENTER;background=rounded(Color.rgb(65,54,29),9);setOnClickListener{showWarehouseActions(warehouseId,w[1],w[2],w[4].toLongOrNull(),w.getOrNull(5).orEmpty())}},FrameLayout.LayoutParams(dp(96),dp(38)).apply{rightMargin=dp(7);topMargin=dp(16);gravity=Gravity.RIGHT})
         page.addView(hero,LinearLayout.LayoutParams(-1,dp(116)).apply{bottomMargin=dp(8)})
-        val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;background=rounded(Color.rgb(14,25,27),12);setPadding(dp(12),dp(8),dp(12),dp(8))}        fun infoLine(label:String,value:String){info.addView(LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;addView(TextView(this@MainActivity).apply{text=label;textSize=11f;setTextColor(muted)},LinearLayout.LayoutParams(dp(135),-2));addView(TextView(this@MainActivity).apply{text=value.ifBlank{"—"};textSize=12f;setTextColor(Color.WHITE)},LinearLayout.LayoutParams(0,-2,1f))},LinearLayout.LayoutParams(-1,dp(27)))}
-        infoLine("Номер складу",w.getOrNull(6).orEmpty().ifBlank { title });infoLine("Тип майна",type);infoLine("Місце розташування",w[2]);infoLine("МВО",w[3]);infoLine("Примітка",w.getOrNull(5).orEmpty())
+        val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;background=rounded(Color.rgb(14,25,27),12);setPadding(dp(12),dp(8),dp(12),dp(8))}        fun infoLine(label:String,value:String){info.addView(LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;addView(TextView(this@MainActivity).apply{text=label;textSize=11f;setTextColor(muted)},LinearLayout.LayoutParams(dp(135),-2));addView(TextView(this@MainActivity).apply{text=value.ifBlank{"—"};textSize=12f;setTextColor(Color.WHITE)},LinearLayout.LayoutParams(0,-2,1f))},LinearLayout.LayoutParams(-1,dp(27)))}        infoLine("Номер складу",w.getOrNull(6).orEmpty().ifBlank { title });infoLine("Тип майна",type);infoLine("Місце розташування",w[2]);infoLine("МВО",w[3]);infoLine("Примітка",w.getOrNull(5).orEmpty())
         page.addView(info,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
         val materials=db.list("materials");var pos=0;var qty=0.0
         materials.forEach{m->val balance=db.warehouseBalance(m[0].toLongOrNull()?:return@forEach,warehouseId);if(balance!=0.0){pos++;qty+=balance}}
@@ -1251,7 +1307,7 @@ class MainActivity : Activity() {
         scroll.addView(page);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER;background=rounded(Color.rgb(17,27,29),18)}
         fun navItem(icon:String,label:String,activeItem:Boolean,action:()->Unit)=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setOnClickListener{action()};addView(DashboardIconView(this@MainActivity,icon,if(activeItem)gold else muted),LinearLayout.LayoutParams(dp(24),dp(25)));addView(TextView(this@MainActivity).apply{text=label;textSize=8f;gravity=Gravity.CENTER;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;setTextColor(if(activeItem)gold else muted)},LinearLayout.LayoutParams(-1,dp(16)))}
-        nav.addView(navItem("home","Головна",false){showHome()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("home","Склади",true){showWarehouses()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("cube","Номенкл.",false){showMaterials()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("transfer","Рух майна",false){showMovement("TRANSFER","Переміщення")},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("chart","Звіти",false){showCards()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("settings","Налаштув.",false){showBackupMenu()},LinearLayout.LayoutParams(0,dp(56),1f))
+        nav.addView(navItem("home","Головна",false){showHome()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("home","Склади",true){showWarehouses()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("cube","Номенкл.",false){showMaterials()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("transfer","Рух майна",false){showMovement("TRANSFER","Переміщення")},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("chart","Звіти",false){showReports()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("settings","Налаштув.",false){showBackupMenu()},LinearLayout.LayoutParams(0,dp(56),1f))
         root.addView(nav,LinearLayout.LayoutParams(-1,dp(60)).apply{bottomMargin=dp(2)})
         setContentView(root)
     }
@@ -1397,8 +1453,7 @@ class MainActivity : Activity() {
                             strings.add(current?.toString().orEmpty())
                             current = null
                         }                        event = parser.next()
-                    }
-                }
+                    }                }
                 val sheet = zip.getEntry("xl/worksheets/sheet1.xml")
                     ?: throw IllegalArgumentException("Не знайдено аркуш Excel.")
                 val parser = XmlPullParserFactory.newInstance().newPullParser()
@@ -1597,8 +1652,7 @@ class MainActivity : Activity() {
     private fun safeDb(action: () -> Unit): Boolean {
         return try {            action()
             true
-        } catch (e: SQLiteException) {
-            showError("Не вдалося виконати операцію: ${e.message ?: "помилка бази даних"}.")
+        } catch (e: SQLiteException) {            showError("Не вдалося виконати операцію: ${e.message ?: "помилка бази даних"}.")
             false
         }
     }
