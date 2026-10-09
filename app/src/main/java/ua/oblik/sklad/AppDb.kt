@@ -3,6 +3,7 @@ package ua.oblik.sklad
 import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
+import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
 
 class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null, 7) {
