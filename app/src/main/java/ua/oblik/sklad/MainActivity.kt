@@ -1093,8 +1093,12 @@ class MainActivity : Activity() {
         page.addView(info,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
         val materials=db.list("materials");var pos=0;var qty=0.0
         materials.forEach{m->val balance=db.warehouseBalance(m[0].toLongOrNull()?:return@forEach,warehouseId);if(balance!=0.0){pos++;qty+=balance}}
+        val stockCode=w.getOrNull(6).orEmpty().ifBlank{title}
+        val importedStock=db.initialStockRows(stockCode)
+        val importedQty=importedStock.sumOf{it.getOrNull(10)?.toDoubleOrNull()?:0.0}
+        val importedValue=importedStock.sumOf{(it.getOrNull(10)?.toDoubleOrNull()?:0.0)*(it.getOrNull(11)?.toDoubleOrNull()?:0.0)}
         val stats=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
-        listOf(Triple("cube","Всього позицій",pos.toString()),Triple("boxes","Загальна кількість",formatQty(qty)),Triple("database","Загальна вартість","—")).forEachIndexed{index,item->
+        listOf(Triple("cube","Всього позицій",(pos+importedStock.size).toString()),Triple("boxes","Загальна кількість",formatQty(qty+importedQty)),Triple("database","Загальна вартість",if(importedStock.isEmpty())"—" else String.format(Locale.US,"%.2f",importedValue))).forEachIndexed{index,item->
             val box=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;background=rounded(Color.rgb(16,28,30),10);setPadding(dp(3),dp(7),dp(3),dp(7))}
             box.addView(DashboardIconView(this,item.first,if(index==0)gold else Color.LTGRAY),LinearLayout.LayoutParams(dp(24),dp(24)))
             box.addView(TextView(this).apply{text=item.second;textSize=9f;gravity=Gravity.CENTER;setTextColor(muted)})
