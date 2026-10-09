@@ -193,11 +193,16 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         }
     }
 
-    fun updateWarehouse(id: Long, name: String, address: String, note: String, responsiblePersonId: Long?) =
-        writableDatabase.update("warehouses", ContentValues().apply {
-            put("name", name); put("address", address); put("note", note)
-            if (responsiblePersonId == null) putNull("responsible_person_id") else put("responsible_person_id", responsiblePersonId)
-        }, "id=?", arrayOf(id.toString()))
+    fun updateWarehouse(
+        id: Long, name: String, address: String, note: String, responsiblePersonId: Long?,
+        number: String? = null, propertyType: String? = null, active: Boolean? = null
+    ) = writableDatabase.update("warehouses", ContentValues().apply {
+        put("name", name); put("address", address); put("note", note)
+        if (responsiblePersonId == null) putNull("responsible_person_id") else put("responsible_person_id", responsiblePersonId)
+        if (number != null) put("warehouse_number", number)
+        if (propertyType != null) put("property_type", propertyType)
+        if (active != null) put("is_active", if (active) 1 else 0)
+    }, "id=?", arrayOf(id.toString()))
 
     fun updatePerson(id: Long, name: String, position: String, phone: String) =
         writableDatabase.update("responsible_persons", ContentValues().apply {
