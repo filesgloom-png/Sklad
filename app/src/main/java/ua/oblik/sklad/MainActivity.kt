@@ -1680,6 +1680,7 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 background = rounded(Color.rgb(48, 42, 28), 7)
                 setPadding(dp(7), dp(5), dp(7), dp(5))
+                contentDescription = "Позиція ${i + 1}"
             }, LinearLayout.LayoutParams(-2, -2).apply { rightMargin = dp(9) })
             titleRow.addView(TextView(this).apply {
                 text = "${r.getOrNull(4).orEmpty()} • ${r.getOrNull(6).orEmpty()}"
