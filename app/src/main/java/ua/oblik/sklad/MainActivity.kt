@@ -1416,9 +1416,12 @@ class MainActivity : Activity() {
                 STOCK_OPEN -> {
                     val rows = parseInitialStock(uri)
                     val count = db.replaceInitialStock(rows)
-                    showBackupMenu()
+                    val types = rows.groupingBy { it.getOrNull(3).orEmpty() }.eachCount().entries.sortedBy { it.key }
+                        .joinToString("\\n") { it.key + ": " + it.value + " рядків" }
+                    val warehouses = rows.mapNotNull { it.getOrNull(2) }.distinct().size
+                    showAllInitialStock()
                     AlertDialog.Builder(this).setTitle("Імпорт завершено")
-                        .setMessage("Імпортовано рядків: " + count + ". Код складу зіставлено за правилом: 25C → 25CA. Імпортовані залишки показуються окремо від документів руху.")
+                        .setMessage("Збережено рядків: " + count + "\\nСкладів у файлі: " + warehouses + "\\n\\n" + types + "\\n\\nВідкрито загальний список залишків.")
                         .setPositiveButton("Гаразд", null).show()
                 }
                 BACKUP_CREATE -> {
