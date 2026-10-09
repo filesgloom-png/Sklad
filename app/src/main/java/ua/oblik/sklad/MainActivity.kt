@@ -1048,6 +1048,24 @@ class MainActivity : Activity() {
         setContentView(root)
     }
 
+    private fun showWarehouseStockTab(warehouseId: Long, type: String, query: String) {
+        val w = db.warehouseRows().firstOrNull { it[0].toLongOrNull() == warehouseId } ?: run { showWarehouses(); return }
+        val code = w.getOrNull(6).orEmpty().ifBlank { w[1] }
+        val rows = db.initialStockRows(code, type, query)
+        val root = base("Залишки • " + code)
+        addScreenSummary(root, "ІМПОРТОВАНІ ЗАЛИШКИ", "Тип зберігання: " + type, rows.size.toString() + " рядків")
+        addAction(root, "Усі типи") { showWarehouseStockTab(warehouseId, "ALL", query) }
+        addAction(root, "005 • Можна виписувати") { showWarehouseStockTab(warehouseId, "005", query) }
+        addAction(root, "902 • Не розміщене") { showWarehouseStockTab(warehouseId, "902", query) }
+        addAction(root, "922 • Заблоковано") { showWarehouseStockTab(warehouseId, "922", query) }
+        addAction(root, "⌕ Пошук") { searchDialog("Пошук залишків", query) { q -> showWarehouseStockTab(warehouseId, type, q) } }
+        rows.take(500).forEachIndexed { i, r ->
+            addManageRow(root, (i + 1).toString() + ". " + r[5], "Матеріал " + r[4] + " • NSN " + r[6] + " • Тип " + r[2] + " • Місце " + r[3] + " • Розмір " + r[7] + " • Партія " + r[8] + " • " + r[10] + " " + r[9] + " • Ціна " + r[11]) { }
+        }
+        if (rows.isEmpty()) addEmptyState(root, "Залишків немає", "Оберіть інший тип зберігання або пошуковий запит.")
+        setContentView(root)
+    }
+
     private fun showWarehouseDetail(warehouseId: Long, selectedTab: String = "Номенклатура") {
         val w = db.warehouseRows().firstOrNull { it[0].toLongOrNull() == warehouseId } ?: run { showWarehouses(); return }
         val title = w[1].ifBlank { w.getOrNull(6).orEmpty() }
@@ -1088,7 +1106,23 @@ class MainActivity : Activity() {
         val tabRow=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         tabs.forEach{tab->tabRow.addView(TextView(this).apply{text=tab;textSize=8f;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;gravity=Gravity.CENTER;setTextColor(if(tab==selectedTab)gold else muted);background=rounded(if(tab==selectedTab)Color.rgb(63,51,27) else Color.rgb(15,26,29),8);setPadding(dp(3),dp(8),dp(3),dp(8));setOnClickListener{showWarehouseDetail(warehouseId,tab)}},LinearLayout.LayoutParams(0,dp(40),1f).apply{if(tab!=tabs.last())rightMargin=dp(3)})}
         page.addView(tabRow,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
-        if(selectedTab=="Номенклатура"||selectedTab=="Залишки"){
+        if(selectedTab=="Залишки" && db.initialStockCount()>0){
+            val stockRows=db.initialStockRows(w.getOrNull(6).orEmpty().ifBlank{title})
+            val filters=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
+            listOf("ALL","005","902","922").forEach{t->
+                filters.addView(TextView(this).apply{text=if(t=="ALL")"Усі" else t;textSize=10f;gravity=Gravity.CENTER;setTextColor(gold);background=rounded(Color.rgb(63,51,27),8);setOnClickListener{showWarehouseStockTab(warehouseId,t,"")}},LinearLayout.LayoutParams(0,dp(36),1f).apply{rightMargin=dp(3)})
+            }
+            page.addView(TextView(this).apply{text="Імпортовані залишки: "+stockRows.size+" рядків";textSize=12f;setTextColor(muted);setPadding(dp(2),dp(6),dp(2),dp(6))})
+            page.addView(filters,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(6)})
+            stockRows.take(500).forEachIndexed{index,r->
+                val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;background=rounded(Color.rgb(14,25,27),9);setPadding(dp(10),dp(9),dp(10),dp(9))}
+                card.addView(TextView(this).apply{text=(index+1).toString()+". "+r[5];textSize=12f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE)})
+                card.addView(TextView(this).apply{text="Матеріал: "+r[4]+" • NSN: "+r[6];textSize=10f;setTextColor(muted);setPadding(0,dp(4),0,0)})
+                card.addView(TextView(this).apply{text="Тип: "+r[2]+" • Місце: "+r[3]+" • Розмір: "+r[7];textSize=10f;setTextColor(gold);setPadding(0,dp(3),0,0)})
+                card.addView(TextView(this).apply{text="Партія: "+r[8]+" • Залишок: "+r[10]+" "+r[9]+" • Ціна: "+r[11];textSize=10f;setTextColor(muted);setPadding(0,dp(3),0,0)})
+                page.addView(card,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(5)})
+            }
+        }else if(selectedTab=="Номенклатура"||selectedTab=="Залишки"){
             val action=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL}
             action.addView(TextView(this).apply{text=if(selectedTab=="Номенклатура")"Номенклатура на складі" else "Фактичні залишки";textSize=12f;setTextColor(muted)},LinearLayout.LayoutParams(0,dp(40),1f))
             action.addView(TextView(this).apply{text="+ Додати";textSize=11f;setTextColor(Color.rgb(20,22,17));gravity=Gravity.CENTER;background=rounded(gold,8);setOnClickListener{showMovement("RECEIPT","Надходження")}},LinearLayout.LayoutParams(dp(88),dp(36)))
