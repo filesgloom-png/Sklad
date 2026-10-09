@@ -2116,15 +2116,27 @@ class MainActivity : Activity() {
             maxLines = 2
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
-        card.addView(TextView(this).apply {
-            text = "Відкрити позицію  ›"
-            textSize = 11.5f
+        val footer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Color.rgb(19, 31, 31), 9)
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+        }
+        footer.addView(TextView(this).apply {
+            text = "▦  КІЛЬКІСТЬ / БАЛАНС"
+            textSize = 9f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(143, 164, 160))
+            letterSpacing = 0.04f
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        footer.addView(TextView(this).apply {
+            text = "Відкрити  ↗"
+            textSize = 11f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(226, 195, 111))
-            background = rounded(Color.rgb(35, 39, 29), 8)
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(9), dp(7), dp(9), dp(7))
+            gravity = Gravity.CENTER
         })
+        card.addView(footer)
         root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
     }
 
