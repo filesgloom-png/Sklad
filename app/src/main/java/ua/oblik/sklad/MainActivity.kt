@@ -796,7 +796,7 @@ class MainActivity : Activity() {
         addScreenSummary(root, "РУХ МАЙНА", title, "${rows.size} записів у журналі")
         addAction(root, "＋  Створити документ") {
             val mats = db.list("materials")
-            val warehouses = db.warehouseRows()
+            val warehouses = db.warehouseRows().filter { it.getOrNull(8) != "0" }
             if (mats.isEmpty()) {
                 showError("Спочатку додайте матеріал у Номенклатурі.")
                 return@addAction
@@ -832,7 +832,7 @@ class MainActivity : Activity() {
         warehouses: List<Array<String>>
     ) {
         val action = if (type == "RECEIPT") "Куди оприбуткувати" else "З якого складу списати"
-        val names = warehouses.map { it[1] }.toTypedArray()
+        val names = warehouses.map { "${it[1]}${it.getOrNull(6)?.takeIf { n -> n.isNotBlank() }?.let { n -> " • №$n" } ?: ""}" }.toTypedArray()
         AlertDialog.Builder(this)
             .setTitle(action)
             .setItems(names) { _, which ->
