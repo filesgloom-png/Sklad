@@ -1308,10 +1308,19 @@ class MainActivity : Activity() {
                             }
                             "row" -> {
                                 val first = cells[0].orEmpty().trim()
-                                if (first.isNotBlank() && !first.equals("Номер складу", true) && cells.size >= 10) {
+                                if (first.isNotBlank() && !first.contains("склад", true) && !first.contains("warehouse", true) && cells.size >= 10) {
                                     val values = (0..10).map { cells[it].orEmpty().trim() }
                                     val warehouseCode = values[0]
-                                    val appCode = if (warehouseCode.endsWith("A", true)) warehouseCode else warehouseCode + "A"
+                                    fun normCode(code: String): String = code.trim().uppercase(Locale.ROOT)
+                                        .replace('А', 'A').replace('В', 'B').replace('Е', 'E').replace('К', 'K')
+                                        .replace('М', 'M').replace('Н', 'H').replace('О', 'O').replace('Р', 'P')
+                                        .replace('С', 'C').replace('Т', 'T').replace('Х', 'X')
+                                        .replace(" ", "").replace("-", "")
+                                    val candidate = if (normCode(warehouseCode).endsWith("A")) warehouseCode else warehouseCode + "А"
+                                    val appCodes = db.warehouseRows().mapNotNull { row -> row.getOrNull(6)?.takeIf { it.isNotBlank() } }
+                                    val appCode = appCodes.firstOrNull { normCode(it) == normCode(candidate) }
+                                        ?: appCodes.firstOrNull { normCode(it) == normCode(warehouseCode) + "A" }
+                                        ?: candidate
                                     val sourceKey = imported.size.toString() + "|" + values.joinToString("|")
                                     imported.add(arrayOf(sourceKey, warehouseCode, appCode, values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10]))
                                 }
