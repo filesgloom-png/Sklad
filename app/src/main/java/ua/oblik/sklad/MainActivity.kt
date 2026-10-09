@@ -946,27 +946,40 @@ class MainActivity : Activity() {
         val root = base("Картки обліку")
         val materials = db.list("materials")
         val warehouses = db.warehouseRows()
+        val stockLines = materials.sumOf { material ->
+            val materialId = material[0].toLongOrNull() ?: 0L
+            warehouses.count { warehouse -> db.warehouseBalance(materialId, warehouse[0].toLongOrNull() ?: 0L) != 0.0 }
+        }
+        addScreenSummary(root, "КОНТРОЛЬ ТА ЗВІТНІСТЬ", "Картки обліку майна", "${materials.size} позицій  •  ${warehouses.size} складів  •  ${stockLines} складських залишків")
         materials.forEach { material ->
             val materialId = material[0].toLongOrNull() ?: return@forEach
-            addRow(
-                root,
-                material[3],
-                "NSN ${material[1]} • Загальний залишок: ${formatQty(db.materialBalance(materialId))}"
-            )
+            val balance = db.materialBalance(materialId)
+            addManageRow(root, material[3], "NSN ${material[1].ifBlank { "—" }}  •  ${material[4]}  •  Загальний залишок: ${formatQty(balance)}") {
+                val detail = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8), dp(4), dp(8), dp(4)) }
+                addRow(detail, "Картка майна", material[3])
+                addRow(detail, "Одиниця виміру", material[4])
+                addRow(detail, "Загальний залишок", formatQty(balance))
+                warehouses.forEach { warehouse ->
+                    val warehouseId = warehouse[0].toLongOrNull() ?: return@forEach
+                    val warehouseBalance = db.warehouseBalance(materialId, warehouseId)
+                    if (warehouseBalance != 0.0) addRow(detail, warehouse[1], "Залишок: ${formatQty(warehouseBalance)} ${material[4]}")
+                }
+                AlertDialog.Builder(this).setTitle("Картка обліку").setView(detail).setPositiveButton("Готово", null).show()
+            }
             warehouses.forEach { warehouse ->
-                val balance = db.warehouseBalance(materialId, warehouse[0].toLong())
-                if (balance != 0.0) {
-                    addRow(root, "  ${warehouse[1]}", "Залишок: ${formatQty(balance)} ${material[4]}")
-                    db.locationRows(warehouse[0].toLong()).forEach { location ->
-                        val locationBalance = db.locationBalance(materialId, location[0].toLong())
-                        if (locationBalance != 0.0) {
-                            addRow(root, "    ↳ ${location[1]}", "Комірка: ${formatQty(locationBalance)} ${material[4]}")
-                        }
+                val warehouseId = warehouse[0].toLongOrNull() ?: return@forEach
+                val warehouseBalance = db.warehouseBalance(materialId, warehouseId)
+                if (warehouseBalance != 0.0) {
+                    addRow(root, "  ${warehouse[1]}", "Залишок: ${formatQty(warehouseBalance)} ${material[4]}")
+                    db.locationRows(warehouseId).forEach { location ->
+                        val locationId = location[0].toLongOrNull() ?: return@forEach
+                        val locationBalance = db.locationBalance(materialId, locationId)
+                        if (locationBalance != 0.0) addRow(root, "    ↳ ${location[1]}", "Комірка: ${formatQty(locationBalance)} ${material[4]}")
                     }
                 }
             }
         }
-        if (materials.isEmpty()) addRow(root, "Карток ще немає", "Додайте матеріали в Номенклатурі.")
+        if (materials.isEmpty()) addEmptyState(root, "Карток ще немає", "Додайте матеріали в Номенклатурі. Реальні складські дані не підставляються автоматично.")
         setContentView(root)
     }
 
