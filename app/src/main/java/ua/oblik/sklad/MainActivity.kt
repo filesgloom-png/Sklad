@@ -1268,6 +1268,33 @@ class MainActivity : Activity() {
             .show()
     }
 
+    private fun addScreenSummary(root: LinearLayout, eyebrow: String, title: String, value: String) {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(15), dp(13), dp(15), dp(13))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(35, 35, 27), Color.rgb(15, 27, 29))).apply {
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), Color.rgb(65, 59, 39))
+            }
+        }
+        box.addView(TextView(this).apply { text = eyebrow; textSize = 10f; setTypeface(null, Typeface.BOLD); setTextColor(Color.rgb(226, 195, 111)); letterSpacing = .08f })
+        box.addView(TextView(this).apply { text = title; textSize = 18f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE); setPadding(0, dp(4), 0, dp(3)) })
+        box.addView(TextView(this).apply { text = value; textSize = 12f; setTextColor(Color.rgb(173, 185, 186)) })
+        root.addView(box, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+    }
+
+    private fun addEmptyState(root: LinearLayout, title: String, description: String) {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(18), dp(28), dp(18), dp(28))
+            background = rounded(Color.rgb(14, 25, 27), 14)
+        }
+        box.addView(TextView(this).apply { text = title; textSize = 16f; setTypeface(null, Typeface.BOLD); gravity = Gravity.CENTER; setTextColor(Color.WHITE) })
+        box.addView(TextView(this).apply { text = description; textSize = 12f; gravity = Gravity.CENTER; setTextColor(Color.rgb(157, 172, 174)); setPadding(0, dp(7), 0, 0) })
+        root.addView(box, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6); bottomMargin = dp(8) })
+    }
+
     private fun addAction(root: LinearLayout, text: String, action: () -> Unit) {
         root.addView(TextView(this).apply {
             this.text=text;textSize=14f;setTypeface(null,Typeface.BOLD);setTextColor(Color.rgb(24,25,20));gravity=Gravity.CENTER
