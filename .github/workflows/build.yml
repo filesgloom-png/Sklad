@@ -19,6 +19,47 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Bundle stock workbook into Android assets
+        run: |
+          test -s "Залишки.XLSX"
+          mkdir -p app/src/main/assets
+          cp "Залишки.XLSX" app/src/main/assets/Залишки.XLSX
+      - name: Verify source workbook contains 3569 importable stock rows
+        run: |
+          python3 - <<'PY'
+          import zipfile
+          import xml.etree.ElementTree as ET
+
+          path = "app/src/main/assets/Залишки.XLSX"
+          ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+          with zipfile.ZipFile(path) as book:
+              shared = []
+              if "xl/sharedStrings.xml" in book.namelist():
+                  root = ET.fromstring(book.read("xl/sharedStrings.xml"))
+                  shared = ["".join(t.text or "" for t in si.findall(".//m:t", ns))
+                            for si in root.findall("m:si", ns)]
+              sheet = ET.fromstring(book.read("xl/worksheets/sheet1.xml"))
+              count = 0
+              for row in sheet.findall(".//m:sheetData/m:row", ns):
+                  cells = {}
+                  for cell in row.findall("m:c", ns):
+                      ref = cell.attrib.get("r", "A1")
+                      letters = "".join(c for c in ref if c.isalpha())
+                      col = 0
+                      for ch in letters.upper():
+                          col = col * 26 + ord(ch) - ord("A") + 1
+                      raw = cell.find("m:v", ns)
+                      value = "" if raw is None else (raw.text or "")
+                      if cell.attrib.get("t") == "s" and value:
+                          value = shared[int(value)]
+                      cells[col - 1] = value.strip()
+                  first = cells.get(0, "")
+                  if first and "склад" not in first.lower() and "warehouse" not in first.lower() and len(cells) >= 10:
+                      count += 1
+          print(f"Importable stock rows: {count}")
+          if count != 3569:
+              raise SystemExit(f"Expected 3569 importable stock rows, got {count}")
+          PY
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -36,6 +77,9 @@ jobs:
           gradle-version: '8.9'
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleDebug
+      - name: Verify APK contains bundled stock workbook
+        run: |
+          unzip -l app/build/outputs/apk/debug/app-debug.apk | grep -F 'assets/Залишки.XLSX'
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
