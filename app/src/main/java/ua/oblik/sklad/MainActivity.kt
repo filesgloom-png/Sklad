@@ -2081,14 +2081,16 @@ class MainActivity : Activity() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(13), dp(12), dp(12), dp(12))
+            setPadding(dp(14), dp(13), dp(13), dp(13))
+            minimumHeight = dp(68)
             background = GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(22, 35, 34), Color.rgb(12, 24, 26))
+                intArrayOf(Color.rgb(24, 38, 36), Color.rgb(13, 26, 28))
             ).apply {
-                cornerRadius = dp(12).toFloat()
-                setStroke(dp(1), Color.rgb(43, 59, 54))
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), Color.rgb(49, 68, 61))
             }
+            contentDescription = "$badge: $title. $subtitle"
             isClickable = true
             isFocusable = true
             setOnClickListener { action() }
@@ -2113,12 +2115,16 @@ class MainActivity : Activity() {
         card.addView(details, LinearLayout.LayoutParams(0, -2, 1f))
         card.addView(TextView(this).apply {
             text = badge
-            textSize = 10f
+            textSize = 11f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.rgb(226, 195, 111))
+            setTextColor(Color.rgb(235, 207, 130))
             gravity = Gravity.CENTER
-            background = rounded(Color.rgb(43, 40, 28), 8)
-            setPadding(dp(8), dp(7), dp(8), dp(7))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(45, 42, 29))
+                cornerRadius = dp(9).toFloat()
+                setStroke(dp(1), Color.rgb(83, 71, 42))
+            }
+            setPadding(dp(9), dp(8), dp(9), dp(8))
         }, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
         root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
     }
