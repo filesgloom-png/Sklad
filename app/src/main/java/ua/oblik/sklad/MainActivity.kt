@@ -603,32 +603,32 @@ class MainActivity : Activity() {
         val root = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setBackgroundColor(Color.rgb(7,18,21)) }
         root.setOnApplyWindowInsetsListener { v, i -> val b=i.getInsets(android.view.WindowInsets.Type.systemBars()); v.setPadding(0,b.top,0,b.bottom); i }
         val scroll = ScrollView(this).apply { isFillViewport=true }
-        val page = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(dp(20),dp(8),dp(20),dp(16)) }
+        val page = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(dp(20),dp(5),dp(20),dp(24)) }
         val hero = FrameLayout(this).apply { clipToOutline=true; background=rounded(Color.rgb(15,26,27),16) }
-        hero.addView(WarehouseBannerView(this),FrameLayout.LayoutParams(-1,dp(112)))
-        hero.addView(View(this).apply { background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.TRANSPARENT,Color.argb(225,7,18,21))) },FrameLayout.LayoutParams(-1,dp(112)))
+        hero.addView(WarehouseBannerView(this),FrameLayout.LayoutParams(-1,dp(94)))
+        hero.addView(View(this).apply { background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.TRANSPARENT,Color.argb(225,7,18,21))) },FrameLayout.LayoutParams(-1,dp(94)))
         hero.addView(TextView(this).apply { text="←"; textSize=30f; setTextColor(gold); gravity=Gravity.CENTER; setOnClickListener{showWarehouses(query,filter)} },FrameLayout.LayoutParams(dp(48),dp(52)).apply{leftMargin=dp(2);topMargin=dp(4)})
-        hero.addView(TextView(this).apply { text="Додати склад"; textSize=27f; setTypeface(null,Typeface.BOLD); setTextColor(Color.WHITE) },FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(56);topMargin=dp(24)})
-        hero.addView(TextView(this).apply { text="Створення нового складу"; textSize=15f; setTextColor(Color.rgb(190,198,200)) },FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(56);topMargin=dp(66)})
-        page.addView(hero,LinearLayout.LayoutParams(-1,dp(112)).apply{bottomMargin=dp(10)})
-        val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(16),dp(16),dp(16),dp(16));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(17,29,29),Color.rgb(10,21,23))).apply{cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(38,50,48))}}
-        fun fieldLabel(label:String, required:Boolean=false) { card.addView(TextView(this).apply{text=if(required)"$label *" else label;textSize=14f;setTextColor(Color.rgb(202,210,211));setPadding(dp(2),dp(7),0,dp(6))}) }
+        hero.addView(TextView(this).apply { text="Додати склад"; textSize=27f; setTypeface(null,Typeface.BOLD); setTextColor(Color.WHITE) },FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(56);topMargin=dp(18)})
+        hero.addView(TextView(this).apply { text="Створення нового складу"; textSize=15f; setTextColor(Color.rgb(190,198,200)) },FrameLayout.LayoutParams(-2,-2).apply{leftMargin=dp(56);topMargin=dp(56)})
+        page.addView(hero,LinearLayout.LayoutParams(-1,dp(94)).apply{bottomMargin=dp(7)})
+        val card=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(13),dp(9),dp(13),dp(12));background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(17,29,29),Color.rgb(10,21,23))).apply{cornerRadius=dp(18).toFloat();setStroke(dp(1),Color.rgb(38,50,48))}}
+        fun fieldLabel(label:String, required:Boolean=false) { card.addView(TextView(this).apply{text=if(required)"$label *" else label;textSize=14f;setTextColor(Color.rgb(202,210,211));setPadding(dp(2),dp(4),0,dp(3))}) }
         fun input(hintText:String, icon:String, multiline:Boolean=false): EditText {
             val wrap=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(47,47,35),Color.rgb(18,29,28))).apply{cornerRadius=dp(10).toFloat();setStroke(dp(1),Color.rgb(47,59,55))}}
-            wrap.addView(TextView(this).apply{text=icon;textSize=22f;gravity=Gravity.CENTER;setTextColor(gold);setPadding(dp(12),dp(10),dp(12),dp(10))},LinearLayout.LayoutParams(dp(50),if(multiline)dp(72)else dp(48)))
+            wrap.addView(TextView(this).apply{text=icon;textSize=22f;gravity=Gravity.CENTER;setTextColor(gold);setPadding(dp(12),dp(10),dp(12),dp(10))},LinearLayout.LayoutParams(dp(50),if(multiline)dp(62)else dp(44)))
             val e=EditText(this).apply{hint=hintText;textSize=14f;setTextColor(Color.WHITE);setHintTextColor(Color.rgb(121,136,139));background=null;setPadding(dp(12),dp(8),dp(10),dp(8));if(multiline){minLines=2;gravity=Gravity.TOP}else setSingleLine(true)}
             wrap.addView(e,LinearLayout.LayoutParams(0,if(multiline)dp(72)else dp(48),1f))
-            card.addView(wrap,LinearLayout.LayoutParams(-1,if(multiline)dp(72)else dp(48)).apply{bottomMargin=dp(5)})
+            card.addView(wrap,LinearLayout.LayoutParams(-1,if(multiline)dp(62)else dp(44)).apply{bottomMargin=dp(3)})
             return e
         }
         fun choice(hintText:String, icon:String, values:List<String>, selected:(Int)->Unit) {
             val wrap=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(47,47,35),Color.rgb(18,29,28))).apply{cornerRadius=dp(10).toFloat();setStroke(dp(1),Color.rgb(47,59,55))}}
-            wrap.addView(TextView(this).apply{text=icon;textSize=22f;gravity=Gravity.CENTER;setTextColor(gold)},LinearLayout.LayoutParams(dp(50),dp(48)))
+            wrap.addView(TextView(this).apply{text=icon;textSize=22f;gravity=Gravity.CENTER;setTextColor(gold)},LinearLayout.LayoutParams(dp(50),dp(44)))
             val label=TextView(this).apply{text=hintText;textSize=14f;setTextColor(muted);gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),0,0,0)}
-            wrap.addView(label,LinearLayout.LayoutParams(0,dp(48),1f))
-            wrap.addView(TextView(this).apply{text="⌄";textSize=22f;setTextColor(gold);gravity=Gravity.CENTER},LinearLayout.LayoutParams(dp(38),dp(48)))
+            wrap.addView(label,LinearLayout.LayoutParams(0,dp(44),1f))
+            wrap.addView(TextView(this).apply{text="⌄";textSize=22f;setTextColor(gold);gravity=Gravity.CENTER},LinearLayout.LayoutParams(dp(38),dp(44)))
             wrap.setOnClickListener{AlertDialog.Builder(this@MainActivity).setTitle(hintText).setItems(values.toTypedArray()){_,which->label.text=values[which];label.setTextColor(Color.WHITE);selected(which)}.show()}
-            card.addView(wrap,LinearLayout.LayoutParams(-1,dp(48)).apply{bottomMargin=dp(5)})
+            card.addView(wrap,LinearLayout.LayoutParams(-1,dp(44)).apply{bottomMargin=dp(3)})
         }
         fieldLabel("Назва складу",true); val name=input("Наприклад, Склад №1","⌂")
         fieldLabel("Номер складу",true); val number=input("Введіть номер","＃")
@@ -652,8 +652,8 @@ class MainActivity : Activity() {
             else if(no.isBlank())showError("Введіть номер складу.")
             else {try{db.insertWarehouse(n,location.text.toString().trim(),note.text.toString().trim(),responsibleId,no,propertyType,active);showWarehouses(query,filter)}catch(e:Exception){showError("Не вдалося зберегти склад: "+e.message)}}
         }}
-        card.addView(save,LinearLayout.LayoutParams(-1,dp(56)).apply{bottomMargin=dp(8)})
-        card.addView(TextView(this).apply{text="Скасувати";textSize=14f;setTextColor(gold);gravity=Gravity.CENTER;background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(17,29,29),Color.rgb(12,22,23))).apply{cornerRadius=dp(11).toFloat();setStroke(dp(1),Color.rgb(86,75,44))};setOnClickListener{showWarehouses(query,filter)}},LinearLayout.LayoutParams(-1,dp(50)))
+        card.addView(save,LinearLayout.LayoutParams(-1,dp(50)).apply{bottomMargin=dp(6)})
+        card.addView(TextView(this).apply{text="Скасувати";textSize=14f;setTextColor(gold);gravity=Gravity.CENTER;background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(17,29,29),Color.rgb(12,22,23))).apply{cornerRadius=dp(11).toFloat();setStroke(dp(1),Color.rgb(86,75,44))};setOnClickListener{showWarehouses(query,filter)}},LinearLayout.LayoutParams(-1,dp(44)))
         page.addView(card)
         scroll.addView(page);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER;background=rounded(Color.rgb(17,27,29),18);setPadding(dp(2),dp(2),dp(2),dp(2))}
