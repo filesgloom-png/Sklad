@@ -863,9 +863,11 @@ class MainActivity : Activity() {
                 val title = first.getOrElse(5) { "" }.ifBlank { first.getOrElse(4) { "Без назви" } }
                 val identifiers = listOf(first.getOrElse(4) { "" }, first.getOrElse(6) { "" })
                     .filter { it.isNotBlank() }.distinct().joinToString(" • ")
-                val details = "${formatQty(qty)} ${first.getOrElse(9) { "" }} • ${warehouseCount} складів" +
+                val details = "${warehouseCount} складів" +
                     if (identifiers.isBlank()) "" else " • $identifiers"
-                addManageRow(root, title, details) { showImportedNomenclatureDetail(group) }
+                addNomenclatureCard(root, title, details, "${formatQty(qty)} ${first.getOrElse(9) { "" }}") {
+                    showImportedNomenclatureDetail(group)
+                }
             }
         }
 
@@ -873,7 +875,9 @@ class MainActivity : Activity() {
         rows.forEach { row ->
             val id = row[0].toLongOrNull() ?: return@forEach
             val balance = db.materialBalance(id)
-            addManageRow(root, row[3], "${row[4]}  •  Залишок: ${formatQty(balance)}  •  NSN ${row[1].ifBlank { "—" }}") { showMaterialActions(id, row) }
+            addNomenclatureCard(root, row[3], "${row[4]}  •  NSN ${row[1].ifBlank { "—" }}", "${formatQty(balance)} ${row[4]}") {
+                showMaterialActions(id, row)
+            }
         }
         if (rows.isEmpty() && importedGroups.isEmpty()) addEmptyState(root,
             if (query.isBlank()) "Номенклатура порожня" else "Нічого не знайдено",
@@ -1948,6 +1952,63 @@ class MainActivity : Activity() {
             background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(246,218,133),Color.rgb(179,143,56))).apply{cornerRadius=dp(12).toFloat();setStroke(dp(1),Color.rgb(238,207,122))}
             setPadding(dp(12),0,dp(12),0);setOnClickListener{action()}
         },LinearLayout.LayoutParams(-1,dp(50)).apply{bottomMargin=dp(10)})
+    }
+
+    private fun addNomenclatureCard(root: LinearLayout, title: String, subtitle: String, metric: String, action: () -> Unit) {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(13), dp(12), dp(13), dp(11))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(25, 36, 34), Color.rgb(12, 24, 26))
+            ).apply {
+                cornerRadius = dp(13).toFloat()
+                setStroke(dp(1), Color.rgb(45, 62, 56))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        top.addView(TextView(this).apply {
+            text = title
+            textSize = 14f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            maxLines = 3
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        top.addView(TextView(this).apply {
+            text = metric.ifBlank { "—" }
+            textSize = 13f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(226, 195, 111))
+            gravity = Gravity.CENTER
+            background = rounded(Color.rgb(46, 42, 28), 9)
+            setPadding(dp(9), dp(7), dp(9), dp(7))
+        }, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
+        card.addView(top)
+        card.addView(TextView(this).apply {
+            text = subtitle
+            textSize = 12f
+            setTextColor(Color.rgb(164, 179, 178))
+            setPadding(0, dp(7), 0, dp(8))
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        card.addView(TextView(this).apply {
+            text = "Відкрити позицію  ›"
+            textSize = 11.5f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(226, 195, 111))
+            background = rounded(Color.rgb(35, 39, 29), 8)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(9), dp(7), dp(9), dp(7))
+        })
+        root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
     }
 
     private fun addAccountCard(root: LinearLayout, title: String, subtitle: String, balance: Double, action: () -> Unit) {
