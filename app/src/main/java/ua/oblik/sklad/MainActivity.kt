@@ -641,11 +641,14 @@ class MainActivity : Activity() {
         choice("Оберіть МВО","●",listOf("Не призначено")+persons.map{it[1]}){responsibleId=if(it==0)null else persons[it-1][0].toLongOrNull()}
         fieldLabel("Примітка"); val note=input("Додаткова інформація (необов’язково)","▤",true)
         var active=true
-        val activeRow=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(12),dp(10),dp(12),dp(10));background=rounded(Color.rgb(18,29,29),12)}
-        val activeSwitch=Switch(this).apply{text="Склад активний";textSize=14f;setTextColor(Color.WHITE);isChecked=true;buttonTintList=android.content.res.ColorStateList.valueOf(gold);setOnCheckedChangeListener{_,checked->active=checked}}
-        activeRow.addView(activeSwitch)
-        activeRow.addView(TextView(this).apply{text="Склад буде відображатися у списку";textSize=11f;setTextColor(muted)})
-        card.addView(activeRow,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8);bottomMargin=dp(12)})
+        val activeRow=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(12),dp(9),dp(10),dp(9));background=rounded(Color.rgb(18,29,29),12)}
+        val activeText=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+        activeText.addView(TextView(this).apply{text="Склад активний";textSize=14f;setTextColor(Color.WHITE)})
+        activeText.addView(TextView(this).apply{text="Склад буде відображатися у списку";textSize=11f;setTextColor(muted);setPadding(0,dp(3),0,0)})
+        activeRow.addView(activeText,LinearLayout.LayoutParams(0,-2,1f))
+        val activeSwitch=Switch(this).apply{text="";isChecked=true;buttonTintList=android.content.res.ColorStateList.valueOf(gold);setOnCheckedChangeListener{_,checked->active=checked}}
+        activeRow.addView(activeSwitch,LinearLayout.LayoutParams(-2,-2))
+        card.addView(activeRow,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(6);bottomMargin=dp(8)})
         val save=TextView(this).apply{text="▣   Зберегти склад";textSize=15f;setTypeface(null,Typeface.BOLD);setTextColor(Color.rgb(20,22,17));gravity=Gravity.CENTER;background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(246,218,133),Color.rgb(179,143,56))).apply{cornerRadius=dp(11).toFloat();setStroke(dp(1),Color.rgb(247,219,139))};setOnClickListener{
             val n=name.text.toString().trim();val no=number.text.toString().trim()
             if(n.isBlank())showError("Введіть назву складу.")
