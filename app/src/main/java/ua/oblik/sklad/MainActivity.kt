@@ -1867,6 +1867,7 @@ class MainActivity : Activity() {
     private fun searchDialog(title: String, current: String, onSearch: (String) -> Unit) {
         val input = EditText(this).apply {
             hint = "Назва, NSN, документ, склад..."
+            contentDescription = "Пошуковий запит"
             setSingleLine(true)
             setText(current)
             setSelection(text.length)
