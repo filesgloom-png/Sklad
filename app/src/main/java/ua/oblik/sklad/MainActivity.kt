@@ -480,6 +480,13 @@ class MainActivity : Activity() {
             { showCards() }, { showMaterials() }
         )
 
+        grid(
+            Triple("boxes", "Залишки", "Імпортовані залишки Excel"),
+            Triple("database", "Імпорт Excel", "Завантажити таблицю залишків"),
+            Color.rgb(18, 115, 108), Color.rgb(171, 127, 40),
+            { showAllInitialStock() }, { importInitialStock() }
+        )
+
         sectionHeader("РУХ МАЙНА", "Облік операцій з майном")
         grid(
             Triple("plus", "Надходження", "Приймання майна"),
@@ -1236,6 +1243,23 @@ class MainActivity : Activity() {
             }.show()
     }
 
+
+    private fun showAllInitialStock(type: String = "ALL", query: String = "") {
+        val all = db.initialStockRowsForAll(type, query)
+        val root = base("Залишки")
+        val qty = all.sumOf { it.getOrNull(10)?.toDoubleOrNull() ?: 0.0 }
+        val value = all.sumOf { (it.getOrNull(10)?.toDoubleOrNull() ?: 0.0) * (it.getOrNull(11)?.toDoubleOrNull() ?: 0.0) }
+        addScreenSummary(root, "ЗАЛИШКИ", "Імпортоване майно", "Рядків: ${all.size} • Кількість: ${formatQty(qty)} • Вартість: ${String.format(Locale.US, "%.2f", value)}")
+        listOf("ALL", "005", "902", "922").forEach { t ->
+            addAction(root, if (t == "ALL") "Усі типи" else "Тип $t") { showAllInitialStock(t, query) }
+        }
+        addAction(root, "Пошук / фільтр") { searchDialog("Пошук залишків", query) { q -> showAllInitialStock(type, q) } }
+        if (all.isEmpty()) addEmptyState(root, "Залишки не знайдено", "Перевірте імпорт Excel або очистіть фільтр. Якщо список порожній, потрібен звіт імпорту.")
+        all.take(1000).forEachIndexed { i, r ->
+            addManageRow(root, "${i + 1}. ${r[4]} • ${r[6]}", "Склад ${r[1]} • Тип ${r[2]} • Місце ${r[3]} • ${r[10]} ${r[9]} • Розмір ${r[7]} • Партія ${r[8]} • Ціна ${r[11]}") { }
+        }
+        setContentView(root)
+    }
 
     private val STOCK_OPEN = 4103
 
