@@ -1579,7 +1579,7 @@ class MainActivity : Activity() {
             setTextColor(Color.rgb(146, 165, 161))
         }, LinearLayout.LayoutParams(0, dp(24), 1f))
         filterHeader.addView(TextView(this).apply {
-            text = "${all.size} рядків"
+            text = "${all.size} ${if (all.size == 1) "позиція" else if (all.size in 2..4) "позиції" else "позицій"}"
             textSize = 10f
             setTextColor(Color.rgb(226, 195, 111))
             background = rounded(Color.rgb(43, 39, 27), 8)
@@ -1643,10 +1643,10 @@ class MainActivity : Activity() {
         val searchAction: () -> Unit = {
             searchDialog("Пошук залишків", query) { q -> showAllInitialStock(type, q, warehouseCode, mvo) }
         }
-        if (warehouseCode != "ALL" || mvo != "ALL" || query.isNotBlank()) {
+        if (type != "ALL" || warehouseCode != "ALL" || mvo != "ALL" || query.isNotBlank()) {
             addActionRow(root, listOf(
-                "⌕  Пошук: ${query.ifBlank { "усі позиції" }}" to { searchAction() },
-                "↺  Скинути фільтри" to { showAllInitialStock(type) }
+                "⌕  ${query.takeIf { it.isNotBlank() }?.let { "Пошук: ${it.take(22)}${if (it.length > 22) "…" else ""}" } ?: "Пошук залишків"}" to { searchAction() },
+                "↺  Скинути фільтри" to { showAllInitialStock() }
             ))
         } else {
             addActionRow(root, listOf("⌕  Пошук залишків" to { searchAction() }))
