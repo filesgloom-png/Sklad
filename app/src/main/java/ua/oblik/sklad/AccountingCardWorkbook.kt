@@ -4,7 +4,7 @@ import java.io.OutputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/** Editable Excel card following the field order and movement columns of the supplied form. */
+/** Generates an editable XLSX using the supplied military-property card's coordinates and two movement blocks. */
 object AccountingCardWorkbook {
     data class Movement(
         val date: String, val document: String, val supplier: String, val recipient: String,
@@ -12,28 +12,110 @@ object AccountingCardWorkbook {
     )
 
     fun write(output: OutputStream, fields: List<Pair<String, String>>, movements: List<Movement>) {
-        val rows = mutableListOf<List<String>>()
-        rows.add(listOf("Додаток 31", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "до Інструкції з обліку військового майна у Збройних Силах України"))
-        rows.add(listOf("КАРТКА ОБЛІКУ ВІЙСЬКОВОГО МАЙНА (категорійного)"))
-        fields.forEach { rows.add(listOf(it.first, it.second)) }
-        rows.add(emptyList())
-        rows.add(listOf("Дата запису", "Документ / номер", "Постачальник", "Одержувач", "Надійшло", "Вибуло", "Залишок", "Примітка"))
-        var balance = 0.0
-        movements.take(56).forEach { move ->
-            balance = move.balance
-            rows.add(listOf(move.date, move.document, move.supplier, move.recipient, qty(move.receipt), qty(move.issue), qty(balance), move.note))
+        val cells = linkedMapOf<String, Cell>()
+        fun put(ref: String, value: String, style: Int = 0) { cells[ref] = Cell(value, style, false) }
+        fun number(ref: String, value: Double, style: Int = 0) { cells[ref] = Cell(qty(value), style, true) }
+        val f = fields.toMap()
+        fun field(label: String, fallback: String = "") = f[label] ?: fallback
+
+        put("T2", "Додаток 31", 1)
+        put("T3", "до Інструкції з обліку військового майна у", 1)
+        put("B4", field("Посада та звання МВО", field("Матеріально відповідальна особа")), 0)
+        put("N4", "Картка № " + field("Номер картки"), 1)
+        put("L5", "обліку військового майна (категорійного)", 1)
+        put("T5", "Збройних Силах України", 1)
+        put("D6", "20____", 0)
+        put("T7", "(пункт 1 розділу 2)", 0)
+        put("D10", field("Матеріально відповідальна особа"), 0)
+        put("B12", "Сховище № " + field("Сховище / місце зберігання"), 0)
+        put("F12", "Полиця № " + field("Полиця"), 0)
+        put("L12", "Ціна за одиницю: " + field("Ціна за одиницю", "Не визначена"), 0)
+        put("R12", "Розпочато: " + field("Розпочато"), 0)
+        put("B14", "Стелаж № " + field("Стелаж"), 0)
+        put("F14", "Сховище № " + field("Сховище / місце зберігання"), 0)
+        put("L14", "Вміст дорогоцінних металів: —", 0)
+        put("R14", "Закінчено: " + field("Закінчено"), 0)
+        put("B17", "Реєстраційний номер: " + field("Реєстраційний номер / NSN"), 0)
+        put("C17", "Аркуш 1", 0)
+        put("E17", "Найменування військового майна: " + field("Найменування майна"), 0)
+        put("J17", "Код номенклатури: " + field("Номенклатурний номер"), 0)
+        put("L17", "Одиниця: " + field("Одиниця виміру"), 0)
+        put("M17", "Партія: " + field("Номер партії"), 0)
+        put("O17", "Служба забезпечення: " + field("Служба забезпечення"), 0)
+        put("Q17", "Центр забезпечення: " + field("Центр забезпечення"), 0)
+        put("S17", "Військова частина: " + field("Військова частина"), 0)
+        put("T18", "Макс.: " + field("Максимальний запас"), 0)
+        put("W18", "Мін.: " + field("Мінімальний запас"), 0)
+        put("O20", field("Служба забезпечення"), 0)
+        put("S20", field("Військова частина"), 0)
+
+        fun headers(row: Int) {
+            put("B$row", "Дата запису", 1)
+            put("C$row", "Документ", 1)
+            put("F$row", "Постачальник", 1)
+            put("G$row", "Одержувач", 1)
+            put("I$row", "Надійшло", 1)
+            put("N$row", "Вибуло", 1)
+            put("S$row", "Залишок", 1)
+            val sub = row + 1
+            put("C$sub", "Найменування", 1)
+            put("D$sub", "Номер", 1)
+            put("E$sub", "Дата", 1)
+            put("I${row + 3}", "Усього", 1)
+            put("J${row + 3}", "з них за категоріями (сортами)", 1)
+            put("N${row + 3}", "Усього", 1)
+            put("O${row + 3}", "з них за категоріями (сортами)", 1)
+            put("S${row + 3}", "Усього", 1)
+            put("T${row + 3}", "з них за категоріями (сортами)", 1)
+            val cat = row + 4
+            listOf("J" to "1", "K" to "2", "L" to "3", "O" to "1", "P" to "2", "Q" to "3", "T" to "1", "U" to "2", "V" to "3").forEach { (col, label) -> put("$col$cat", label, 1) }
+            val nums = row + 6
+            listOf("B" to "1", "C" to "2", "D" to "3", "E" to "4", "F" to "5", "G" to "6", "I" to "7", "J" to "8", "K" to "9", "L" to "10", "N" to "11", "O" to "12").forEach { (col, label) -> put("$col$nums", label, 1) }
         }
-        val xmlRows = rows.mapIndexed { rowIndex, values ->
-            val rowNum = rowIndex + 1
-            val cells = values.mapIndexed { colIndex, value ->
-                val ref = colName(colIndex + 1) + rowNum
-                "<c r=\"" + ref + "\" t=\"inlineStr\"><is><t xml:space=\"preserve\">" + esc(value) + "</t></is></c>"
-            }.joinToString("")
-            "<row r=\"" + rowNum + "\">" + cells + "</row>"
-        }.joinToString("")
+        headers(23)
+        headers(51)
+
+        movements.take(56).forEachIndexed { index, move ->
+            val row = if (index < 20) 30 + index else 58 + index - 20
+            put("B$row", move.date)
+            val docParts = move.document.split(" ", limit = 2)
+            put("C$row", docParts.firstOrNull().orEmpty())
+            put("D$row", docParts.getOrNull(1).orEmpty())
+            put("E$row", move.date)
+            put("F$row", move.supplier)
+            put("G$row", move.recipient)
+            if (move.receipt != 0.0) number("I$row", move.receipt)
+            if (move.issue != 0.0) number("N$row", move.issue)
+            number("S$row", move.balance)
+            if (move.note.isNotBlank()) put("W$row", move.note)
+        }
+
+        val rowNumbers = cells.keys.mapNotNull { it.dropWhile { c -> c.isLetter() }.toIntOrNull() }.toSet().sorted()
+        val rowXml = rowNumbers.joinToString("") { row ->
+            val rowCells = cells.filterKeys { it.dropWhile { c -> c.isLetter() }.toIntOrNull() == row }
+                .entries.sortedBy { colIndex(it.key) }.joinToString("") { (ref, c) ->
+                    val value = esc(c.value)
+                    if (c.numeric) "<c r=\"$ref\" s=\"${c.style}\"><v>$value</v></c>"
+                    else "<c r=\"$ref\" s=\"${c.style}\" t=\"inlineStr\"><is><t xml:space=\"preserve\">$value</t></is></c>"
+                }
+            "<row r=\"$row\">$rowCells</row>"
+        }
+        val merges = mutableListOf(
+            "T2:W2","B3:I3","T3:W3","B4:I4","N4:O4","L5:P5","T5:W5","D6:F6","T7:W7","B9:I9","D10:G10",
+            "C12:D12","G12:H12","L12:M12","O12:P12","C14:D14","G14:H14","L14:N14",
+            "B17:B19","C17:D19","E17:I18","J17:K19","L17:L19","M17:N19","O17:P19","Q17:R19","S17:S19","T17:X17","T18:V19","W18:X19",
+            "E19:I19","B20:B21","C20:D21","E20:I21","J20:K21","O20:P21","Q20:R21","S20:S21","T20:V21","W20:X21",
+            "B23:B28","C23:E23","F23:F28","G23:H28","I23:M25","N23:R25","S23:X25","C24:C28","D24:D28","E24:E28",
+            "I26:I28","J26:M26","N26:N28","O26:R26","S26:S28","T26:X26","J27:J28","K27:K28","L27:M28","O27:O28","P27:P28","Q27:R28","T27:T28","U27:U28","V27:X28",
+            "B51:B56","C51:E51","F51:F56","G51:H56","I51:M53","N51:R53","S51:X53","C52:C56","D52:D56","E52:E56",
+            "I54:I56","J54:M54","N54:N56","O54:R54","S54:S56","T54:X54","J55:J56","K55:K56","L55:M56","O55:O56","P55:P56","Q55:R56","T55:T56","U55:U56","V55:X56"
+        )
+        for (r in 30..49) merges += listOf("G$r:H$r","L$r:M$r","Q$r:R$r","V$r:X$r")
+        for (r in 58..93) merges += listOf("G$r:H$r","L$r:M$r","Q$r:R$r","V$r:X$r")
+        val mergeXml = merges.joinToString("") { "<mergeCell ref=\"$it\"/>" }
         val sheet = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
-            "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><sheetViews><sheetView workbookViewId=\"0\"/></sheetViews><sheetFormatPr defaultRowHeight=\"22\"/><cols><col min=\"1\" max=\"1\" width=\"22\" customWidth=\"1\"/><col min=\"2\" max=\"2\" width=\"30\" customWidth=\"1\"/><col min=\"3\" max=\"8\" width=\"20\" customWidth=\"1\"/></cols><sheetData>" + xmlRows + "</sheetData><autoFilter ref=\"A" + (fields.size + 4) + ":H" + rows.size + "\"/><pageMargins left=\"0.25\" right=\"0.25\" top=\"0.5\" bottom=\"0.5\" header=\"0.2\" footer=\"0.2\"/><pageSetup orientation=\"landscape\" paperSize=\"9\" fitToWidth=\"1\" fitToHeight=\"0\"/></worksheet>"
-        val styles = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><fonts count=\"2\"><font><sz val=\"10\"/><name val=\"Arial\"/></font><font><b/><sz val=\"11\"/><name val=\"Arial\"/></font></fonts><fills count=\"2\"><fill><patternFill patternType=\"none\"/></fill><fill><patternFill patternType=\"solid\"><fgColor rgb=\"FFE2C36F\"/><bgColor indexed=\"64\"/></patternFill></fill></fills><borders count=\"2\"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style=\"thin\"/><right style=\"thin\"/><top style=\"thin\"/><bottom style=\"thin\"/><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"2\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyBorder=\"1\"/><xf numFmtId=\"0\" fontId=\"1\" fillId=\"1\" borderId=\"1\" xfId=\"0\" applyAlignment=\"1\" applyBorder=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf></cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles></styleSheet>"
+            "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><dimension ref=\"B2:X93\"/><sheetViews><sheetView workbookViewId=\"0\"/></sheetViews><sheetFormatPr defaultRowHeight=\"20\"/><cols><col min=\"2\" max=\"2\" width=\"13\" customWidth=\"1\"/><col min=\"3\" max=\"5\" width=\"12\" customWidth=\"1\"/><col min=\"6\" max=\"8\" width=\"12\" customWidth=\"1\"/><col min=\"9\" max=\"24\" width=\"9\" customWidth=\"1\"/></cols><sheetData>$rowXml</sheetData><mergeCells count=\"${merges.size}\">$mergeXml</mergeCells><pageMargins left=\"0.25\" right=\"0.25\" top=\"0.4\" bottom=\"0.4\" header=\"0.2\" footer=\"0.2\"/><pageSetup orientation=\"landscape\" paperSize=\"9\" fitToWidth=\"1\" fitToHeight=\"0\"/></worksheet>"
+        val styles = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><fonts count=\"2\"><font><sz val=\"9\"/><name val=\"Arial\"/></font><font><b/><sz val=\"9\"/><name val=\"Arial\"/></font></fonts><fills count=\"1\"><fill><patternFill patternType=\"none\"/></fill></fills><borders count=\"2\"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"2\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyBorder=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyBorder=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf></cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles></styleSheet>"
         val contentTypes = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/><Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/><Override PartName=\"/xl/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\"/></Types>"
         val rootRels = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/></Relationships>"
         val workbook = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"Картка обліку\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>"
@@ -53,15 +135,8 @@ object AccountingCardWorkbook {
         }
     }
 
+    private data class Cell(val value: String, val style: Int, val numeric: Boolean)
+    private fun colIndex(ref: String): Int = ref.takeWhile { it.isLetter() }.fold(0) { n, ch -> n * 26 + ch.uppercaseChar().code - 'A'.code + 1 }
     private fun qty(value: Double): String = String.format(java.util.Locale.US, "%.3f", value).trimEnd('0').trimEnd('.')
-    private fun colName(value: Int): String {
-        var n = value
-        val out = StringBuilder()
-        while (n > 0) {
-            out.append(('A'.code + (n - 1) % 26).toChar())
-            n = (n - 1) / 26
-        }
-        return out.reverse().toString()
-    }
     private fun esc(value: String): String = value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;")
 }
