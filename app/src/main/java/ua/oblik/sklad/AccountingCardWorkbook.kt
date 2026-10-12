@@ -1,11 +1,31 @@
 package ua.oblik.sklad
 
+import java.io.ByteArrayInputStream
 import java.io.OutputStream
+import java.util.Base64
+import java.util.zip.InflaterInputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 /** Generates an editable XLSX using the supplied military-property card's coordinates and two movement blocks. */
 object AccountingCardWorkbook {
+    // Style table and cell-style coordinates extracted from the official accounting-card template.
+    private val officialStylesXml: String by lazy {
+        String(inflateTemplateData("eNrdXN2OozYUvq/Ud0DcZ4wJEBKFrDYzE2mlrVR1plJvHWISa/mJjDNLtur1PkJfo+rV7kXfIX2j2kAmTOePECBmbgI29nc+H59jHxPs8bsk8JU7TGMShY4KLzRVwaEbLUi4dNRfb2c9W1VihsIF8qMQO+oWx+q7yY8/jGO29fHNCmOmcIgwdtQVY+sRALG7wgGKL6I1DvkTL6IBYjxJlyBeU4wWsagU+EDXNAsEiIRqhjAK3DIgAaKfNuueGwVrxMic+IRtUyxVCdzRh2UYUTT3OdUEGshVEmhRXUnoXkia+0hOQFwaxZHHLjguiDyPuPgx3SEYAuQekDhyNSRoAk1/0PaEVkQyAMV3RHSfOhl7UchixY02IXNU3nNpY0efwuhzOBOPeA/npSbj+Ityh3yeA1UwGbuRH1GFcclYFOI5IQpwVuIS+WROicj0UED8bZati4yUbF4uIFz3IhNkErLfOahLlrtCNOb2luVoRjn5G9BeW/dy7HbEDNsRM2jRQIz2DeSBfL1N+ekl5kDE9+/dVlezjMmYj28M03DGE0p+f7tdc0ohH4ozmLTcK6WXFG2hbhYqpBcudx7RBR/695Khre7zJmMfe4zXoGS5ElcWrYF4yBgfiybjBUHLKES+wNzXKFFTSWcNR2UrIoarTM8kXOAELxzVShUGsqLHyigFzcsd0Yg9ZIAXZBM8CyqKPknllXoFMiVrHKuZkrBpWbmYP2M3NUk5vmNb0CSQgjeQlE6jdiZJZ4EWeqDBBgOpfAXI6QGgFbN+M37W0MD/YpDwxHj1YvnHhlw2Bjk5HMpveCjnYt+/EWi/eYd4jmMmnhJuglnAPnBEvrgXEef+lgeB+W0GkyUEfhEtwy7ADgeVcJXEuxfwXG399doKWq/9rVjN5qH5sUzg/7Gm6aP0QZp+75NlGODKArSmBbzQgjp1W4L8ZIz2SWUVUfKFVxULHeFCqnitxIgr0tzmU7tKvFrVWUfnlO2MiuorpS6XZ2BaWUNmrRqCsF44vV44o164enVn1YpmV0Izn2vqoAFHzy234Oon2vJjlqf17+CowfhEB4VlB+z6NF+VkgTD1stDcUNC9Tbtock5I51i21V9nbM6bLMfNPn8sl/WPmUcpPsydJ4hhQXVasc1TqO6pLw0SXn1JeVlSMrLlJRXw/6ofKZofYuT/WpRSuesh6TWBZL9LpA0ukDSlIgkLO3d54yOYGn3lpKl0QmWZhfiYasDDj7oAEe7AxwtGZYd9ttb+1RlMZRCFboULDQZWEhBArb6isI4wxxblZMpHyV4Rk7tBO1yROUN/L/YHommYyzG44JfIoZYuhFiqEkbaNVGtHWNdiKObYY1tN5crFTf8unM7xJh2X85zv+v7WMzOj8nQz5KVhdebdid+BwDdnO41btJW+sm7b7UtGHZ2VDKF6BaF1h2giTsd4Gl2QWSrU6wDbn/oENtONMSTtI1Wkd7/DXa3f5w98wf9lidUN7pLIFcKnitwQP51tYD+daxg6a/E37mo12Q7+wqbB97sHnsPlcR5x846u7P3d+7b/9+3f21+777Z/dt971AcL4hPiPhE5vIOP4iOewfS58ycUbLQ4kcY4E9tPHZ7f1DRz3c/5TuAdTvS/1M7iKWlzrcfxS78aAlZPAB+GPM0quyocRRf7+eDoZX1zO9Z2tTu2f0sdkbmtOrnmlcTq+uZkNN1y7/KJwUc8I5MenhLrzLoTGKfV6K5o3Nyd8c8hy1kMjop/rjtIvch7qlvTeh1pv1NdgzLGT3bKtv9mYm1K8sY3ptzswCd7PieTIagPBA3hwxEmCfhPgh/dtiLu8knnyhEWDfE+BwatDkP2bZ3Ro="), Charsets.UTF_8)
+    }
+    private val officialStyleGrid: ByteArray by lazy {
+        inflateTemplateData("eNrtkmlXgkAUhisNs13ItMVhaxVpA7IMSMT2lJAWLCz//5+YBkTkqNTnOjzn8N4779zLzD1nIBxmBQHXfQZ2FgE3fFyj202N9HpV2X71VIIgiOmEt4FhGIzEbxrLms/IxioC/sjgyFQu530Q5vPw8wtOwJl0ejKqL1ydTyZ/qY7gAJCCKIoSIFG2tY3Cpq7rhUOKPi2Xy2cUjbKdXRRAnQTkEcOeVyqVC4ZF2d6+G65Yhj0WJO8ngrQ4O1fkBOlOcBcnsiKrqqrIytL8QomXlXvZXUTc5PL65lZ7eCwahsEFYnBVTdNqjeaTaZqtQMxWtYZoNEuWZfGBWLxvP7u3sdEkBdsbx7dfwCsgbQB6Uif7NvVG0TZF9eSdXnZpt4eknflwHKfTCUsGx/HY/oP2P3qDzvgpYzu2YztsfwNaNBk8")
+    }
+
+    private fun inflateTemplateData(encoded: String): ByteArray =
+        InflaterInputStream(ByteArrayInputStream(Base64.getDecoder().decode(encoded))).use { it.readBytes() }
+
+    private fun officialStyleId(ref: String): Int {
+        val row = ref.dropWhile { it.isLetter() }.toIntOrNull() ?: return 0
+        val col = colIndex(ref)
+        if (row !in 2..93 || col !in 2..24) return 0
+        return officialStyleGrid[(row - 2) * 23 + (col - 2)].toInt() and 0xff
+    }
     data class Movement(
         val date: String, val document: String, val documentNumber: String,
         val supplier: String, val recipient: String,
@@ -115,6 +135,9 @@ object AccountingCardWorkbook {
         headers(23)
         headers(51)
 
+        (30..49).forEach { put("C$it", "АКТ") }
+        (58..93).forEach { put("C$it", "АКТ") }
+
         movements.take(56).forEachIndexed { index, move ->
             val row = if (index < 20) 30 + index else 58 + index - 20
             put("B$row", move.date)
@@ -137,14 +160,20 @@ object AccountingCardWorkbook {
         )
         (30..49).forEach { rowHeights[it] = 18.75 }
         (58..93).forEach { rowHeights[it] = 18.75 }
-        val rowNumbers = (cells.keys.mapNotNull { it.dropWhile { c -> c.isLetter() }.toIntOrNull() } + rowHeights.keys).toSet().sorted()
+        val rowNumbers = (2..93).toList()
         val rowXml = rowNumbers.joinToString("") { row ->
-            val rowCells = cells.filterKeys { it.dropWhile { c -> c.isLetter() }.toIntOrNull() == row }
-                .entries.sortedBy { colIndex(it.key) }.joinToString("") { (ref, c) ->
-                    val value = esc(c.value)
-                    if (c.numeric) "<c r=\"$ref\" s=\"${c.style}\"><v>$value</v></c>"
-                    else "<c r=\"$ref\" s=\"${c.style}\" t=\"inlineStr\"><is><t xml:space=\"preserve\">$value</t></is></c>"
+            val rowCells = (2..24).mapNotNull { col ->
+                val ref = columnName(col) + row
+                val cell = cells[ref]
+                val style = officialStyleId(ref)
+                if (cell == null && style == 255) null
+                else if (cell == null) "<c r=\"$ref\" s=\"$style\"/>"
+                else {
+                    val value = esc(cell.value)
+                    if (cell.numeric) "<c r=\"$ref\" s=\"$style\"><v>$value</v></c>"
+                    else "<c r=\"$ref\" s=\"$style\" t=\"inlineStr\"><is><t xml:space=\"preserve\">$value</t></is></c>"
                 }
+            }.joinToString("")
             val height = rowHeights[row]?.let { " ht=\"$it\"" }.orEmpty()
             "<row r=\"$row\"$height>$rowCells</row>"
         }
@@ -164,7 +193,7 @@ object AccountingCardWorkbook {
         val mergeXml = merges.joinToString("") { "<mergeCell ref=\"$it\"/>" }
         val sheet = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
             "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><dimension ref=\"B2:X93\"/><sheetViews><sheetView workbookViewId=\"0\"/></sheetViews><sheetFormatPr defaultRowHeight=\"15\"/><cols><col min=\"2\" max=\"2\" width=\"11.28515625\" customWidth=\"1\"/><col min=\"6\" max=\"6\" width=\"11.7109375\" customWidth=\"1\"/><col min=\"11\" max=\"11\" width=\"8.85546875\" customWidth=\"1\"/><col min=\"13\" max=\"13\" width=\"7\" customWidth=\"1\"/><col min=\"14\" max=\"14\" width=\"9.85546875\" customWidth=\"1\"/><col min=\"18\" max=\"18\" width=\"10.42578125\" customWidth=\"1\"/><col min=\"19\" max=\"19\" width=\"9.85546875\" customWidth=\"1\"/><col min=\"22\" max=\"22\" width=\"10.85546875\" customWidth=\"1\"/></cols><sheetData>$rowXml</sheetData><mergeCells count=\"${merges.size}\">$mergeXml</mergeCells><pageMargins left=\"0.7\" right=\"0.7\" top=\"0.75\" bottom=\"0.75\" header=\"0.3\" footer=\"0.3\"/><pageSetup paperSize=\"9\" scale=\"35\" orientation=\"landscape\" horizontalDpi=\"300\" verticalDpi=\"300\"/></worksheet>"
-        val styles = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><fonts count=\"2\"><font><sz val=\"9\"/><name val=\"Arial\"/></font><font><b/><sz val=\"9\"/><name val=\"Arial\"/></font></fonts><fills count=\"1\"><fill><patternFill patternType=\"none\"/></fill></fills><borders count=\"2\"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"2\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyBorder=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyBorder=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf></cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles></styleSheet>"
+        val styles = officialStylesXml
         val contentTypes = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/><Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/><Override PartName=\"/xl/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\"/></Types>"
         val rootRels = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/></Relationships>"
         val workbook = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><workbook xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"><sheets><sheet name=\"Картка обліку\" sheetId=\"1\" r:id=\"rId1\"/></sheets></workbook>"
@@ -185,6 +214,16 @@ object AccountingCardWorkbook {
     }
 
     private data class Cell(val value: String, val style: Int, val numeric: Boolean)
+    private fun columnName(index: Int): String {
+        var n = index
+        var name = ""
+        while (n > 0) {
+            val rem = (n - 1) % 26
+            name = ('A'.code + rem).toChar() + name
+            n = (n - 1) / 26
+        }
+        return name
+    }
     private fun colIndex(ref: String): Int = ref.takeWhile { it.isLetter() }.fold(0) { n, ch -> n * 26 + ch.uppercaseChar().code - 'A'.code + 1 }
     private fun qty(value: Double): String = String.format(java.util.Locale.US, "%.3f", value).trimEnd('0').trimEnd('.')
     private fun esc(value: String): String = value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&apos;")

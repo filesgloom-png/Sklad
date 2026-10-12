@@ -38,6 +38,13 @@ class AccountingCardWorkbookTest {
             DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
         }
         val sheet = entries.getValue("xl/worksheets/sheet1.xml")
+        val styles = entries.getValue("xl/styles.xml")
+        assertTrue("Official font table is retained", styles.contains("<fonts count=\"8\""))
+        assertTrue("Official border table is retained", styles.contains("<borders count=\"18\""))
+        assertTrue("Official cell style table is retained", styles.contains("<cellXfs count=\"97\""))
+        assertTrue("Body rows use official template typography", sheet.contains("r=\"C30\" s=\"91\""))
+        assertTrue("Column-number row uses official small-font style", sheet.contains("r=\"B29\" s=\"89\""))
+        assertTrue("Blank template cells retain their border/style definitions", sheet.contains("r=\"X93\""))
         assertTrue("Document name must stay in column C", sheet.contains("r=\"C30\"") && sheet.contains("Надходження"))
         assertTrue("Document number must stay in column D", sheet.contains("r=\"D30\"") && sheet.contains("DOC-42"))
         assertTrue("Receipt quantity must be in receipt total cell", sheet.contains("r=\"I30\"") && sheet.contains("<v>5</v>"))
