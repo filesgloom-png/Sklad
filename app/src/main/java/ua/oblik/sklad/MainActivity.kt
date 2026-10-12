@@ -226,6 +226,7 @@ class MainActivity : Activity() {
         }
         private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
         private var pulse = 0f
+        private fun px(value: Int): Int = (value * resources.displayMetrics.density).toInt()
         private var animator: ValueAnimator? = null
 
         override fun onAttachedToWindow() {
@@ -256,7 +257,7 @@ class MainActivity : Activity() {
             val cx = w * .53f
             val cy = h * .43f
             stroke.color = Color.argb((28 + pulse * 34).toInt(), 232, 201, 112)
-            stroke.strokeWidth = dp(1).toFloat()
+            stroke.strokeWidth = px(1).toFloat()
             canvas.drawCircle(cx, cy, w * (.24f + pulse * .035f), stroke)
             stroke.color = Color.argb(36, 103, 219, 178)
             canvas.drawCircle(cx, cy, w * .36f, stroke)
@@ -290,7 +291,7 @@ class MainActivity : Activity() {
                 fill.color = Color.argb(alpha, 42, 92, 77)
                 canvas.drawPath(right, fill)
                 stroke.color = Color.argb((120 + pulse * 80).toInt(), 255, 228, 153)
-                stroke.strokeWidth = dp(1).toFloat()
+                stroke.strokeWidth = px(1).toFloat()
                 canvas.drawPath(top, stroke)
                 canvas.drawPath(left, stroke)
                 canvas.drawPath(right, stroke)
