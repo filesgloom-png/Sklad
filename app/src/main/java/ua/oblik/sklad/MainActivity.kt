@@ -545,14 +545,14 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         title.addView(TextView(this).apply {
-            text = "Облік-"
+            text = "СКЛАД"
             textSize = 29f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.WHITE)
             includeFontPadding = false
         })
         title.addView(TextView(this).apply {
-            text = "Склад"
+            text = "+"
             textSize = 28f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(226, 195, 111))
@@ -560,14 +560,14 @@ class MainActivity : Activity() {
         })
         titleBox.addView(title)
         titleBox.addView(TextView(this).apply {
-            text = "Облік речового майна"
+            text = "СИСТЕМА КЕРУВАННЯ МАЙНОМ"
             textSize = 15f
             setTextColor(Color.rgb(174, 184, 190))
             setPadding(0, dp(2), 0, 0)
         })
         header.addView(titleBox, LinearLayout.LayoutParams(0, -2, 1f))
         header.addView(TextView(this).apply {
-            text = "●  Офлайн"
+            text = "●  СИСТЕМА АКТИВНА"
             textSize = 12f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(179, 226, 205))
@@ -598,14 +598,14 @@ class MainActivity : Activity() {
         }
         val heroText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         heroText.addView(TextView(this).apply {
-            text = "WAREHOUSE CONTROL  /  01"
+            text = "SKLAD+  /  COMMAND CENTER"
             textSize = 9.5f
             letterSpacing = .13f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(172, 214, 170))
         })
         heroText.addView(TextView(this).apply {
-            text = "Майно —\nпід контролем"
+            text = "Усе майно.\nПід контролем."
             textSize = 24f
             setTypeface(Typeface.create("sans-serif", Typeface.BOLD), Typeface.BOLD)
             setTextColor(Color.WHITE)
@@ -614,7 +614,7 @@ class MainActivity : Activity() {
             maxLines = 2
         })
         heroText.addView(TextView(this).apply {
-            text = "Склади · рух · залишки · МВО"
+            text = "Складський облік нового рівня"
             textSize = 11.5f
             setTextColor(Color.rgb(184, 202, 192))
         })
@@ -631,7 +631,7 @@ class MainActivity : Activity() {
                 background = rounded(Color.rgb(105, 232, 155), 6)
             }, LinearLayout.LayoutParams(dp(6), dp(6)).apply { rightMargin = dp(6) })
             addView(TextView(this@MainActivity).apply {
-                text = "ОФЛАЙН · ДАНІ НА ПРИСТРОЇ"
+                text = "ЗАХИЩЕНІ ЛОКАЛЬНІ ДАНІ"
                 textSize = 8.5f
                 letterSpacing = .035f
                 setTypeface(null, Typeface.BOLD)
@@ -845,7 +845,7 @@ class MainActivity : Activity() {
             page.addView(row)
         }
 
-        sectionHeader("ОСНОВНІ РОЗДІЛИ", "Управління довідниками")
+        sectionHeader("РАБОЧЕЕ ПРОСТРАНСТВО", "Основные инструменты")
         grid(
             Triple("home", "Склади", "Список складів та залишки"),
             Triple("person", "МВО", "Матеріально відповідальні особи"),
@@ -866,7 +866,7 @@ class MainActivity : Activity() {
             { showAllInitialStock() }, { importInitialStock() }
         )
 
-        sectionHeader("РУХ МАЙНА", "Облік операцій з майном")
+        sectionHeader("ДВИЖЕНИЕ ИМУЩЕСТВА", "Все складские операции")
         grid(
             Triple("plus", "Надходження", "Приймання майна"),
             Triple("issue", "Видача", "Видача зі складу"),
@@ -880,7 +880,7 @@ class MainActivity : Activity() {
             { showMovement("TRANSFER", "Переміщення") }, { showMovement("WRITE_OFF", "Списання") }
         )
 
-        sectionHeader("КОНТРОЛЬ", "Журнали та аналітика")
+        sectionHeader("АНАЛИТИКА И КОНТРОЛЬ", "История и отчётность")
         grid(
             Triple("journal", "Журнал руху", "Всі операції"),
             Triple("chart", "Звіти", "Залишки по складах та типах"),
@@ -927,11 +927,11 @@ class MainActivity : Activity() {
             return item
         }
 
-        nav.addView(navItem("home", "Головна", true) { showHome() }, LinearLayout.LayoutParams(0, dp(50), 1f))
-        nav.addView(navItem("boxes", "Майно", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(50), 1f))
-        nav.addView(navItem("transfer", "Рух", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(50), 1f))
-        nav.addView(navItem("journal", "Журнал", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(50), 1f))
-        nav.addView(navItem("settings", "Налашт.", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(50), 1f))
+        nav.addView(navItem("home", "Обзор", true) { showHome() }, LinearLayout.LayoutParams(0, dp(50), 1f))
+        nav.addView(navItem("boxes", "Склады", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(50), 1f))
+        nav.addView(navItem("transfer", "Операции", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(50), 1f))
+        nav.addView(navItem("journal", "История", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(50), 1f))
+        nav.addView(navItem("settings", "Ещё", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(50), 1f))
         root.addView(nav, LinearLayout.LayoutParams(-1, dp(58)).apply {
             leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(5)
         })
