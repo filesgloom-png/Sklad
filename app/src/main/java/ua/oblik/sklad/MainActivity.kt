@@ -1632,9 +1632,12 @@ class MainActivity : Activity() {
         setAnimatedContentView(root)
     }
 
-    private fun showCards() {
+    private fun showCards(query: String = "") {
         val root = base("Картки обліку")
-        val materials = db.list("materials")
+        val allMaterials = db.list("materials")
+        val materials = if (query.isBlank()) allMaterials else allMaterials.filter { material ->
+            material.joinToString(" ").contains(query, ignoreCase = true)
+        }
         val warehouses = db.warehouseRows()
         val warehouseBalances = db.warehouseBalancesForAll()
         val materialBalances = db.materialBalancesForAll()
@@ -1644,7 +1647,16 @@ class MainActivity : Activity() {
                 (warehouseBalances[materialId to (warehouse[0].toLongOrNull() ?: 0L)] ?: 0.0) != 0.0
             }
         }
-        addScreenSummary(root, "КОНТРОЛЬ ТА ЗВІТНІСТЬ", "Картки обліку майна", "${materials.size} позицій  •  ${warehouses.size} складів  •  ${stockLines} складських залишків")
+        addScreenSummary(root, "КОНТРОЛЬ ТА ЗВІТНІСТЬ", "Картки обліку майна", "${materials.size} із ${allMaterials.size} позицій  •  ${warehouses.size} складів  •  ${stockLines} складських залишків")
+        addActionRow(root, listOf(
+            (if (query.isBlank()) "⌕  Пошук картки" else "⌕  " + query.take(12) + if (query.length > 12) "…" else "") to {
+                searchDialog("Пошук картки обліку", query) { q -> showCards(q) }
+            },
+            "↻  Оновити" to { showCards(query) }
+        ))
+        if (query.isNotBlank()) {
+            addRow(root, "АКТИВНИЙ ФІЛЬТР", query + "   ·   натисніть пошук, щоб змінити")
+        }
         materials.forEach { material ->
             val materialId = material[0].toLongOrNull() ?: return@forEach
             val balance = materialBalances[materialId] ?: 0.0
@@ -1705,7 +1717,7 @@ class MainActivity : Activity() {
                 }
             }
         }
-        if (materials.isEmpty()) addEmptyState(root, "Карток ще немає", "Додайте матеріали в Номенклатурі. Реальні складські дані не підставляються автоматично.")
+        if (materials.isEmpty()) addEmptyState(root, if (allMaterials.isEmpty()) "Карток ще немає" else "Нічого не знайдено", if (allMaterials.isEmpty()) "Додайте матеріали в Номенклатурі. Реальні складські дані не підставляються автоматично." else "Змініть пошуковий запит або очистіть фільтр.")
         setAnimatedContentView(root)
     }
 
@@ -3636,14 +3648,27 @@ class MainActivity : Activity() {
         val dialog = AlertDialog.Builder(this)
             .setCustomTitle(LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(20), dp(12), dp(20), dp(3))
+                setPadding(dp(20), dp(12), dp(20), dp(8))
                 setBackgroundColor(Color.rgb(14, 25, 27))
                 addView(View(this@MainActivity).apply {
                     background = GradientDrawable(
                         GradientDrawable.Orientation.LEFT_RIGHT,
                         intArrayOf(Color.rgb(226, 195, 111), Color.rgb(103, 133, 87), Color.argb(0, 103, 133, 87))
                     )
-                }, LinearLayout.LayoutParams(-1, dp(2)))
+                }, LinearLayout.LayoutParams(-1, dp(2)).apply { bottomMargin = dp(10) })
+                addView(TextView(this@MainActivity).apply {
+                    text = title
+                    textSize = 20f
+                    setTypeface(null, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    maxLines = 2
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = "SKLAD  /  ДОКУМЕНТ  •  Перевірте дані перед збереженням"
+                    textSize = 10f
+                    setTextColor(Color.rgb(157, 174, 175))
+                    setPadding(0, dp(4), 0, 0)
+                })
             })
             .setView(scrollPanel)
             .setNegativeButton("Скасувати", null)
