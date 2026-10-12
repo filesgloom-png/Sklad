@@ -52,5 +52,7 @@ class AccountingCardWorkbookTest {
         assertTrue("Running balance must be in the balance total cell", sheet.contains("r=\"S30\"") && sheet.contains("<v>12</v>"))
         assertTrue("Note must be kept in the note column", sheet.contains("r=\"W30\"") && sheet.contains("Примітка тесту"))
         assertTrue("First numbering row must have its merged category cells", sheet.contains("ref=\"G29:H29\"") && sheet.contains("ref=\"V57:X57\""))
+        assertTrue("Merge layout must match the official template count", sheet.contains("<mergeCells count=\"322\">"))
+        assertTrue("Date fields must remain in the template's original separate cells", !sheet.contains("ref=\"T12:V12\"") && !sheet.contains("ref=\"T14:V14\""))
     }
 }
