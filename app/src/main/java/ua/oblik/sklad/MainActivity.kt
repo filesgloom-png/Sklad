@@ -552,7 +552,7 @@ class MainActivity : Activity() {
         return root
     }
 
-    private fun showHome()    private fun showHome() {
+    private fun showHome() {
         window.statusBarColor = Color.rgb(7, 18, 21)
         window.navigationBarColor = Color.rgb(7, 18, 21)
         window.decorView.systemUiVisibility = 0
