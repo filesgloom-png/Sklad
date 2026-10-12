@@ -406,13 +406,19 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             val sourceName = norm(row.getOrNull(5))
             val sourceUnit = norm(row.getOrNull(9))
             val sourceBatch = norm(row.getOrNull(8))
-            val matchesMaterial =
-                (sourceNsn.isNotBlank() && norm(materialNsn) == sourceNsn) ||
-                (sourceCode.isNotBlank() && norm(materialCode) == sourceCode) ||
-                (sourceName.isNotBlank() && norm(materialName) == sourceName &&
-                    (sourceUnit.isBlank() || norm(materialUnit) == sourceUnit) &&
-                    (sourceBatch.isBlank() || norm(materialBatch) == sourceBatch))
-            if (!matchesMaterial) return@forEach
+            // Use the same priority as the report importer: NSN, then nomenclature code,
+            // then name + unit + batch. One Excel row must never count toward two materials.
+            val catalogMaterials = list("materials")
+            val matchedMaterial = catalogMaterials.firstOrNull {
+                sourceNsn.isNotBlank() && norm(it.getOrNull(1)) == sourceNsn
+            } ?: catalogMaterials.firstOrNull {
+                sourceCode.isNotBlank() && norm(it.getOrNull(2)) == sourceCode
+            } ?: catalogMaterials.firstOrNull {
+                sourceName.isNotBlank() && norm(it.getOrNull(3)) == sourceName &&
+                    (sourceUnit.isBlank() || norm(it.getOrNull(4)) == sourceUnit) &&
+                    (sourceBatch.isBlank() || norm(it.getOrNull(5)) == sourceBatch)
+            }
+            if (matchedMaterial?.getOrNull(0)?.toLongOrNull() != materialId) return@forEach
 
             val sourceCell = norm(row.getOrNull(3))
             val matchedLocation = locations.firstOrNull { norm(it.getOrNull(1)) == sourceCell && sourceCell.isNotBlank() }
