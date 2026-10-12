@@ -701,6 +701,34 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         return total - assigned
     }
 
+    fun movementRowsForMaterial(materialId: Long): List<Array<String>> {
+        val rows = mutableListOf<Array<String>>()
+        val sql = """
+            SELECT m.movement_date,
+                   p.name,
+                   m.type,
+                   m.quantity,
+                   m.document_no,
+                   COALESCE(wf.name, '—'),
+                   COALESCE(wt.name, '—'),
+                   COALESCE(lf.name, '—'),
+                   COALESCE(lt.name, '—'),
+                   m.note
+            FROM movements m
+            JOIN materials p ON p.id=m.material_id
+            LEFT JOIN warehouses wf ON wf.id=m.from_warehouse_id
+            LEFT JOIN warehouses wt ON wt.id=m.to_warehouse_id
+            LEFT JOIN storage_locations lf ON lf.id=m.from_location_id
+            LEFT JOIN storage_locations lt ON lt.id=m.to_location_id
+            WHERE m.material_id=?
+            ORDER BY m.id DESC
+        """.trimIndent()
+        readableDatabase.rawQuery(sql, arrayOf(materialId.toString())).use { c ->
+            while (c.moveToNext()) rows += Array(c.columnCount) { i -> c.getString(i) ?: "" }
+        }
+        return rows
+    }
+
     fun movementRows(): List<Array<String>> {
         val rows = mutableListOf<Array<String>>()
         val sql = """
