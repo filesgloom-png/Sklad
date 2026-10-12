@@ -1676,7 +1676,17 @@ class MainActivity : Activity() {
                 warehouses.forEach { warehouse ->
                     val warehouseId = warehouse[0].toLongOrNull() ?: return@forEach
                     val warehouseBalance = warehouseBalances[materialId to warehouseId] ?: 0.0
-                    if (warehouseBalance != 0.0) addBalanceLine(detail, warehouse[1], warehouseBalance, material[4], 1)
+                    if (warehouseBalance != 0.0) {
+                        addBalanceLine(detail, warehouse[1], warehouseBalance, material[4], 1)
+                        val locations = db.locationRows(warehouseId)
+                        locations.forEach locationLoop@ { location ->
+                            val locationId = location.getOrNull(0)?.toLongOrNull() ?: return@locationLoop
+                            val locationBalance = db.locationBalance(materialId, locationId)
+                            if (locationBalance != 0.0) addBalanceLine(detail, "↳ " + location[1], locationBalance, material[4], 2)
+                        }
+                        val unassigned = db.unassignedWarehouseBalance(materialId, warehouseId)
+                        if (unassigned != 0.0) addBalanceLine(detail, "↳ Без комірки", unassigned, material[4], 2)
+                    }
                 }
                 addRow(detail, "ІСТОРІЯ РУХУ МАЙНА", "Останні операції за вибраною номенклатурою")
                 val history = db.movementRowsForMaterial(materialId)
@@ -1702,20 +1712,7 @@ class MainActivity : Activity() {
                     .setNeutralButton("Експорт Excel") { _, _ -> exportAccountingCard(material) }
                     .setPositiveButton("Готово", null).show()
             }
-            warehouses.forEach { warehouse ->
-                val warehouseId = warehouse[0].toLongOrNull() ?: return@forEach
-                val warehouseBalance = warehouseBalances[materialId to warehouseId] ?: 0.0
-                if (warehouseBalance != 0.0) {
-                    addBalanceLine(root, warehouse[1], warehouseBalance, material[4], 1)
-                    val unassigned = db.unassignedWarehouseBalance(materialId, warehouseId)
-                    if (unassigned != 0.0) addBalanceLine(root, "Без комірки", unassigned, material[4], 2)
-                    db.locationRows(warehouseId).forEach { location ->
-                        val locationId = location[0].toLongOrNull() ?: return@forEach
-                        val locationBalance = db.locationBalance(materialId, locationId)
-                        if (locationBalance != 0.0) addBalanceLine(root, location[1], locationBalance, material[4], 2)
-                    }
-                }
-            }
+            // Detailed warehouse and location balances are loaded only when a card is opened.
         }
         if (materials.isEmpty()) addEmptyState(root, if (allMaterials.isEmpty()) "Карток ще немає" else "Нічого не знайдено", if (allMaterials.isEmpty()) "Додайте матеріали в Номенклатурі. Реальні складські дані не підставляються автоматично." else "Змініть пошуковий запит або очистіть фільтр.")
         setAnimatedContentView(root)
