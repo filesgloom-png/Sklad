@@ -392,9 +392,11 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         val materialUnit = material.getOrNull(4).orEmpty().trim()
         val materialBatch = material.getOrNull(5).orEmpty().trim()
         val locations = locationRows(warehouseId)
+        val catalogMaterials = list("materials")
+        val openingRows = initialStockRowsForAll()
         fun norm(value: String?): String = value.orEmpty().trim().replace(Regex("\\s+"), " ").uppercase(java.util.Locale.ROOT)
         var total = 0.0
-        initialStockRowsForAll().forEach { row ->
+        openingRows.forEach { row ->
             val sourceWarehouse = norm(row.getOrNull(0))
             val appWarehouse = norm(row.getOrNull(1))
             val expectedWarehouse = norm(warehouseNumber)
@@ -408,7 +410,6 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             val sourceBatch = norm(row.getOrNull(8))
             // Use the same priority as the report importer: NSN, then nomenclature code,
             // then name + unit + batch. One Excel row must never count toward two materials.
-            val catalogMaterials = list("materials")
             val matchedMaterial = catalogMaterials.firstOrNull {
                 sourceNsn.isNotBlank() && norm(it.getOrNull(1)) == sourceNsn
             } ?: catalogMaterials.firstOrNull {
