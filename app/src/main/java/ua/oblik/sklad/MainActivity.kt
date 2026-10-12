@@ -357,17 +357,74 @@ class MainActivity : Activity() {
         window.statusBarColor = Color.rgb(7, 18, 21)
         window.navigationBarColor = Color.rgb(7, 18, 21)
         window.decorView.systemUiVisibility = 0
-        val root = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setBackgroundColor(Color.rgb(7,18,21)) }
-        root.setOnApplyWindowInsetsListener { view, insets ->
-            val bars=insets.getInsets(android.view.WindowInsets.Type.systemBars())
-            view.setPadding(dp(14),bars.top+dp(5),dp(14),bars.bottom);insets
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.rgb(7, 18, 21))
         }
-        val bar=LinearLayout(this).apply{gravity=Gravity.CENTER_VERTICAL;setPadding(0,dp(5),0,dp(10))}
-        bar.addView(TextView(this).apply{text="←";textSize=27f;gravity=Gravity.CENTER;setTextColor(Color.rgb(226,195,111));background=rounded(Color.rgb(18,29,29),12);setOnClickListener{showHome()}},LinearLayout.LayoutParams(dp(46),dp(46)))
-        bar.addView(TextView(this).apply{text=title;textSize=21f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);maxLines=2;setPadding(dp(12),0,0,0)},LinearLayout.LayoutParams(0,-2,1f))
+        root.setOnApplyWindowInsetsListener { view, insets ->
+            val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
+            view.setPadding(dp(16), bars.top + dp(5), dp(16), bars.bottom)
+            insets
+        }
+        val bar = LinearLayout(this).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(7), 0, dp(12))
+        }
+        val back = TextView(this).apply {
+            text = "‹"
+            textSize = 34f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(226, 195, 111))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(35, 45, 39), Color.rgb(15, 27, 29))
+            ).apply {
+                cornerRadius = dp(15).toFloat()
+                setStroke(dp(1), Color.rgb(83, 76, 48))
+            }
+            elevation = dp(2).toFloat()
+            setOnClickListener { showHome() }
+        }
+        bar.addView(back, LinearLayout.LayoutParams(dp(48), dp(48)))
+        val titleStack = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(13), 0, 0, 0)
+        }
+        titleStack.addView(TextView(this).apply {
+            text = "SKLAD  /  CONTROL"
+            textSize = 9f
+            setTypeface(null, Typeface.BOLD)
+            letterSpacing = .16f
+            setTextColor(Color.rgb(226, 195, 111))
+        })
+        titleStack.addView(TextView(this).apply {
+            text = title
+            textSize = 21f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            maxLines = 2
+            includeFontPadding = false
+            setPadding(0, dp(3), 0, 0)
+        })
+        bar.addView(titleStack, LinearLayout.LayoutParams(0, -2, 1f))
+        bar.addView(TextView(this).apply {
+            text = "●"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(103, 219, 178))
+            background = rounded(Color.rgb(17, 38, 33), 12)
+            contentDescription = "Локальна база даних"
+        }, LinearLayout.LayoutParams(dp(34), dp(34)))
         root.addView(bar)
-        content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(0,dp(3),0,dp(12))}
-        root.addView(ScrollView(this).apply{isFillViewport=false;addView(content)},LinearLayout.LayoutParams(-1,0,1f))
+        content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(3), 0, dp(16))
+        }
+        root.addView(ScrollView(this).apply {
+            isFillViewport = false
+            clipToPadding = false
+            addView(content)
+        }, LinearLayout.LayoutParams(-1, 0, 1f))
         return root
     }
 
@@ -2547,18 +2604,66 @@ class MainActivity : Activity() {
     }
 
     private fun addScreenSummary(root: LinearLayout, eyebrow: String, title: String, value: String) {
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(15), dp(13), dp(15), dp(13))
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(Color.rgb(35, 35, 27), Color.rgb(15, 27, 29))).apply {
-                cornerRadius = dp(14).toFloat()
-                setStroke(dp(1), Color.rgb(65, 59, 39))
+        val hero = FrameLayout(this).apply {
+            clipToOutline = true
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(35, 43, 34), Color.rgb(10, 24, 27), Color.rgb(8, 19, 22))
+            ).apply {
+                cornerRadius = dp(20).toFloat()
+                setStroke(dp(1), Color.rgb(91, 78, 43))
             }
+            elevation = dp(3).toFloat()
         }
-        box.addView(TextView(this).apply { text = eyebrow; textSize = 10f; setTypeface(null, Typeface.BOLD); setTextColor(Color.rgb(226, 195, 111)); letterSpacing = .08f })
-        box.addView(TextView(this).apply { text = title; textSize = 18f; setTypeface(null, Typeface.BOLD); setTextColor(Color.WHITE); setPadding(0, dp(4), 0, dp(3)) })
-        box.addView(TextView(this).apply { text = value; textSize = 12f; setTextColor(Color.rgb(173, 185, 186)) })
-        root.addView(box, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+        hero.addView(WarehouseHeroArt(this), FrameLayout.LayoutParams(dp(142), dp(132), Gravity.RIGHT or Gravity.CENTER_VERTICAL))
+        hero.addView(View(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.argb(0, 8, 19, 22), Color.argb(90, 8, 19, 22))
+            )
+        }, FrameLayout.LayoutParams(-1, -1))
+        val copy = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(15), dp(5), dp(14))
+        }
+        copy.addView(TextView(this).apply {
+            text = eyebrow.uppercase(Locale.ROOT)
+            textSize = 9f
+            setTypeface(null, Typeface.BOLD)
+            letterSpacing = .13f
+            setTextColor(Color.rgb(226, 195, 111))
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        copy.addView(View(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(226, 195, 111), Color.argb(0, 226, 195, 111))
+            )
+        }, LinearLayout.LayoutParams(dp(64), dp(2)).apply { topMargin = dp(7) })
+        copy.addView(TextView(this).apply {
+            text = title
+            textSize = 20f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            includeFontPadding = false
+            setPadding(0, dp(7), 0, dp(4))
+        })
+        copy.addView(TextView(this).apply {
+            text = value
+            textSize = 11.5f
+            setTextColor(Color.rgb(183, 197, 195))
+            maxLines = 3
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        hero.addView(copy, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER_VERTICAL))
+        root.addView(hero, LinearLayout.LayoutParams(-1, -2).apply {
+            minimumHeight = dp(126)
+            bottomMargin = dp(12)
+        })
+        animateEntrance(hero, 25L)
     }
 
     private fun addEmptyState(root: LinearLayout, title: String, description: String) {
@@ -2668,6 +2773,7 @@ class MainActivity : Activity() {
             setPadding(dp(9), dp(8), dp(9), dp(8))
         }, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
         root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        animateEntrance(card, ((root.childCount % 8) * 32L))
     }
 
     private fun addNomenclatureCard(root: LinearLayout, title: String, subtitle: String, metric: String, action: () -> Unit) {
@@ -2737,6 +2843,7 @@ class MainActivity : Activity() {
         })
         card.addView(footer)
         root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        animateEntrance(card, ((root.childCount % 8) * 32L))
     }
 
     private fun addAccountCard(root: LinearLayout, title: String, subtitle: String, balance: Double, action: () -> Unit) {
@@ -2794,6 +2901,7 @@ class MainActivity : Activity() {
             setPadding(dp(10), dp(8), dp(10), dp(8))
         })
         root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) })
+        animateEntrance(card, ((root.childCount % 8) * 32L))
     }
 
     private fun addBalanceLine(root: LinearLayout, title: String, balance: Double, unit: String, level: Int) {
@@ -2832,18 +2940,86 @@ class MainActivity : Activity() {
     }
 
     private fun addManageRow(root: LinearLayout, title: String, subtitle: String, action: () -> Unit) {
-        val box=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(14),dp(12),dp(14),dp(12));background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(20,32,32),Color.rgb(12,23,25))).apply{cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.rgb(43,57,54))};setOnClickListener{action()}}
-        box.addView(TextView(this).apply{text=title;textSize=15f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE)})
-        box.addView(TextView(this).apply{text=subtitle;textSize=12f;setTextColor(Color.rgb(164,177,180));setPadding(0,dp(4),0,dp(9))})
-        box.addView(TextView(this).apply{text="⚙  Керувати   ›";textSize=12f;setTypeface(null,Typeface.BOLD);setTextColor(Color.rgb(226,195,111));gravity=Gravity.CENTER_VERTICAL;setPadding(dp(10),0,dp(10),0);background=rounded(Color.rgb(45,39,25),9)},LinearLayout.LayoutParams(-1,dp(36)))
-        root.addView(box,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(15), dp(13), dp(15), dp(13))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(25, 39, 36), Color.rgb(11, 23, 26))
+            ).apply {
+                cornerRadius = dp(15).toFloat()
+                setStroke(dp(1), Color.rgb(49, 68, 60))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { action() }
+        }
+        val heading = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        heading.addView(TextView(this).apply {
+            text = title
+            textSize = 15f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        heading.addView(TextView(this).apply {
+            text = "↗"
+            textSize = 17f
+            gravity = Gravity.CENTER
+            setTextColor(Color.rgb(226, 195, 111))
+            background = rounded(Color.rgb(43, 40, 28), 10)
+            minimumWidth = dp(34)
+            minimumHeight = dp(32)
+        })
+        box.addView(heading)
+        box.addView(TextView(this).apply {
+            text = subtitle
+            textSize = 12f
+            setTextColor(Color.rgb(164, 177, 180))
+            setPadding(0, dp(6), 0, dp(11))
+        })
+        box.addView(View(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(62, 93, 76), Color.rgb(32, 50, 47), Color.argb(0, 32, 50, 47))
+            )
+        }, LinearLayout.LayoutParams(-1, dp(1)))
+        root.addView(box, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) })
+        animateEntrance(box, ((root.childCount % 8) * 32L))
     }
 
     private fun addRow(root: LinearLayout, title: String, subtitle: String) {
-        val box=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(14),dp(12),dp(14),dp(12));background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(19,31,32),Color.rgb(12,23,25))).apply{cornerRadius=dp(12).toFloat();setStroke(dp(1),Color.rgb(38,51,50))}}
-        box.addView(TextView(this).apply{text=title;textSize=14f;setTypeface(null,Typeface.BOLD);setTextColor(Color.rgb(245,247,247))})
-        box.addView(TextView(this).apply{text=subtitle;textSize=12f;setTextColor(Color.rgb(162,176,179));setPadding(0,dp(4),0,0)})
-        root.addView(box,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(7)})
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(15), dp(13), dp(15), dp(13))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(23, 37, 36), Color.rgb(11, 23, 26))
+            ).apply {
+                cornerRadius = dp(14).toFloat()
+                setStroke(dp(1), Color.rgb(43, 61, 57))
+            }
+        }
+        box.addView(TextView(this).apply {
+            text = title
+            textSize = 14f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(245, 247, 247))
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        })
+        box.addView(TextView(this).apply {
+            text = subtitle
+            textSize = 12f
+            setTextColor(Color.rgb(162, 176, 179))
+            setPadding(0, dp(5), 0, 0)
+        })
+        root.addView(box, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
+        animateEntrance(box, ((root.childCount % 8) * 32L))
     }
 
     private fun formDialog(title: String, labels: List<String>, initialValues: List<String> = emptyList(), onSave: (List<String>) -> Unit) {
