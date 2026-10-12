@@ -2165,13 +2165,13 @@ class MainActivity : Activity() {
             values.addView(priceBadge, LinearLayout.LayoutParams(0, -2, 1f))
             item.addView(values)
             item.addView(TextView(this).apply {
-                text = totalValue?.let { "ОБЛІКОВА ВАРТІСТЬ  \${String.format(Locale.US, "%.2f", it)}" }
+                text = totalValue?.let { "ОБЛІКОВА ВАРТІСТЬ  ${String.format(Locale.US, "%.2f", it)}" }
                     ?: "ОБЛІКОВА ВАРТІСТЬ  не визначена"
                 textSize = 10.5f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(if (totalValue != null) Color.rgb(160, 222, 185) else Color.rgb(154, 171, 173))
                 setPadding(0, dp(9), 0, 0)
-                contentDescription = totalValue?.let { "Облікова вартість: \${String.format(Locale.US, "%.2f", it)}" }
+                contentDescription = totalValue?.let { "Облікова вартість: ${String.format(Locale.US, "%.2f", it)}" }
                     ?: "Облікова вартість не визначена"
             })
             root.addView(item, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
