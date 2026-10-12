@@ -368,6 +368,44 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             put("price", price)
         })
 
+    /** Total imported opening stock matched to this material using the same priority as stock validation. */
+    fun initialStockBalanceForMaterial(materialId: Long): Double {
+        val catalogMaterials = list("materials")
+        if (catalogMaterials.none { it.getOrNull(0)?.toLongOrNull() == materialId }) return 0.0
+        fun norm(value: String?): String = value.orEmpty().trim().replace(Regex("\\s+"), " ").uppercase(java.util.Locale.ROOT)
+        var total = 0.0
+        initialStockRowsForAll().forEach { row ->
+            val sourceNsn = norm(row.getOrNull(6))
+            val sourceCode = norm(row.getOrNull(4))
+            val sourceName = norm(row.getOrNull(5))
+            val sourceUnit = norm(row.getOrNull(9))
+            val sourceBatch = norm(row.getOrNull(8))
+            val matched = catalogMaterials.firstOrNull {
+                sourceNsn.isNotBlank() && norm(it.getOrNull(1)) == sourceNsn
+            } ?: catalogMaterials.firstOrNull {
+                sourceCode.isNotBlank() && norm(it.getOrNull(2)) == sourceCode
+            } ?: catalogMaterials.firstOrNull {
+                sourceName.isNotBlank() && norm(it.getOrNull(3)) == sourceName &&
+                    (sourceUnit.isBlank() || norm(it.getOrNull(4)) == sourceUnit) &&
+                    (sourceBatch.isBlank() || norm(it.getOrNull(5)) == sourceBatch)
+            }
+            if (matched?.getOrNull(0)?.toLongOrNull() != materialId) return@forEach
+            val quantity = row.getOrNull(10)?.trim()?.replace(" ", "")?.replace(',', '.')?.toDoubleOrNull()
+            if (quantity != null && quantity.isFinite() && quantity > 0.0) total += quantity
+        }
+        return total
+    }
+
+    /** Imported stock in a warehouse, including configured cells and unassigned stock only. */
+    fun initialStockBalanceForWarehouse(materialId: Long, warehouseId: Long): Double {
+        var total = openingStockBalance(materialId, warehouseId, null)
+        locationRows(warehouseId).forEach { location ->
+            val locationId = location.getOrNull(0)?.toLongOrNull() ?: return@forEach
+            total += openingStockBalance(materialId, warehouseId, locationId)
+        }
+        return total
+    }
+
     private fun locationBelongsToWarehouse(locationId: Long, warehouseId: Long): Boolean =
         readableDatabase.rawQuery(
             "SELECT 1 FROM storage_locations WHERE id=? AND warehouse_id=? LIMIT 1",

@@ -7,7 +7,8 @@ import java.util.zip.ZipOutputStream
 /** Generates an editable XLSX using the supplied military-property card's coordinates and two movement blocks. */
 object AccountingCardWorkbook {
     data class Movement(
-        val date: String, val document: String, val supplier: String, val recipient: String,
+        val date: String, val document: String, val documentNumber: String,
+        val supplier: String, val recipient: String,
         val receipt: Double, val issue: Double, val balance: Double, val note: String
     )
 
@@ -96,9 +97,8 @@ object AccountingCardWorkbook {
         movements.take(56).forEachIndexed { index, move ->
             val row = if (index < 20) 30 + index else 58 + index - 20
             put("B$row", move.date)
-            val docParts = move.document.split(" ", limit = 2)
-            put("C$row", docParts.firstOrNull().orEmpty() + move.note.takeIf { it.isNotBlank() }?.let { " — $it" }.orEmpty())
-            put("D$row", docParts.getOrNull(1).orEmpty())
+            put("C$row", move.document)
+            put("D$row", move.documentNumber)
             put("E$row", move.date)
             put("F$row", move.supplier)
             put("G$row", move.recipient)
@@ -128,6 +128,7 @@ object AccountingCardWorkbook {
             "B51:B56","C51:E51","F51:F56","G51:H56","I51:M53","N51:R53","S51:X53","C52:C56","D52:D56","E52:E56",
             "I54:I56","J54:M54","N54:N56","O54:R54","S54:S56","T54:X54","J55:J56","K55:K56","L55:M56","O55:O56","P55:P56","Q55:R56","T55:T56","U55:U56","V55:X56"
         )
+        merges += listOf("G29:H29", "L29:M29", "Q29:R29", "V29:X29", "G57:H57", "L57:M57", "Q57:R57", "V57:X57")
         for (r in 30..49) merges += listOf("G$r:H$r","L$r:M$r","Q$r:R$r","V$r:X$r")
         for (r in 58..93) merges += listOf("G$r:H$r","L$r:M$r","Q$r:R$r","V$r:X$r")
         val mergeXml = merges.joinToString("") { "<mergeCell ref=\"$it\"/>" }

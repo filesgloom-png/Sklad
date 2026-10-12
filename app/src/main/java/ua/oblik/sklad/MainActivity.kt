@@ -2372,29 +2372,47 @@ class MainActivity : Activity() {
         val materialId = material.getOrNull(0)?.toLongOrNull()
         val warehouseRows = db.warehouseRows()
         val stockedWarehouses = if (materialId == null) emptyList() else warehouseRows.filter {
-            db.warehouseBalance(materialId, it[0].toLongOrNull() ?: 0L) != 0.0
+            val warehouseId = it[0].toLongOrNull() ?: 0L
+            db.warehouseBalance(materialId, warehouseId) + db.initialStockBalanceForWarehouse(materialId, warehouseId) > 0.000001
         }
         val responsible = stockedWarehouses.map { it.getOrNull(3).orEmpty() }.filter { it.isNotBlank() && it != "Не призначено" }.distinct().joinToString(", ").ifBlank { "Не призначено" }
         val warehouseNames = stockedWarehouses.map { it[1] }.distinct().joinToString(", ").ifBlank { "Не визначено" }
         val price = material.getOrElse(6) { "" }.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
         val movementRows = materialId?.let { db.movementRowsForMaterial(it) }.orEmpty().asReversed()
-        var running = 0.0
-        val movements = movementRows.map { row ->
-            val type = row.getOrElse(2) { "" }
-            val qty = row.getOrElse(3) { "0" }.replace(',', '.').toDoubleOrNull() ?: 0.0
-            val receipt = if (type == "RECEIPT") qty else 0.0
-            val issue = if (type == "ISSUE" || type == "WRITE_OFF") qty else 0.0
-            running += receipt - issue
-            AccountingCardWorkbook.Movement(
-                date = row.getOrElse(0) { "" },
-                document = typeLabel(type) + " " + row.getOrElse(4) { "" },
-                supplier = if (type == "RECEIPT") row.getOrElse(5) { "" } else "",
-                recipient = if (type == "ISSUE" || type == "WRITE_OFF") row.getOrElse(5) { "" } else if (type.startsWith("TRANSFER")) row.getOrElse(6) { "" } else "",
-                receipt = receipt,
-                issue = issue,
-                balance = running,
-                note = row.getOrElse(9) { "" }
-            )
+        val openingBalance = materialId?.let { db.initialStockBalanceForMaterial(it) } ?: 0.0
+        var running = openingBalance
+        val movements = buildList {
+            if (openingBalance > 0.0) {
+                add(AccountingCardWorkbook.Movement(
+                    date = "",
+                    document = "Залишок за імпортованими даними",
+                    documentNumber = "",
+                    supplier = "",
+                    recipient = "",
+                    receipt = 0.0,
+                    issue = 0.0,
+                    balance = openingBalance,
+                    note = "Імпортовані залишки"
+                ))
+            }
+            addAll(movementRows.map { row ->
+                val type = row.getOrElse(2) { "" }
+                val qty = row.getOrElse(3) { "0" }.replace(',', '.').toDoubleOrNull() ?: 0.0
+                val receipt = if (type == "RECEIPT") qty else 0.0
+                val issue = if (type == "ISSUE" || type == "WRITE_OFF") qty else 0.0
+                running += receipt - issue
+                AccountingCardWorkbook.Movement(
+                    date = row.getOrElse(0) { "" },
+                    document = typeLabel(type),
+                    documentNumber = row.getOrElse(4) { "" },
+                    supplier = row.getOrElse(5) { "" }.takeUnless { it == "—" }.orEmpty(),
+                    recipient = row.getOrElse(6) { "" }.takeUnless { it == "—" }.orEmpty(),
+                    receipt = receipt,
+                    issue = issue,
+                    balance = running,
+                    note = row.getOrElse(9) { "" }
+                )
+            })
         }
         val fields = listOf(
             "Номер картки" to "",
