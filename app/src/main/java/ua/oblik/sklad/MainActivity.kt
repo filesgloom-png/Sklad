@@ -1,6 +1,8 @@
 package ua.oblik.sklad
 
 import android.app.Activity
+import android.animation.ValueAnimator
+import android.content.Context
 import android.app.AlertDialog
 import android.database.sqlite.SQLiteException
 import android.graphics.Canvas
@@ -184,6 +186,122 @@ class MainActivity : Activity() {
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
+    private fun setAnimatedContentView(view: View) {
+        setContentView(view)
+        view.alpha = 0f
+        view.translationY = dp(10).toFloat()
+        view.animate().alpha(1f).translationY(0f).setDuration(260L)
+            .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+    }
+
+    private fun animateEntrance(view: View, delay: Long = 0L) {
+        view.alpha = 0f
+        view.translationY = dp(12).toFloat()
+        view.postDelayed({
+            if (!isFinishing && view.isAttachedToWindow) {
+                view.animate().alpha(1f).translationY(0f).setDuration(320L)
+                    .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+            }
+        }, delay)
+    }
+
+    private fun addPressFeedback(view: View) {
+        view.setOnTouchListener { v, event ->
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN ->
+                    v.animate().scaleX(0.975f).scaleY(0.975f).setDuration(90L).start()
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL ->
+                    v.animate().scaleX(1f).scaleY(1f).setDuration(150L)
+                        .setInterpolator(android.view.animation.OvershootInterpolator(1.2f)).start()
+            }
+            false
+        }
+    }
+
+    private class WarehouseHeroArt(context: Context) : View(context) {
+        private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        private var pulse = 0f
+        private var animator: ValueAnimator? = null
+
+        override fun onAttachedToWindow() {
+            super.onAttachedToWindow()
+            animator?.cancel()
+            animator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 1900L
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.REVERSE
+                addUpdateListener {
+                    pulse = it.animatedValue as Float
+                    invalidate()
+                }
+                start()
+            }
+        }
+
+        override fun onDetachedFromWindow() {
+            animator?.cancel()
+            animator = null
+            super.onDetachedFromWindow()
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val w = width.toFloat()
+            val h = height.toFloat()
+            val cx = w * .53f
+            val cy = h * .43f
+            stroke.color = Color.argb((28 + pulse * 34).toInt(), 232, 201, 112)
+            stroke.strokeWidth = dp(1).toFloat()
+            canvas.drawCircle(cx, cy, w * (.24f + pulse * .035f), stroke)
+            stroke.color = Color.argb(36, 103, 219, 178)
+            canvas.drawCircle(cx, cy, w * .36f, stroke)
+
+            fun cube(x: Float, y: Float, size: Float, alpha: Int) {
+                val top = Path().apply {
+                    moveTo(x, y)
+                    lineTo(x + size, y + size * .48f)
+                    lineTo(x, y + size * .96f)
+                    lineTo(x - size, y + size * .48f)
+                    close()
+                }
+                val left = Path().apply {
+                    moveTo(x - size, y + size * .48f)
+                    lineTo(x, y + size * .96f)
+                    lineTo(x, y + size * 1.9f)
+                    lineTo(x - size, y + size * 1.42f)
+                    close()
+                }
+                val right = Path().apply {
+                    moveTo(x + size, y + size * .48f)
+                    lineTo(x, y + size * .96f)
+                    lineTo(x, y + size * 1.9f)
+                    lineTo(x + size, y + size * 1.42f)
+                    close()
+                }
+                fill.color = Color.argb(alpha, 226, 195, 111)
+                canvas.drawPath(top, fill)
+                fill.color = Color.argb(alpha, 113, 132, 81)
+                canvas.drawPath(left, fill)
+                fill.color = Color.argb(alpha, 42, 92, 77)
+                canvas.drawPath(right, fill)
+                stroke.color = Color.argb((120 + pulse * 80).toInt(), 255, 228, 153)
+                stroke.strokeWidth = dp(1).toFloat()
+                canvas.drawPath(top, stroke)
+                canvas.drawPath(left, stroke)
+                canvas.drawPath(right, stroke)
+            }
+            val size = minOf(w * .14f, h * .15f)
+            cube(cx, cy - size * .7f, size, (185 + pulse * 55).toInt())
+            cube(cx - size * 1.05f, cy + size * .65f, size * .78f, 175)
+            cube(cx + size * 1.02f, cy + size * .65f, size * .78f, 195)
+        }
+    }
+
     private fun rounded(color: Int, radius: Int = 14): GradientDrawable =
         GradientDrawable().apply {
             setColor(color)
@@ -266,6 +384,8 @@ class MainActivity : Activity() {
             setPadding(dp(20), dp(14), dp(20), dp(12))
         }
 
+        var dashboardCardEntranceIndex = 0
+
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -314,6 +434,69 @@ class MainActivity : Activity() {
         })
         page.addView(header)
 
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(17), dp(16), dp(8), dp(15))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(24, 58, 49), Color.rgb(15, 31, 31), Color.rgb(25, 31, 29))
+            ).apply {
+                cornerRadius = dp(22).toFloat()
+                setStroke(dp(1), Color.rgb(76, 117, 88))
+            }
+            elevation = dp(5).toFloat()
+        }
+        val heroText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        heroText.addView(TextView(this).apply {
+            text = "WAREHOUSE CONTROL  /  01"
+            textSize = 9.5f
+            letterSpacing = .13f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(172, 214, 170))
+        })
+        heroText.addView(TextView(this).apply {
+            text = "Майно —\nпід контролем"
+            textSize = 24f
+            setTypeface(Typeface.create("sans-serif", Typeface.BOLD), Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            includeFontPadding = false
+            setPadding(0, dp(7), 0, dp(6))
+            maxLines = 2
+        })
+        heroText.addView(TextView(this).apply {
+            text = "Склади · рух · залишки · МВО"
+            textSize = 11.5f
+            setTextColor(Color.rgb(184, 202, 192))
+        })
+        heroText.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(9), dp(5), dp(10), dp(5))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(20, 52, 42))
+                cornerRadius = dp(20).toFloat()
+                setStroke(dp(1), Color.rgb(57, 125, 87))
+            }
+            addView(View(this@MainActivity).apply {
+                background = rounded(Color.rgb(105, 232, 155), 6)
+            }, LinearLayout.LayoutParams(dp(6), dp(6)).apply { rightMargin = dp(6) })
+            addView(TextView(this@MainActivity).apply {
+                text = "ОФЛАЙН · ДАНІ НА ПРИСТРОЇ"
+                textSize = 8.5f
+                letterSpacing = .035f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(181, 235, 199))
+            })
+        }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(12) })
+        hero.addView(heroText, LinearLayout.LayoutParams(0, -2, 1f))
+        hero.addView(WarehouseHeroArt(this), LinearLayout.LayoutParams(dp(104), dp(124)))
+        page.addView(hero, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(15)
+            bottomMargin = dp(10)
+        })
+        animateEntrance(hero, 70L)
+
         val warehouseRows = db.warehouseRows()
         val warehouseCount = warehouseRows.count { it.getOrNull(8) != "0" }
         val personCount = db.list("responsible_persons").size
@@ -326,13 +509,13 @@ class MainActivity : Activity() {
         val stats = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(5), dp(6), dp(5), dp(6))
+            setPadding(dp(5), dp(8), dp(5), dp(8))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(35, 42, 41), Color.rgb(16, 23, 22))
+                intArrayOf(Color.rgb(29, 39, 37), Color.rgb(13, 22, 23))
             ).apply {
-                cornerRadius = dp(20).toFloat()
-                setStroke(dp(1), Color.rgb(88, 96, 91))
+                cornerRadius = dp(19).toFloat()
+                setStroke(dp(1), Color.rgb(66, 91, 78))
             }
         }
 
@@ -366,7 +549,7 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 setPadding(0, dp(1), 0, 0)
             })
-            stats.addView(box, LinearLayout.LayoutParams(0, dp(62), 1f))
+            stats.addView(box, LinearLayout.LayoutParams(0, dp(68), 1f))
             if (index < 3) stats.addView(View(this).apply {
                 setBackgroundColor(Color.rgb(70, 78, 75))
             }, LinearLayout.LayoutParams(dp(1), dp(44)))
@@ -380,7 +563,7 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(5), 0, dp(4))
+                setPadding(0, dp(11), 0, dp(7))
             }
             row.addView(View(this).apply {
                 background = rounded(Color.rgb(224, 193, 102), 3)
@@ -412,7 +595,7 @@ class MainActivity : Activity() {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(8), dp(6), dp(6), dp(6))
+                setPadding(dp(10), dp(9), dp(8), dp(9))
                 background = GradientDrawable(
                     GradientDrawable.Orientation.LEFT_RIGHT,
                     intArrayOf(
@@ -420,10 +603,12 @@ class MainActivity : Activity() {
                         Color.rgb(15, 23, 23)
                     )
                 ).apply {
-                    cornerRadius = dp(14).toFloat()
-                    setStroke(dp(1), Color.argb(175, Color.red(accent), Color.green(accent), Color.blue(accent)))
+                    cornerRadius = dp(17).toFloat()
+                    setStroke(dp(1), Color.argb(145, Color.red(accent), Color.green(accent), Color.blue(accent)))
                 }
-                elevation = dp(2).toFloat()
+                elevation = dp(3).toFloat()
+                isClickable = true
+                isFocusable = true
                 setOnClickListener { action() }
             }
 
@@ -440,7 +625,7 @@ class MainActivity : Activity() {
                 }
             }
             iconHolder.addView(DashboardIconView(this, icon, tint), FrameLayout.LayoutParams(-1, -1))
-            card.addView(iconHolder, LinearLayout.LayoutParams(dp(42), dp(42)))
+            card.addView(iconHolder, LinearLayout.LayoutParams(dp(46), dp(46)))
 
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -449,7 +634,7 @@ class MainActivity : Activity() {
             }
             labels.addView(TextView(this).apply {
                 text = titleText
-                textSize = 13.5f
+                textSize = 14f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.WHITE)
                 maxLines = 2
@@ -472,6 +657,9 @@ class MainActivity : Activity() {
                 setTextColor(Color.rgb(225, 195, 111))
                 gravity = Gravity.CENTER
             }, LinearLayout.LayoutParams(dp(14), dp(42)))
+            addPressFeedback(card)
+            animateEntrance(card, 120L + dashboardCardEntranceIndex * 38L)
+            dashboardCardEntranceIndex++
             return card
         }
 
@@ -486,11 +674,11 @@ class MainActivity : Activity() {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             row.addView(
                 darkCard(left.first, left.second, left.third, leftAccent, Color.WHITE, leftAction),
-                LinearLayout.LayoutParams(0, dp(82), 1f).apply { rightMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(94), 1f).apply { rightMargin = dp(5) }
             )
             row.addView(
                 darkCard(right.first, right.second, right.third, rightAccent, Color.WHITE, rightAction),
-                LinearLayout.LayoutParams(0, dp(82), 1f).apply { leftMargin = dp(4) }
+                LinearLayout.LayoutParams(0, dp(94), 1f).apply { leftMargin = dp(5) }
             )
             page.addView(row)
         }
@@ -586,7 +774,7 @@ class MainActivity : Activity() {
             leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(5)
         })
 
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private fun showBackupMenu() {
@@ -603,7 +791,7 @@ class MainActivity : Activity() {
         }
         addAction(root, "Комірки та місця зберігання") { chooseWarehouseForLocations() }
         addEmptyState(root, "Дані залишаються локально", "Резервне копіювання допомагає перенести облік на інший пристрій. Реальні дані не створюються автоматично.")
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private class WarehouseBannerView(context: android.content.Context) : View(context) {
@@ -689,7 +877,7 @@ class MainActivity : Activity() {
         fun navItem(icon:String,label:String,activeItem:Boolean,action:()->Unit)=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setOnClickListener{action()};addView(DashboardIconView(this@MainActivity,icon,if(activeItem)gold else Color.rgb(174,184,188)),LinearLayout.LayoutParams(dp(25),dp(27)));addView(TextView(this@MainActivity).apply{text=label;textSize=7.5f;gravity=Gravity.CENTER;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;setTextColor(if(activeItem)gold else Color.rgb(174,184,188))},LinearLayout.LayoutParams(-1,dp(16)))}
         nav.addView(navItem("home","Головна",false){showHome()},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("home","Склади",true){showWarehouses(query,filter)},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("cube","Номенкл.",false){showMaterials()},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("transfer","Рух майна",false){showMovement("TRANSFER","Переміщення")},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("chart","Звіти",false){showCards()},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("settings","Налаштув.",false){showBackupMenu()},LinearLayout.LayoutParams(0,dp(58),1f))
         root.addView(nav,LinearLayout.LayoutParams(-1,dp(64)).apply{leftMargin=dp(1);rightMargin=dp(1);bottomMargin=dp(2)})
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private fun showWarehouses(query:String="",filter:String="ALL",sortMode:Int=0){
@@ -766,7 +954,7 @@ class MainActivity : Activity() {
         val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER;background=rounded(Color.rgb(17,27,29),18);setPadding(dp(2),dp(2),dp(2),dp(2))}
         fun navItem(icon:String,label:String,active:Boolean,act:()->Unit)=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setOnClickListener{act()};addView(DashboardIconView(this@MainActivity,icon,if(active)Color.rgb(226,195,111)else Color.rgb(174,184,188)),LinearLayout.LayoutParams(dp(25),dp(27)));addView(TextView(this@MainActivity).apply{text=label;textSize=7.5f;gravity=Gravity.CENTER;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;setTextColor(if(active)Color.rgb(226,195,111)else Color.rgb(174,184,188))},LinearLayout.LayoutParams(-1,dp(16)))}
         nav.addView(navItem("home","Головна",false){showHome()},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("home","Склади",true){showWarehouses(query,filter)},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("cube","Номенкл.",false){showMaterials()},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("transfer","Рух майна",false){showMovement("TRANSFER","Переміщення")},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("chart","Звіти",false){showCards()},LinearLayout.LayoutParams(0,dp(58),1f));nav.addView(navItem("settings","Налаштув.",false){showBackupMenu()},LinearLayout.LayoutParams(0,dp(58),1f))
-        root.addView(nav,LinearLayout.LayoutParams(-1,dp(64)).apply{leftMargin=dp(1);rightMargin=dp(1);bottomMargin=dp(2)});setContentView(root)
+        root.addView(nav,LinearLayout.LayoutParams(-1,dp(64)).apply{leftMargin=dp(1);rightMargin=dp(1);bottomMargin=dp(2)});setAnimatedContentView(root)
     }
 
     private fun chooseWarehouseForLocations() {
@@ -801,7 +989,7 @@ class MainActivity : Activity() {
             }
         }
         if (rows.isEmpty()) addEmptyState(root, "Місць зберігання ще немає", "Додайте стелаж, комірку або інше місце для обліку майна на цьому складі.")
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private fun showPersons(query: String = "") {
@@ -829,7 +1017,7 @@ class MainActivity : Activity() {
             }
         }
         if (rows.isEmpty()) addEmptyState(content, if (query.isBlank()) "МВО ще немає" else "Нічого не знайдено", if (query.isBlank()) "Додайте відповідальну особу перед призначенням на склад." else "Спробуйте змінити пошуковий запит.")
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private fun showMaterials(query: String = "") {
@@ -888,7 +1076,7 @@ class MainActivity : Activity() {
         if (rows.isEmpty() && importedGroups.isEmpty()) addEmptyState(root,
             if (query.isBlank()) "Номенклатура порожня" else "Нічого не знайдено",
             if (query.isBlank()) "Після імпорту Excel або додавання матеріалів номенклатура з'явиться тут." else "Змініть пошуковий запит.")
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private fun showImportedNomenclatureDetail(group: List<Array<String>>) {
@@ -993,7 +1181,7 @@ class MainActivity : Activity() {
             addRow(root, "${typeLabel(it[2])}  ·  ${it[1]}", "${it[0]}  •  Кількість: ${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  •  Документ: ${it[4]}${route}${location}")
         }
         if (rows.isEmpty()) addEmptyState(root, "Операцій ще немає", "Створіть перший документ руху майна. Реальні залишки не підставляються автоматично.")
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private fun selectSingleWarehouse(
@@ -1177,7 +1365,7 @@ class MainActivity : Activity() {
         }
         if (rows.isEmpty()) addEmptyState(root, "Дані для звіту відсутні",
             "Спочатку імпортуйте файл «Залишки.XLSX». Звіт не створює та не вигадує складські дані.")
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private fun showCards() {
@@ -1220,7 +1408,7 @@ class MainActivity : Activity() {
             }
         }
         if (materials.isEmpty()) addEmptyState(root, "Карток ще немає", "Додайте матеріали в Номенклатурі. Реальні складські дані не підставляються автоматично.")
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private fun showJournal(query: String = "", filter: String = "ALL") {
@@ -1282,7 +1470,7 @@ class MainActivity : Activity() {
             addRow(root, "${typeLabel(it[2])}  ·  ${it[1]}", "${it[0]}  •  Кількість: ${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  •  Документ: ${it[4]}${route}${if (it[9].isNotBlank()) " • ${it[9]}" else ""}")
         }
         if (rows.isEmpty()) addEmptyState(root, if (all.isEmpty()) "Журнал порожній" else "Нічого не знайдено", if (all.isEmpty()) "Документи руху з’являться після першої операції." else "Змініть пошук або виберіть інший тип операції.")
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private fun showWarehouseStockTab(warehouseId: Long, type: String, query: String) {
@@ -1334,7 +1522,7 @@ class MainActivity : Activity() {
             }
         }
         if (rows.isEmpty()) addEmptyState(root, "Залишків немає", "Оберіть інший тип зберігання або пошуковий запит.")
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private fun showWarehouseDetail(warehouseId: Long, selectedTab: String = "Номенклатура") {
@@ -1449,7 +1637,7 @@ class MainActivity : Activity() {
         fun navItem(icon:String,label:String,activeItem:Boolean,action:()->Unit)=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER;setOnClickListener{action()};addView(DashboardIconView(this@MainActivity,icon,if(activeItem)gold else muted),LinearLayout.LayoutParams(dp(24),dp(25)));addView(TextView(this@MainActivity).apply{text=label;textSize=8f;gravity=Gravity.CENTER;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;setTextColor(if(activeItem)gold else muted)},LinearLayout.LayoutParams(-1,dp(16)))}
         nav.addView(navItem("home","Головна",false){showHome()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("home","Склади",true){showWarehouses()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("cube","Номенкл.",false){showMaterials()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("transfer","Рух майна",false){showMovement("TRANSFER","Переміщення")},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("chart","Звіти",false){showReports()},LinearLayout.LayoutParams(0,dp(56),1f));nav.addView(navItem("settings","Налаштув.",false){showBackupMenu()},LinearLayout.LayoutParams(0,dp(56),1f))
         root.addView(nav,LinearLayout.LayoutParams(-1,dp(60)).apply{bottomMargin=dp(2)})
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private fun showWarehouseActions(id: Long, name: String, address: String, responsibleId: Long?, note: String) {
@@ -1751,7 +1939,7 @@ class MainActivity : Activity() {
             item.addView(values)
             root.addView(item, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
         }
-        setContentView(root)
+        setAnimatedContentView(root)
     }
 
     private val STOCK_OPEN = 4103
