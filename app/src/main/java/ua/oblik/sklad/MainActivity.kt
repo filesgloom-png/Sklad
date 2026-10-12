@@ -3023,22 +3023,114 @@ class MainActivity : Activity() {
     }
 
     private fun formDialog(title: String, labels: List<String>, initialValues: List<String> = emptyList(), onSave: (List<String>) -> Unit) {
-        val gold=Color.rgb(226,195,111)
-        val layout=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(20),dp(8),dp(20),dp(2));setBackgroundColor(Color.rgb(14,25,27))}
-        val fields=labels.mapIndexed{index,label->EditText(this).apply{
-            hint=label;setTextColor(Color.WHITE);setHintTextColor(Color.rgb(126,141,144));textSize=14f
-            background=GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,intArrayOf(Color.rgb(42,42,31),Color.rgb(18,29,29))).apply{cornerRadius=dp(10).toFloat();setStroke(dp(1),Color.rgb(48,61,57))}
-            setPadding(dp(12),dp(8),dp(12),dp(8));if(index<initialValues.size)setText(initialValues[index]);setSingleLine(true)
-            layout.addView(this,LinearLayout.LayoutParams(-1,dp(48)).apply{bottomMargin=dp(8)})
-        }}
-        val dialog=AlertDialog.Builder(this).setTitle(title).setView(layout).setNegativeButton("Скасувати",null).setPositiveButton("Зберегти"){_,_->onSave(fields.map{it.text.toString().trim()})}.create()
-        dialog.setOnShowListener{
-            dialog.window?.setBackgroundDrawable(rounded(Color.rgb(14,25,27),16))
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(gold)
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(Color.rgb(177,188,190))
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.isAllCaps=false
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.isAllCaps=false
-            dialog.window?.setLayout((resources.displayMetrics.widthPixels*0.92f).toInt(),-2)
+        val gold = Color.rgb(226, 195, 111)
+        val muted = Color.rgb(157, 174, 175)
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(7), dp(18), dp(4))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(18, 31, 31), Color.rgb(10, 21, 24))
+            )
+        }
+        panel.addView(View(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(226, 195, 111), Color.rgb(103, 133, 87), Color.argb(0, 103, 133, 87))
+            )
+        }, LinearLayout.LayoutParams(-1, dp(2)).apply { bottomMargin = dp(11) })
+        panel.addView(TextView(this).apply {
+            text = "SKLAD  /  ДОКУМЕНТ"
+            textSize = 9f
+            setTypeface(null, Typeface.BOLD)
+            letterSpacing = .16f
+            setTextColor(gold)
+        })
+        panel.addView(TextView(this).apply {
+            text = title
+            textSize = 20f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            setPadding(0, dp(4), 0, dp(3))
+            maxLines = 2
+        })
+        panel.addView(TextView(this).apply {
+            text = "Перевірте дані перед збереженням"
+            textSize = 11f
+            setTextColor(muted)
+            setPadding(0, 0, 0, dp(10))
+        })
+        val fields = labels.mapIndexed { index, label ->
+            val field = EditText(this).apply {
+                hint = label
+                setTextColor(Color.WHITE)
+                setHintTextColor(Color.rgb(126, 141, 144))
+                textSize = 14f
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.LEFT_RIGHT,
+                    intArrayOf(Color.rgb(39, 45, 36), Color.rgb(16, 29, 29))
+                ).apply {
+                    cornerRadius = dp(12).toFloat()
+                    setStroke(dp(1), Color.rgb(57, 72, 60))
+                }
+                setPadding(dp(14), dp(10), dp(14), dp(10))
+                if (index < initialValues.size) setText(initialValues[index])
+                setSingleLine(true)
+                if (label.contains("кількість", true) || label.contains("ціна", true) || label.contains("сум", true)) {
+                    inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+                        android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL or
+                        android.text.InputType.TYPE_NUMBER_FLAG_SIGNED
+                }
+                alpha = 0f
+                translationY = dp(7).toFloat()
+            }
+            panel.addView(field, LinearLayout.LayoutParams(-1, dp(49)).apply {
+                bottomMargin = dp(8)
+            })
+            field
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setCustomTitle(LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(dp(20), dp(15), dp(20), dp(2))
+                setBackgroundColor(Color.rgb(14, 25, 27))
+                addView(TextView(this@MainActivity).apply {
+                    text = "НОВА ЗАПИСЬ"
+                    textSize = 9f
+                    setTypeface(null, Typeface.BOLD)
+                    letterSpacing = .14f
+                    setTextColor(gold)
+                })
+                addView(TextView(this@MainActivity).apply {
+                    text = title
+                    textSize = 21f
+                    setTypeface(null, Typeface.BOLD)
+                    setTextColor(Color.WHITE)
+                    setPadding(0, dp(4), 0, 0)
+                })
+            })
+            .setView(panel)
+            .setNegativeButton("Скасувати", null)
+            .setPositiveButton("Зберегти") { _, _ -> onSave(fields.map { it.text.toString().trim() }) }
+            .create()
+        dialog.setOnShowListener {
+            dialog.window?.setBackgroundDrawable(rounded(Color.rgb(14, 25, 27), 18))
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.apply {
+                setTextColor(gold)
+                isAllCaps = false
+                setTypeface(null, Typeface.BOLD)
+            }
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.apply {
+                setTextColor(Color.rgb(177, 188, 190))
+                isAllCaps = false
+            }
+            dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.93f).toInt(), -2)
+            fields.forEachIndexed { index, field ->
+                field.postDelayed({
+                    field.animate().alpha(1f).translationY(0f).setDuration(220L)
+                        .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+                }, index * 38L)
+            }
         }
         dialog.show()
     }
