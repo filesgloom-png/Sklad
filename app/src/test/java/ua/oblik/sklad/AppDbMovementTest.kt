@@ -27,8 +27,8 @@ class AppDbMovementTest {
         db = AppDb(context)
         db.writableDatabase
 
-        warehouseA = db.insertWarehouse("Тестовий склад А", "", "", null)
-        warehouseB = db.insertWarehouse("Тестовий склад Б", "", "", null)
+        warehouseA = db.insertWarehouse("Тестовий склад А", "", "", null, number = "WH-A")
+        warehouseB = db.insertWarehouse("Тестовий склад Б", "", "", null, number = "WH-B")
         locationA = db.insertLocation(warehouseA, "Комірка А", "")
         locationB = db.insertLocation(warehouseB, "Комірка Б", "")
         material = db.insertMaterial("TEST-001", "TEST-001", "Тестовий матеріал", "шт.", "", 1.0)
@@ -61,6 +61,41 @@ class AppDbMovementTest {
         assertEquals(7.0, db.materialBalance(material), 0.000001)
         assertEquals(1.0, db.warehouseBalance(material, warehouseB), 0.000001)
         assertEquals(1.0, db.locationBalance(material, locationB), 0.000001)
+    }
+
+    @Test
+    fun importedOpeningStockCanBeIssuedAndCannotBeOverIssued() {
+        db.writableDatabase.execSQL(
+            """INSERT INTO initial_stock(
+                source_key, warehouse_code, app_warehouse_code, storage_type, storage_location,
+                material_code, description, nsn, size, batch, unit, quantity, price
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""".trimIndent(),
+            arrayOf<Any>(
+                "OPENING-TEST-001", "SRC-A", "WH-A", "Основний", "Комірка А",
+                "TEST-001", "Тестовий матеріал", "TEST-001", "", "", "шт.", 5.0, 1.0
+            )
+        )
+
+        // Five units exist in Excel opening stock even though no movement rows exist yet.
+        db.insertMovement(material, "ISSUE", 3.0, warehouseA, null, locationA, null,
+            "TEST-OPENING-ISSUE-1", "2026-10-12", "")
+        db.insertMovement(material, "ISSUE", 2.0, warehouseA, null, locationA, null,
+            "TEST-OPENING-ISSUE-2", "2026-10-12", "")
+
+        var rejected = false
+        try {
+            db.insertMovement(material, "ISSUE", 1.0, warehouseA, null, locationA, null,
+                "TEST-OPENING-OVERISSUE", "2026-10-12", "")
+        } catch (_: SQLiteException) {
+            rejected = true
+        }
+
+        assertTrue("Нельзя выдать больше остатка Excel с учётом проведённых операций", rejected)
+        assertEquals(-5.0, db.locationBalance(material, locationA), 0.000001)
+        assertEquals(0, db.writableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM movements WHERE document_no='TEST-OPENING-OVERISSUE'",
+            null
+        ).use { cursor -> cursor.moveToFirst(); cursor.getInt(0) })
     }
 
     @Test
