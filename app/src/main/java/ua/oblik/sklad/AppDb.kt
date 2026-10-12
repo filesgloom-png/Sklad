@@ -701,6 +701,41 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
         return balance
     }
 
+    /**
+     * Reads all movement balances in one pass. This avoids one SQL cursor per
+     * material/warehouse pair when rendering the warehouse overview.
+     * Balance rules intentionally mirror warehouseBalance().
+     */
+    fun warehouseBalancesForAll(): Map<Pair<Long, Long>, Double> {
+        val result = mutableMapOf<Pair<Long, Long>, Double>()
+        val sql = """
+            SELECT material_id, type, quantity,
+                   COALESCE(from_warehouse_id, -1),
+                   COALESCE(to_warehouse_id, -1)
+            FROM movements
+        """.trimIndent()
+        readableDatabase.rawQuery(sql, null).use { c ->
+            while (c.moveToNext()) {
+                val materialId = c.getLong(0)
+                val type = c.getString(1)
+                val qty = c.getDouble(2)
+                val from = c.getLong(3)
+                val to = c.getLong(4)
+                when (type) {
+                    "RECEIPT", "TRANSFER_IN" -> if (to >= 0) {
+                        val key = materialId to to
+                        result[key] = (result[key] ?: 0.0) + qty
+                    }
+                    "ISSUE", "WRITE_OFF", "TRANSFER_OUT" -> if (from >= 0) {
+                        val key = materialId to from
+                        result[key] = (result[key] ?: 0.0) - qty
+                    }
+                }
+            }
+        }
+        return result
+    }
+
     fun warehouseBalance(materialId: Long, warehouseId: Long): Double {
         var balance = 0.0
         val sql = """

@@ -1101,7 +1101,7 @@ class MainActivity : Activity() {
         val importedQty=importedRows.sumOf{it.getOrNull(10)?.replace(',','.')?.toDoubleOrNull()?:0.0}
         val importedValue=importedRows.sumOf{(it.getOrNull(10)?.replace(',','.')?.toDoubleOrNull()?:0.0)*(it.getOrNull(11)?.replace(',','.')?.toDoubleOrNull()?:0.0)}
         val hasPrices=importedRows.any{(it.getOrNull(11)?.replace(',','.')?.toDoubleOrNull()?:0.0)>0.0}
-        var movementQty=0.0; rows.forEach{w->materials.forEach{m->movementQty+=db.warehouseBalance(m[0].toLongOrNull()?:return@forEach,w[0].toLong())}}
+        val movementBalances=db.warehouseBalancesForAll(); var movementQty=0.0; rows.forEach{w->materials.forEach{m->movementQty+=movementBalances[(m[0].toLongOrNull()?:return@forEach) to w[0].toLong()]?:0.0}}
         val totalQty=movementQty+importedQty
         val totalValueLabel=if(hasPrices)String.format(Locale.US,"%.2f",importedValue)else"—"
         val stats=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;background=rounded(Color.rgb(17,27,29),14);setPadding(dp(4),dp(5),dp(4),dp(5))}
@@ -1164,7 +1164,7 @@ class MainActivity : Activity() {
                 bottomMargin = dp(6)
             })
             ownerRows.forEach{row->
-            val id=row[0].toLong();val name=row[1];var qty=0.0;var pos=0;materials.forEach{m->val b=db.warehouseBalance(m[0].toLongOrNull()?:return@forEach,id);if(b!=0.0){pos++;qty+=b}}
+            val id=row[0].toLong();val name=row[1];var qty=0.0;var pos=0;materials.forEach{m->val materialId=m[0].toLongOrNull()?:return@forEach;val b=movementBalances[materialId to id]?:0.0;if(b!=0.0){pos++;qty+=b}}
             val importedForWarehouse=db.initialStockRows(row.getOrNull(6).orEmpty().ifBlank{name})
             val importedWarehouseQty=importedForWarehouse.sumOf{it.getOrNull(10)?.replace(',','.')?.toDoubleOrNull()?:0.0}
             qty+=importedWarehouseQty
