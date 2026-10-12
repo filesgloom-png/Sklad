@@ -3470,8 +3470,12 @@ class MainActivity : Activity() {
             setPadding(0, 0, 0, dp(10))
         })
         val fields = labels.mapIndexed { index, label ->
+            val numeric = label.contains("кількість", true) ||
+                label.contains("ціна", true) || label.contains("сум", true)
+            val dateField = label.contains("дата", true)
             val field = EditText(this).apply {
                 hint = label
+                contentDescription = label
                 setTextColor(Color.WHITE)
                 setHintTextColor(Color.rgb(126, 141, 144))
                 textSize = 14f
@@ -3485,18 +3489,39 @@ class MainActivity : Activity() {
                 setPadding(dp(14), dp(10), dp(14), dp(10))
                 if (index < initialValues.size) setText(initialValues[index])
                 setSingleLine(true)
-                if (label.contains("кількість", true) || label.contains("ціна", true) || label.contains("сум", true)) {
+                if (numeric) {
                     inputType = android.text.InputType.TYPE_CLASS_NUMBER or
                         android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL or
                         android.text.InputType.TYPE_NUMBER_FLAG_SIGNED
+                } else if (dateField) {
+                    inputType = android.text.InputType.TYPE_CLASS_DATETIME or
+                        android.text.InputType.TYPE_DATETIME_VARIATION_DATE
+                } else {
+                    inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                        android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                }
+                imeOptions = if (index == labels.lastIndex) {
+                    android.view.inputmethod.EditorInfo.IME_ACTION_DONE
+                } else {
+                    android.view.inputmethod.EditorInfo.IME_ACTION_NEXT
                 }
                 alpha = 0f
                 translationY = dp(7).toFloat()
             }
-            panel.addView(field, LinearLayout.LayoutParams(-1, dp(49)).apply {
-                bottomMargin = dp(8)
+            panel.addView(field, LinearLayout.LayoutParams(-1, dp(52)).apply {
+                bottomMargin = dp(9)
             })
             field
+        }
+        val scrollPanel = ScrollView(this).apply {
+            isFillViewport = true
+            clipToPadding = false
+            setPadding(0, 0, 0, dp(4))
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(18, 31, 31), Color.rgb(10, 21, 24))
+            )
+            addView(panel, ScrollView.LayoutParams(-1, -2))
         }
         val dialog = AlertDialog.Builder(this)
             .setCustomTitle(LinearLayout(this).apply {
@@ -3510,7 +3535,7 @@ class MainActivity : Activity() {
                     )
                 }, LinearLayout.LayoutParams(-1, dp(2)))
             })
-            .setView(panel)
+            .setView(scrollPanel)
             .setNegativeButton("Скасувати", null)
             .setPositiveButton("Зберегти") { _, _ -> onSave(fields.map { it.text.toString().trim() }) }
             .create()
@@ -3525,12 +3550,15 @@ class MainActivity : Activity() {
                 setTextColor(Color.rgb(177, 188, 190))
                 isAllCaps = false
             }
-            dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.93f).toInt(), -2)
+            val availableHeight = (resources.displayMetrics.heightPixels * 0.78f).toInt()
+            dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.93f).toInt(), availableHeight)
             fields.forEachIndexed { index, field ->
                 field.postDelayed({
-                    field.animate().alpha(1f).translationY(0f).setDuration(220L)
-                        .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
-                }, index * 38L)
+                    if (field.isAttachedToWindow) {
+                        field.animate().alpha(1f).translationY(0f).setDuration(150L)
+                            .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+                    }
+                }, index * 18L)
             }
         }
         dialog.show()
