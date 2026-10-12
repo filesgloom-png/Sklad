@@ -1505,6 +1505,9 @@ class MainActivity : Activity() {
             }
             matchesType && (query.isBlank() || row.any { value -> value.contains(query, true) })
         }
+        val receipts = all.count { it[2] == "RECEIPT" }
+        val issues = all.count { it[2] == "ISSUE" }
+        val transfers = all.count { it[2].startsWith("TRANSFER") }
         val filterLabel = when (filter) {
             "RECEIPT" -> "Надходження"
             "ISSUE" -> "Видача"
@@ -1512,9 +1515,82 @@ class MainActivity : Activity() {
             "WRITE_OFF" -> "Списання"
             else -> "Усі операції"
         }
-        addScreenSummary(root, "ІСТОРІЯ ОПЕРАЦІЙ", "Журнал руху майна", "${rows.size} записів • ${filterLabel}")
-        addAction(root, "⌕  Пошук у журналі") { searchDialog("Пошук у журналі", query) { q -> showJournal(q, filter) } }
-        val filterScroll = HorizontalScrollView(this).apply { isHorizontalScrollBarEnabled = false }
+
+        addScreenSummary(root, "ОПЕРАЦІЙНИЙ ЦЕНТР", "Журнал руху майна",
+            "${rows.size} із ${all.size} записів • ${filterLabel}")
+
+        val metrics = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(23, 39, 35), Color.rgb(12, 24, 27))
+            ).apply {
+                cornerRadius = dp(15).toFloat()
+                setStroke(dp(1), Color.rgb(48, 70, 59))
+            }
+            setPadding(dp(5), dp(10), dp(5), dp(10))
+        }
+        val metricItems = listOf(
+            Triple("↓", "Надходження", receipts),
+            Triple("↑", "Видача", issues),
+            Triple("⇄", "Переміщення", transfers)
+        )
+        metricItems.forEachIndexed { index, item ->
+            val metric = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+            }
+            metric.addView(TextView(this).apply {
+                text = item.first
+                textSize = 19f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(when (index) {
+                    0 -> Color.rgb(112, 222, 169)
+                    1 -> Color.rgb(235, 190, 119)
+                    else -> Color.rgb(226, 195, 111)
+                })
+                gravity = Gravity.CENTER
+            })
+            metric.addView(TextView(this).apply {
+                text = item.second
+                textSize = 10f
+                setTextColor(Color.rgb(179, 195, 190))
+                gravity = Gravity.CENTER
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+            })
+            metric.addView(TextView(this).apply {
+                text = item.third.toString()
+                textSize = 17f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+                setPadding(0, dp(2), 0, 0)
+            })
+            metrics.addView(metric, LinearLayout.LayoutParams(0, -2, 1f))
+            if (index < metricItems.lastIndex) {
+                metrics.addView(View(this).apply {
+                    setBackgroundColor(Color.rgb(52, 72, 64))
+                }, LinearLayout.LayoutParams(dp(1), dp(42)).apply {
+                    leftMargin = dp(3)
+                    rightMargin = dp(3)
+                })
+            }
+        }
+        root.addView(metrics, LinearLayout.LayoutParams(-1, -2).apply {
+            bottomMargin = dp(11)
+        })
+
+        addActionRow(root, listOf(
+            "⌕  Пошук" to { searchDialog("Пошук у журналі", query) { q -> showJournal(q, filter) } },
+            "⇩  Експорт CSV" to { exportCurrentBalanceCsv() }
+        ))
+
+        val filterScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+        }
         val filterRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         listOf(
             "ALL" to "Усі",
@@ -1529,28 +1605,62 @@ class MainActivity : Activity() {
                 textSize = 11f
                 setTypeface(null, Typeface.BOLD)
                 gravity = Gravity.CENTER
-                setTextColor(if (selected) Color.rgb(25, 25, 19) else Color.rgb(188, 198, 198))
+                setTextColor(if (selected) Color.rgb(22, 26, 20) else Color.rgb(188, 198, 198))
                 background = GradientDrawable(
                     GradientDrawable.Orientation.TOP_BOTTOM,
                     if (selected) intArrayOf(Color.rgb(246, 218, 133), Color.rgb(179, 143, 56))
                     else intArrayOf(Color.rgb(20, 32, 32), Color.rgb(12, 23, 25))
                 ).apply {
-                    cornerRadius = dp(10).toFloat()
+                    cornerRadius = dp(11).toFloat()
                     setStroke(dp(1), if (selected) Color.rgb(238, 207, 122) else Color.rgb(43, 57, 54))
                 }
-                setPadding(dp(12), dp(10), dp(12), dp(10))
+                setPadding(dp(13), dp(10), dp(13), dp(10))
                 setOnClickListener { showJournal(query, option.first) }
-            }, LinearLayout.LayoutParams(-2, dp(38)).apply { rightMargin = dp(6) })
+            }, LinearLayout.LayoutParams(-2, dp(40)).apply {
+                rightMargin = dp(7)
+            })
         }
         filterScroll.addView(filterRow)
         root.addView(filterScroll, LinearLayout.LayoutParams(-1, -2).apply {
-            bottomMargin = dp(10)
+            bottomMargin = dp(12)
         })
-        rows.forEach {
-            val route = if (it[2].startsWith("TRANSFER")) " • ${it[5]} → ${it[6]}" else if (it[2] == "RECEIPT") " • ${it[6]}" else " • ${it[5]}"
-            addRow(root, "${typeLabel(it[2])}  ·  ${it[1]}", "${it[0]}  •  Кількість: ${formatQty(it[3].toDoubleOrNull() ?: 0.0)}  •  Документ: ${it[4]}${route}${if (it[9].isNotBlank()) " • ${it[9]}" else ""}")
+
+        if (rows.isNotEmpty()) {
+            val section = TextView(this).apply {
+                text = "ЗАПИСИ ОПЕРАЦІЙ  /  ${rows.size}"
+                textSize = 10f
+                letterSpacing = .11f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(151, 180, 164))
+                setPadding(dp(2), dp(2), 0, dp(9))
+            }
+            root.addView(section)
         }
-        if (rows.isEmpty()) addEmptyState(root, if (all.isEmpty()) "Журнал порожній" else "Нічого не знайдено", if (all.isEmpty()) "Документи руху з’являться після першої операції." else "Змініть пошук або виберіть інший тип операції.")
+        rows.forEach { row ->
+            val route = if (row[2].startsWith("TRANSFER")) {
+                " • ${row[5]} → ${row[6]}"
+            } else if (row[2] == "RECEIPT") {
+                " • ${row[6]}"
+            } else {
+                " • ${row[5]}"
+            }
+            val subtitle = "${row[0]} • Кількість: ${formatQty(row[3].toDoubleOrNull() ?: 0.0)} • Документ: ${row[4]}${route}${if (row[9].isNotBlank()) " • ${row[9]}" else ""}"
+            val badge = when {
+                row[2] == "RECEIPT" -> "↓ ПРИХІД"
+                row[2] == "ISSUE" -> "↑ ВИДАЧА"
+                row[2].startsWith("TRANSFER") -> "⇄ РУХ"
+                row[2] == "WRITE_OFF" -> "× СПИСАННЯ"
+                else -> typeLabel(row[2]).uppercase(Locale.getDefault())
+            }
+            addRecordCard(root, "${typeLabel(row[2])}  ·  ${row[1]}", subtitle, badge) {
+                searchDialog("Деталі запису", row[4]) { q -> showJournal(q, filter) }
+            }
+        }
+        if (rows.isEmpty()) addEmptyState(
+            root,
+            if (all.isEmpty()) "Журнал порожній" else "Нічого не знайдено",
+            if (all.isEmpty()) "Документи руху з’являться після першої операції." else "Змініть пошук або виберіть інший тип операції."
+        )
         setAnimatedContentView(root)
     }
 
