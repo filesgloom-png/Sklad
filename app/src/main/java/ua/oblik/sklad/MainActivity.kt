@@ -205,14 +205,11 @@ class MainActivity : Activity() {
     }
 
     private fun animateEntrance(view: View, delay: Long = 0L) {
-        view.alpha = 0f
-        view.translationY = dp(12).toFloat()
-        view.postDelayed({
-            if (!isFinishing && view.isAttachedToWindow) {
-                view.animate().alpha(1f).translationY(0f).setDuration(320L)
-                    .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
-            }
-        }, delay)
+        // Keep transitions subtle and non-blocking: large lists should not wait for a cascade.
+        view.alpha = 0.94f
+        view.translationY = dp(3).toFloat()
+        view.animate().alpha(1f).translationY(0f).setStartDelay(0L).setDuration(130L)
+            .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
     }
 
     private fun addPressFeedback(view: View) {
@@ -3139,14 +3136,14 @@ class MainActivity : Activity() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), dp(13), dp(13), dp(13))
-            minimumHeight = dp(68)
+            setPadding(dp(15), dp(15), dp(14), dp(15))
+            minimumHeight = dp(76)
             background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(24, 38, 36), Color.rgb(13, 26, 28))
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(27, 47, 42), Color.rgb(13, 27, 30), Color.rgb(10, 22, 26))
             ).apply {
-                cornerRadius = dp(14).toFloat()
-                setStroke(dp(1), Color.rgb(49, 68, 61))
+                cornerRadius = dp(17).toFloat()
+                setStroke(dp(1), Color.rgb(54, 91, 76))
             }
             contentDescription = "$badge: $title. $subtitle"
             isClickable = true
@@ -3194,10 +3191,10 @@ class MainActivity : Activity() {
             setPadding(dp(13), dp(12), dp(13), dp(11))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(25, 36, 34), Color.rgb(12, 24, 26))
+                intArrayOf(Color.rgb(28, 46, 40), Color.rgb(13, 27, 30))
             ).apply {
-                cornerRadius = dp(13).toFloat()
-                setStroke(dp(1), Color.rgb(45, 62, 56))
+                cornerRadius = dp(17).toFloat()
+                setStroke(dp(1), Color.rgb(51, 85, 71))
             }
             isClickable = true
             isFocusable = true
@@ -3264,10 +3261,10 @@ class MainActivity : Activity() {
             setPadding(dp(14), dp(13), dp(14), dp(12))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(31, 39, 34), Color.rgb(13, 25, 27))
+                intArrayOf(Color.rgb(34, 47, 38), Color.rgb(13, 26, 29))
             ).apply {
-                cornerRadius = dp(14).toFloat()
-                setStroke(dp(1), Color.rgb(77, 78, 53))
+                cornerRadius = dp(17).toFloat()
+                setStroke(dp(1), Color.rgb(91, 87, 54))
             }
             isClickable = true
             isFocusable = true
@@ -3357,10 +3354,10 @@ class MainActivity : Activity() {
             setPadding(dp(15), dp(13), dp(15), dp(13))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(25, 39, 36), Color.rgb(11, 23, 26))
+                intArrayOf(Color.rgb(27, 47, 42), Color.rgb(11, 23, 27))
             ).apply {
-                cornerRadius = dp(15).toFloat()
-                setStroke(dp(1), Color.rgb(49, 68, 60))
+                cornerRadius = dp(17).toFloat()
+                setStroke(dp(1), Color.rgb(55, 89, 73))
             }
             isClickable = true
             isFocusable = true
