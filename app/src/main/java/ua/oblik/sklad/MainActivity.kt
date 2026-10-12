@@ -1116,6 +1116,9 @@ class MainActivity : Activity() {
         val all = db.list("materials")
         val rows = all.filter { row -> query.isBlank() || row.any { it.contains(query, true) } }
         val importedRows = db.initialStockRowsForAll("ALL", query)
+        val warehouseByCode = db.warehouseRows().associateBy {
+            it.getOrNull(6).orEmpty().uppercase(Locale.ROOT)
+        }
         val importedGroups = importedRows.groupBy { row ->
             listOf(row.getOrElse(4) { "" }, row.getOrElse(5) { "" }, row.getOrElse(6) { "" },
                 row.getOrElse(7) { "" }, row.getOrElse(8) { "" }, row.getOrElse(9) { "" }).joinToString("|")
@@ -1148,8 +1151,20 @@ class MainActivity : Activity() {
                 val title = first.getOrElse(5) { "" }.ifBlank { first.getOrElse(4) { "Без назви" } }
                 val identifiers = listOf(first.getOrElse(4) { "" }, first.getOrElse(6) { "" })
                     .filter { it.isNotBlank() }.distinct().joinToString(" • ")
-                val details = "${warehouseCount} складів" +
-                    if (identifiers.isBlank()) "" else " • $identifiers"
+                val responsiblePeople = group.mapNotNull { stockRow ->
+                    warehouseByCode[stockRow.getOrElse(1) { "" }.uppercase(Locale.ROOT)]
+                        ?.getOrNull(3)?.takeIf { it.isNotBlank() && !it.equals("Не призначено", true) }
+                }.distinct()
+                val mvoLabel = when {
+                    responsiblePeople.size == 1 -> "МВО: ${responsiblePeople.first()}"
+                    responsiblePeople.size > 1 -> "МВО: ${responsiblePeople.size} осіб"
+                    else -> "МВО не призначено"
+                }
+                val details = listOf(
+                    "${warehouseCount} складів",
+                    identifiers.takeIf { it.isNotBlank() },
+                    mvoLabel
+                ).filterNotNull().joinToString(" • ")
                 addNomenclatureCard(root, title, details, "${formatQty(qty)} ${first.getOrElse(9) { "" }}") {
                     showImportedNomenclatureDetail(group)
                 }
