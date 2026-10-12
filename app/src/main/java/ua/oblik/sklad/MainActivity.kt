@@ -1900,7 +1900,7 @@ class MainActivity : Activity() {
                 else -> typeLabel(row[2]).uppercase(Locale.getDefault())
             }
             addRecordCard(root, "${typeLabel(row[2])}  ·  ${row[1]}", subtitle, badge) {
-                searchDialog("Деталі запису", row[4]) { q -> showJournal(q, filter) }
+                showMovementRecordDetail(row)
             }
         }
         if (rows.isEmpty()) addEmptyState(
@@ -1911,6 +1911,60 @@ class MainActivity : Activity() {
         setAnimatedContentView(root)
     }
 
+    private fun showMovementRecordDetail(row: Array<String>) {
+        val type = row.getOrNull(2).orEmpty()
+        val isTransfer = type.startsWith("TRANSFER")
+        val route = when {
+            isTransfer -> "${row.getOrNull(5).orEmpty()} → ${row.getOrNull(6).orEmpty()}"
+            type == "RECEIPT" -> row.getOrNull(6).orEmpty().ifBlank { "—" }
+            else -> row.getOrNull(5).orEmpty().ifBlank { "—" }
+        }
+        val location = when {
+            isTransfer -> "${row.getOrNull(7).orEmpty()} → ${row.getOrNull(8).orEmpty()}"
+            type == "RECEIPT" -> row.getOrNull(8).orEmpty().ifBlank { "—" }
+            else -> row.getOrNull(7).orEmpty().ifBlank { "—" }
+        }
+        val body = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(8), dp(18), dp(8))
+        }
+        fun addDetail(label: String, value: String, accent: Boolean = false) {
+            body.addView(TextView(this).apply {
+                text = label.uppercase(Locale.getDefault())
+                textSize = 10f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(126, 174, 151))
+                setPadding(0, dp(10), 0, dp(2))
+            })
+            body.addView(TextView(this).apply {
+                text = value.ifBlank { "—" }
+                textSize = if (accent) 17f else 14f
+                setTypeface(null, if (accent) Typeface.BOLD else Typeface.NORMAL)
+                setTextColor(if (accent) Color.rgb(43, 126, 89) else Color.rgb(38, 48, 44))
+                setPadding(0, 0, 0, dp(5))
+            })
+        }
+        addDetail("Тип операції", typeLabel(type), true)
+        addDetail("Дата", row.getOrNull(0).orEmpty())
+        addDetail("Номенклатура", row.getOrNull(1).orEmpty(), true)
+        addDetail("Кількість", formatQty(row.getOrNull(3)?.toDoubleOrNull() ?: 0.0))
+        addDetail("Документ", row.getOrNull(4).orEmpty())
+        addDetail(if (isTransfer) "Маршрут складів" else "Склад", route)
+        addDetail(if (isTransfer) "Маршрут місць зберігання" else "Місце зберігання", location)
+        addDetail("Примітка", row.getOrNull(9).orEmpty().ifBlank { "Немає примітки" })
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            addView(body)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Деталі операції")
+            .setView(scroll)
+            .setNegativeButton("Закрити", null)
+            .setPositiveButton("Знайти документ") { _, _ ->
+                showJournal(row.getOrNull(4).orEmpty(), "ALL")
+            }
+            .show()
+    }
     private fun showWarehouseStockTab(warehouseId: Long, type: String, query: String) {
         val w = db.warehouseRows().firstOrNull { it[0].toLongOrNull() == warehouseId } ?: run { showWarehouses(); return }
         val code = w.getOrNull(6).orEmpty().ifBlank { w[1] }
