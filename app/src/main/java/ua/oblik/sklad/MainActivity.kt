@@ -324,12 +324,87 @@ class MainActivity : Activity() {
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
-        db = AppDb(this)
-        preloadBundledStockIfNeeded()
         window.statusBarColor = Color.rgb(7, 18, 21)
         window.navigationBarColor = Color.rgb(7, 18, 21)
         window.decorView.systemUiVisibility = 0
-        showHome()
+        showLoadingScreen("Підготовка складу", "Відкриваємо локальну базу даних…")
+        Thread({
+            try {
+                db = AppDb(applicationContext)
+                preloadBundledStockIfNeeded()
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) showHome()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed) {
+                        showLoadingScreen("Не вдалося відкрити склад", e.message ?: "Перезапустіть застосунок")
+                    }
+                }
+            }
+        }, "sklad-startup").start()
+    }
+
+    private fun showLoadingScreen(title: String, subtitle: String) {
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(32), dp(24), dp(32), dp(24))
+            setBackgroundColor(Color.rgb(7, 18, 21))
+        }
+        val emblem = FrameLayout(this).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(27, 83, 63), Color.rgb(15, 35, 33))).apply {
+                cornerRadius = dp(28).toFloat()
+                setStroke(dp(1), Color.rgb(112, 91, 48))
+            }
+            elevation = dp(8).toFloat()
+        }
+        emblem.addView(DashboardIconView(this, "cube", Color.rgb(226, 195, 111)),
+            FrameLayout.LayoutParams(dp(94), dp(94), Gravity.CENTER))
+        root.addView(emblem, LinearLayout.LayoutParams(dp(116), dp(116)).apply {
+            bottomMargin = dp(24)
+        })
+        root.addView(TextView(this).apply {
+            text = "Склад+"
+            textSize = 30f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            letterSpacing = .02f
+        })
+        root.addView(TextView(this).apply {
+            text = "ОБЛІК МАЙНА ТА МАТЕРІАЛІВ"
+            textSize = 10f
+            setTypeface(null, Typeface.BOLD)
+            letterSpacing = .14f
+            setTextColor(Color.rgb(226, 195, 111))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(7), 0, dp(30))
+        })
+        val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            isIndeterminate = true
+            progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(103, 219, 178))
+            indeterminateTintList = android.content.res.ColorStateList.valueOf(Color.rgb(103, 219, 178))
+        }
+        root.addView(progress, LinearLayout.LayoutParams(dp(220), dp(4)).apply {
+            bottomMargin = dp(18)
+        })
+        root.addView(TextView(this).apply {
+            text = title
+            textSize = 16f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+        })
+        root.addView(TextView(this).apply {
+            text = subtitle
+            textSize = 12f
+            setTextColor(Color.rgb(160, 176, 175))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(7), 0, 0)
+        })
+        setContentView(root)
     }
 
     private fun preloadBundledStockIfNeeded() {
@@ -344,12 +419,18 @@ class MainActivity : Activity() {
                 val rows = parseInitialStock(Uri.fromFile(temp))
                 val saved = db.replaceInitialStock(rows)
                 prefs.edit().putBoolean("bundled_stock_attempted", true).apply()
-                Toast.makeText(this, "Завантажено початкові залишки: $saved позицій", Toast.LENGTH_LONG).show()
+                runOnUiThread {
+                    if (!isFinishing && !isDestroyed)
+                        Toast.makeText(this, "Завантажено початкові залишки: $saved позицій", Toast.LENGTH_LONG).show()
+                }
             } finally {
                 temp.delete()
             }
         } catch (e: Exception) {
-            Toast.makeText(this, "Не вдалося завантажити вбудовані залишки: ${e.message ?: "помилка файлу"}", Toast.LENGTH_LONG).show()
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed)
+                    Toast.makeText(this, "Не вдалося завантажити вбудовані залишки: ${e.message ?: "помилка файлу"}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
