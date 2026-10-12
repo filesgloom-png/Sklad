@@ -1960,7 +1960,7 @@ class MainActivity : Activity() {
                         (batch.isBlank() || normalized(m.getOrNull(5)) == batch)
                 }
         }
-        data class StockKey(val warehouseId: Long, val materialId: Long)
+        data class StockKey(val warehouseId: Long, val materialId: Long, val cellKey: String)
         data class StockLine(
             val warehouseCode: String,
             val warehouseName: String,
@@ -1977,7 +1977,8 @@ class MainActivity : Activity() {
             val cells: MutableSet<String> = linkedSetOf(),
             val storageTypes: MutableSet<String> = linkedSetOf(),
             var materialId: Long? = null,
-            var warehouseId: Long? = null
+            var warehouseId: Long? = null,
+            var cellId: Long? = null
         )
         val lines = linkedMapOf<String, StockLine>()
         val mappedOpeningByKey = linkedMapOf<StockKey, StockLine>()
@@ -1989,8 +1990,13 @@ class MainActivity : Activity() {
             val material = findMaterial(row)
             val warehouseId = warehouse?.getOrNull(0)?.toLongOrNull()
             val materialId = material?.getOrNull(0)?.toLongOrNull()
-            if (warehouseId != null && materialId != null) {
-                val key = StockKey(warehouseId, materialId)
+            val sourceCell = row.getOrNull(3).orEmpty().trim()
+            val configuredLocations = warehouseId?.let { db.locationRows(it) }.orEmpty()
+            val matchedLocation = configuredLocations.firstOrNull { sourceCell.isNotBlank() && normalized(it.getOrNull(1)) == normalized(sourceCell) }
+            val cellIsResolved = sourceCell.isBlank() || matchedLocation != null
+            if (warehouseId != null && materialId != null && cellIsResolved) {
+                val cellId = matchedLocation?.getOrNull(0)?.toLongOrNull()
+                val key = StockKey(warehouseId, materialId, cellId?.toString() ?: "UNASSIGNED")
                 val line = mappedOpeningByKey.getOrPut(key) {
                     StockLine(
                         warehouseCode = warehouse.getOrNull(6).orEmpty().ifBlank { row.getOrNull(1).orEmpty() },
@@ -2004,7 +2010,8 @@ class MainActivity : Activity() {
                         unit = material.getOrNull(4).orEmpty().ifBlank { row.getOrNull(9).orEmpty() },
                         price = number(row.getOrNull(11)).takeIf { it > 0.0 } ?: number(material.getOrNull(6)),
                         materialId = materialId,
-                        warehouseId = warehouseId
+                        warehouseId = warehouseId,
+                        cellId = cellId
                     )
                 }
                 line.openingQty += number(row.getOrNull(10))
@@ -2037,47 +2044,50 @@ class MainActivity : Activity() {
         mappedOpeningByKey.forEach { (key, line) ->
             val materialId = key.materialId
             val warehouseId = key.warehouseId
-            line.matchedMovementQty = db.warehouseBalance(materialId, warehouseId)
-            db.locationRows(warehouseId).forEach { loc ->
-                val locationId = loc.getOrNull(0)?.toLongOrNull() ?: return@forEach
-                val balance = db.locationBalance(materialId, locationId)
-                if (kotlin.math.abs(balance) > 1e-9) {
-                    line.cells.add("${loc.getOrNull(1).orEmpty()} (рух: ${formatQty(balance)})")
-                }
+            line.matchedMovementQty = if (line.cellId != null) {
+                db.locationBalance(materialId, line.cellId!!)
+            } else {
+                db.unassignedWarehouseBalance(materialId, warehouseId)
             }
             lines["MAPPED|${key.warehouseId}|${key.materialId}"] = line
         }
 
-        // Include posted-operation balances for catalog materials that have no imported opening row.
+        // Include operation-only balances per exact configured cell and unassigned stock.
         materials.forEach { material ->
             val materialId = material.getOrNull(0)?.toLongOrNull() ?: return@forEach
             warehouses.forEach warehouseLoop@{ warehouse ->
                 val warehouseId = warehouse.getOrNull(0)?.toLongOrNull() ?: return@warehouseLoop
-                val balance = db.warehouseBalance(materialId, warehouseId)
-                val key = StockKey(warehouseId, materialId)
-                if (key !in mappedOpeningByKey && kotlin.math.abs(balance) > 1e-9) {
-                    val line = StockLine(
-                        warehouseCode = warehouse.getOrNull(6).orEmpty(),
-                        warehouseName = warehouse.getOrNull(1).orEmpty(),
-                        mvo = warehouse.getOrNull(3).orEmpty(),
-                        materialCode = material.getOrNull(2).orEmpty(),
-                        name = material.getOrNull(3).orEmpty(),
-                        nsn = material.getOrNull(1).orEmpty(),
-                        size = "",
-                        batch = material.getOrNull(5).orEmpty(),
-                        unit = material.getOrNull(4).orEmpty(),
-                        price = number(material.getOrNull(6)),
-                        matchedMovementQty = balance,
-                        materialId = materialId,
-                        warehouseId = warehouseId
-                    )
-                    db.locationRows(warehouseId).forEach { loc ->
-                        val locationId = loc.getOrNull(0)?.toLongOrNull() ?: return@forEach
-                        val locationBalance = db.locationBalance(materialId, locationId)
-                        if (kotlin.math.abs(locationBalance) > 1e-9) line.cells.add("${loc.getOrNull(1).orEmpty()} (рух: ${formatQty(locationBalance)})")
+                val cells = db.locationRows(warehouseId).mapNotNull { loc ->
+                    val locationId = loc.getOrNull(0)?.toLongOrNull() ?: return@mapNotNull null
+                    Triple(locationId.toString(), locationId, loc.getOrNull(1).orEmpty())
+                }.toMutableList()
+                cells.add(Triple("UNASSIGNED", null, "Без привязки к ячейке"))
+                cells.forEach cellLoop@{ cell ->
+                    val balance = if (cell.second != null) db.locationBalance(materialId, cell.second!!)
+                        else db.unassignedWarehouseBalance(materialId, warehouseId)
+                    if (kotlin.math.abs(balance) <= 1e-9) return@cellLoop
+                    val key = StockKey(warehouseId, materialId, cell.first)
+                    if (key !in mappedOpeningByKey) {
+                        val line = StockLine(
+                            warehouseCode = warehouse.getOrNull(6).orEmpty(),
+                            warehouseName = warehouse.getOrNull(1).orEmpty(),
+                            mvo = warehouse.getOrNull(3).orEmpty().ifBlank { "МВО не вказано" },
+                            materialCode = material.getOrNull(2).orEmpty(),
+                            name = material.getOrNull(3).orEmpty(),
+                            nsn = material.getOrNull(1).orEmpty(),
+                            size = "",
+                            batch = material.getOrNull(5).orEmpty(),
+                            unit = material.getOrNull(4).orEmpty(),
+                            price = number(material.getOrNull(6)),
+                            matchedMovementQty = balance,
+                            cells = linkedSetOf(cell.third),
+                            storageTypes = linkedSetOf("Операції"),
+                            materialId = materialId,
+                            warehouseId = warehouseId,
+                            cellId = cell.second
+                        )
+                        lines["MOVEMENT|\${warehouseId}|\${materialId}|\${cell.first}"] = line
                     }
-                    if (line.cells.isEmpty()) line.cells.add("Без привязки к комірке")
-                    lines["MOVEMENT|${warehouseId}|${materialId}"] = line
                 }
             }
         }
