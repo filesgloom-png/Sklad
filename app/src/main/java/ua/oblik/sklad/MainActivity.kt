@@ -1519,7 +1519,7 @@ class MainActivity : Activity() {
                     val warehouseBalance = db.warehouseBalance(materialId, warehouseId)
                     if (warehouseBalance != 0.0) addBalanceLine(detail, warehouse[1], warehouseBalance, material[4], 1)
                 }
-                addSectionTitle(detail, "ІСТОРІЯ РУХУ МАЙНА")
+                addRow(detail, "ІСТОРІЯ РУХУ МАЙНА", "Останні операції за вибраною номенклатурою")
                 val history = db.movementRowsForMaterial(materialId)
                 if (history.isEmpty()) {
                     addRow(detail, "Операції", "Документів руху поки немає")
