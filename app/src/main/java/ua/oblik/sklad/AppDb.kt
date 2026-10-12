@@ -374,6 +374,59 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             arrayOf(locationId.toString(), warehouseId.toString())
         ).use { it.moveToFirst() }
 
+    /**
+     * Returns the imported opening quantity that belongs to a material/warehouse and,
+     * when locationId is supplied, to that exact storage location. When locationId is null,
+     * only unassigned opening rows are counted, so stock assigned to another cell cannot
+     * be consumed accidentally.
+     */
+    private fun openingStockBalance(materialId: Long, warehouseId: Long, locationId: Long?): Double {
+        val material = list("materials").firstOrNull { it.getOrNull(0)?.toLongOrNull() == materialId }
+            ?: return 0.0
+        val warehouse = warehouseRows().firstOrNull { it.getOrNull(0)?.toLongOrNull() == warehouseId }
+            ?: return 0.0
+        val warehouseNumber = warehouse.getOrNull(6).orEmpty().trim()
+        val materialNsn = material.getOrNull(1).orEmpty().trim()
+        val materialCode = material.getOrNull(2).orEmpty().trim()
+        val materialName = material.getOrNull(3).orEmpty().trim()
+        val materialUnit = material.getOrNull(4).orEmpty().trim()
+        val materialBatch = material.getOrNull(5).orEmpty().trim()
+        val locations = locationRows(warehouseId)
+        fun norm(value: String?): String = value.orEmpty().trim().replace(Regex("\\s+"), " ").uppercase(java.util.Locale.ROOT)
+        var total = 0.0
+        initialStockRowsForAll().forEach { row ->
+            val sourceWarehouse = norm(row.getOrNull(0))
+            val appWarehouse = norm(row.getOrNull(1))
+            val expectedWarehouse = norm(warehouseNumber)
+            if (expectedWarehouse.isBlank() ||
+                (appWarehouse != expectedWarehouse && sourceWarehouse != expectedWarehouse)) return@forEach
+
+            val sourceNsn = norm(row.getOrNull(6))
+            val sourceCode = norm(row.getOrNull(4))
+            val sourceName = norm(row.getOrNull(5))
+            val sourceUnit = norm(row.getOrNull(9))
+            val sourceBatch = norm(row.getOrNull(8))
+            val matchesMaterial =
+                (sourceNsn.isNotBlank() && norm(materialNsn) == sourceNsn) ||
+                (sourceCode.isNotBlank() && norm(materialCode) == sourceCode) ||
+                (sourceName.isNotBlank() && norm(materialName) == sourceName &&
+                    (sourceUnit.isBlank() || norm(materialUnit) == sourceUnit) &&
+                    (sourceBatch.isBlank() || norm(materialBatch) == sourceBatch))
+            if (!matchesMaterial) return@forEach
+
+            val sourceCell = norm(row.getOrNull(3))
+            val matchedLocation = locations.firstOrNull { norm(it.getOrNull(1)) == sourceCell && sourceCell.isNotBlank() }
+            if (locationId != null) {
+                if (matchedLocation?.getOrNull(0)?.toLongOrNull() != locationId) return@forEach
+            } else if (sourceCell.isNotBlank() && matchedLocation != null) {
+                return@forEach
+            }
+            val quantity = row.getOrNull(10)?.trim()?.replace(" ", "")?.replace(',', '.')?.toDoubleOrNull()
+            if (quantity != null && quantity.isFinite() && quantity > 0.0) total += quantity
+        }
+        return total
+    }
+
     fun insertMovement(
         materialId: Long,
         type: String,
@@ -418,13 +471,16 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             if (type in listOf("ISSUE", "WRITE_OFF", "TRANSFER_OUT")) {
                 val sourceWarehouse = fromWarehouse
                     ?: throw SQLiteException("Не вказано склад-відправник.")
-                val available = if (fromLocation != null) {
+                val movementAvailable = if (fromLocation != null) {
                     locationBalance(materialId, fromLocation)
                 } else {
                     unassignedWarehouseBalance(materialId, sourceWarehouse)
                 }
+                // Excel opening stock is part of the usable balance, not merely a report-only number.
+                val openingAvailable = openingStockBalance(materialId, sourceWarehouse, fromLocation)
+                val available = movementAvailable + openingAvailable
                 if (quantity > available + 1e-9) {
-                    throw SQLiteException("Недостатньо залишку. Доступно: $available.")
+                    throw SQLiteException("Недостатньо залишку з урахуванням початкового Excel-імпорту. Доступно: $available.")
                 }
             }
             val id = database.insertOrThrow("movements", null, ContentValues().apply {
