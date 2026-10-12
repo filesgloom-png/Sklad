@@ -1137,6 +1137,7 @@ class MainActivity : Activity() {
         addAction(root, "▤  Журнал руху") { showJournal() }
         addAction(root, "⇩  Експортувати залишки в CSV") { exportStockReportCsv() }
         addAction(root, "▦  Експортувати поточні залишки (рух + Excel)") { exportCurrentBalanceCsv() }
+        addAction(root, "⚠  Аудит: від’ємні залишки та несопоставлені рядки") { exportStockAuditCsv() }
 
         addScreenSummary(root, "ВАРТІСТЬ", "Оцінка за Excel",
             if (hasPrices) String.format(Locale.US, "%.2f", totalValue) + " • за вказаними цінами"
@@ -1756,6 +1757,7 @@ class MainActivity : Activity() {
     private val STOCK_OPEN = 4103
     private val CSV_CREATE = 4104
     private val CURRENT_BALANCE_CSV_CREATE = 4105
+    private val STOCK_AUDIT_CSV_CREATE = 4106
 
     private fun importInitialStock() {
         AlertDialog.Builder(this).setTitle("Імпорт залишків Excel")
@@ -1891,6 +1893,36 @@ class MainActivity : Activity() {
             addCategory(Intent.CATEGORY_OPENABLE)
             putExtra(Intent.EXTRA_TITLE, "sklad-potochni-zalyshky-${today()}.csv")
         }, CURRENT_BALANCE_CSV_CREATE)
+    }
+
+    private fun exportStockAuditCsv() {
+        startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            type = "text/csv"
+            addCategory(Intent.CATEGORY_OPENABLE)
+            putExtra(Intent.EXTRA_TITLE, "sklad-audit-zalyshkiv-${today()}.csv")
+        }, STOCK_AUDIT_CSV_CREATE)
+    }
+
+    /** Exports only balance exceptions from the same reconciled report used by the full balance export. */
+    private fun createStockAuditCsv(): String {
+        val fullReport = createCurrentBalanceCsv()
+        val rows = fullReport.removePrefix("\uFEFF").split("\\r\\n")
+        if (rows.isEmpty()) return "\uFEFF"
+        val header = rows.first()
+        val exceptions = rows.drop(1).filter { row ->
+            val status = row.substringAfterLast(';').trim().trim('"' )
+            status.startsWith("Не сопоставлено", ignoreCase = true) ||
+                status.startsWith("ОТРИЦАТЕЛЬНЫЙ ОСТАТОК", ignoreCase = true)
+        }
+        val negative = exceptions.count { it.substringAfterLast(';').contains("ОТРИЦАТЕЛЬНЫЙ ОСТАТОК", ignoreCase = true) }
+        val unmatched = exceptions.size - negative
+        return "\uFEFF" + listOf(
+            header,
+            *exceptions.toTypedArray(),
+            "",
+            csvField("ИТОГО АУДИТУ") + ";" + csvField("Проблемних рядків: ${exceptions.size}") + ";" +
+                csvField("Від’ємних залишків: $negative") + ";" + csvField("Несопоставлених рядків Excel: $unmatched")
+        ).joinToString("\\r\\n")
     }
 
     /**
@@ -2061,6 +2093,7 @@ class MainActivity : Activity() {
         allLines.forEach { line ->
             val currentQty = line.openingQty + line.matchedMovementQty
             val status = when {
+                currentQty < -1e-9 -> "ОТРИЦАТЕЛЬНЫЙ ОСТАТОК — требуется проверка"
                 line.materialId == null || line.warehouseId == null -> "Не сопоставлено: только Excel"
                 line.openingQty != 0.0 -> "Excel + операции"
                 else -> "Только операции"
@@ -2199,6 +2232,13 @@ class MainActivity : Activity() {
                         writer.write(csv)
                     } ?: throw IllegalStateException("Не вдалося зберегти звіт поточних залишків.")
                     Toast.makeText(this, "Звіт поточних залишків збережено.", Toast.LENGTH_LONG).show()
+                }
+                STOCK_AUDIT_CSV_CREATE -> {
+                    val csv = createStockAuditCsv()
+                    contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
+                        writer.write(csv)
+                    } ?: throw IllegalStateException("Не вдалося зберегти аудит залишків.")
+                    Toast.makeText(this, "Аудит залишків збережено.", Toast.LENGTH_LONG).show()
                 }
                 BACKUP_CREATE -> {
                     db.writableDatabase.rawQuery("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() }
