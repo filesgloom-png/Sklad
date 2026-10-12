@@ -188,10 +188,20 @@ class MainActivity : Activity() {
 
     private fun setAnimatedContentView(view: View) {
         setContentView(view)
+        applyPressFeedbackRecursively(view)
         view.alpha = 0f
         view.translationY = dp(10).toFloat()
         view.animate().alpha(1f).translationY(0f).setDuration(260L)
             .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+    }
+
+    private fun applyPressFeedbackRecursively(view: View) {
+        if (view.isClickable && view !is EditText && view !is Spinner && view !is SeekBar) {
+            addPressFeedback(view)
+        }
+        if (view is android.view.ViewGroup) {
+            for (index in 0 until view.childCount) applyPressFeedbackRecursively(view.getChildAt(index))
+        }
     }
 
     private fun animateEntrance(view: View, delay: Long = 0L) {
@@ -542,14 +552,27 @@ class MainActivity : Activity() {
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 setPadding(0, dp(2), 0, 0)
             })
-            box.addView(TextView(this).apply {
-                text = item.third
+            val countLabel = TextView(this).apply {
+                text = if (item.third.toIntOrNull() != null) "0" else item.third
                 textSize = 18f
                 setTypeface(null, Typeface.BOLD)
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
                 setPadding(0, dp(1), 0, 0)
-            })
+            }
+            box.addView(countLabel)
+            item.third.toIntOrNull()?.let { target ->
+                countLabel.postDelayed({
+                    if (countLabel.isAttachedToWindow) {
+                        ValueAnimator.ofInt(0, target).apply {
+                            duration = 720L
+                            startDelay = index * 95L
+                            addUpdateListener { countLabel.text = (it.animatedValue as Int).toString() }
+                            start()
+                        }
+                    }
+                }, 120L)
+            }
             stats.addView(box, LinearLayout.LayoutParams(0, dp(68), 1f))
             if (index < 3) stats.addView(View(this).apply {
                 setBackgroundColor(Color.rgb(70, 78, 75))
