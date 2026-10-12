@@ -425,7 +425,8 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
             val matchedLocation = locations.firstOrNull { norm(it.getOrNull(1)) == sourceCell && sourceCell.isNotBlank() }
             if (locationId != null) {
                 if (matchedLocation?.getOrNull(0)?.toLongOrNull() != locationId) return@forEach
-            } else if (sourceCell.isNotBlank() && matchedLocation != null) {
+            } else if (sourceCell.isNotBlank()) {
+                // A named Excel cell that is not configured in the app must not become unassigned stock.
                 return@forEach
             }
             val quantity = row.getOrNull(10)?.trim()?.replace(" ", "")?.replace(',', '.')?.toDoubleOrNull()
