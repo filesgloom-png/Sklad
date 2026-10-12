@@ -1750,6 +1750,7 @@ class MainActivity : Activity() {
         val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;background=rounded(Color.rgb(14,25,27),12);setPadding(dp(12),dp(8),dp(12),dp(8))}
         fun infoLine(label:String,value:String){info.addView(LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;addView(TextView(this@MainActivity).apply{text=label;textSize=11f;setTextColor(muted)},LinearLayout.LayoutParams(dp(135),-2));addView(TextView(this@MainActivity).apply{text=value.ifBlank{"—"};textSize=12f;setTextColor(Color.WHITE)},LinearLayout.LayoutParams(0,-2,1f))},LinearLayout.LayoutParams(-1,dp(27)))}
         infoLine("Номер складу",w.getOrNull(6).orEmpty().ifBlank { title });infoLine("Тип майна",type);infoLine("Місце розташування",w[2]);infoLine("МВО",w[3]);infoLine("Примітка",w.getOrNull(5).orEmpty())
+        info.addView(TextView(this).apply{text="ПАСПОРТ СКЛАДУ";textSize=9f;setTypeface(null,Typeface.BOLD);letterSpacing=.12f;setTextColor(gold);setPadding(0,0,0,dp(4))},0)
         page.addView(info,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
         val materials=db.list("materials");var pos=0;var qty=0.0
         materials.forEach{m->val balance=db.warehouseBalance(m[0].toLongOrNull()?:return@forEach,warehouseId);if(balance!=0.0){pos++;qty+=balance}}
@@ -1775,6 +1776,12 @@ class MainActivity : Activity() {
             stats.addView(box,LinearLayout.LayoutParams(0,dp(78),1f).apply{if(index<2)rightMargin=dp(5)})
         }
         page.addView(stats,LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(8)})
+        page.addView(TextView(this).apply{text="ШВИДКІ ОПЕРАЦІЇ";textSize=9f;setTypeface(null,Typeface.BOLD);letterSpacing=.12f;setTextColor(gold);setPadding(dp(2),dp(2),dp(2),dp(7))})
+        addActionRow(page, listOf(
+            "＋ Надходження" to { showMovement("RECEIPT", "Надходження") },
+            "− Видача" to { showMovement("ISSUE", "Видача") },
+            "⇄ Переміщення" to { showMovement("TRANSFER", "Переміщення") }
+        ))
         val tabs=listOf("Номенклатура","Залишки","Рух майна","Документи","Інформація")
         val tabRow=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         tabs.forEach{tab->tabRow.addView(TextView(this).apply{
@@ -1831,7 +1838,7 @@ class MainActivity : Activity() {
         }else if(selectedTab=="Рух майна"){
             val rows=db.movementRows().filter{it.getOrNull(5)==w[1]||it.getOrNull(6)==w[1]}
             if(rows.isEmpty())page.addView(TextView(this).apply{text="Документів руху поки немає.";textSize=13f;gravity=Gravity.CENTER;setTextColor(muted);setPadding(0,dp(28),0,dp(28))})
-            else rows.forEach{r->page.addView(TextView(this).apply{text=r[0]+" · "+r[1]+" · "+r[3]+" · "+r[5]+" → "+r[6];textSize=11f;setTextColor(Color.WHITE);setPadding(dp(8),dp(10),dp(8),dp(10));background=rounded(Color.rgb(14,25,27),8)},LinearLayout.LayoutParams(-1,-2).apply{bottomMargin=dp(3)})}
+            else rows.forEach{r->addRecordCard(page, r.getOrNull(1).orEmpty()+" · "+r.getOrNull(3).orEmpty(), r.getOrNull(5).orEmpty()+"  →  "+r.getOrNull(6).orEmpty(), "РУХ"){ showMovement("TRANSFER", "Переміщення") }}
         }else page.addView(TextView(this).apply{text=if(selectedTab=="Документи")"Документи з'являться після проведення операцій." else "Інформація взята з картки складу.";textSize=13f;setTextColor(muted);setPadding(dp(8),dp(22),dp(8),dp(22))})
         scroll.addView(page);root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         val nav=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER;background=rounded(Color.rgb(17,27,29),18)}
