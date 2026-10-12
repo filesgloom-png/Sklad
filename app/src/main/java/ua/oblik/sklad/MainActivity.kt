@@ -1501,10 +1501,18 @@ class MainActivity : Activity() {
         materials.forEach { material ->
             val materialId = material[0].toLongOrNull() ?: return@forEach
             val balance = db.materialBalance(materialId)
-            addAccountCard(root, material[3], "NSN ${material[1].ifBlank { "—" }}  •  ${material[4]}", balance) {
+            val unitPrice = material.getOrElse(6) { "" }.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
+            val totalValue = unitPrice?.let { it * balance }
+            val identifiers = listOf("NSN ${material[1].ifBlank { "—" }}", "№ ${material.getOrElse(2) { "" }.ifBlank { "—" }}", material.getOrElse(5) { "" }.takeIf { it.isNotBlank() }?.let { "Партія $it" }, material[4]).filterNotNull().joinToString("  •  ")
+            val cardSubtitle = listOf(identifiers, totalValue?.let { "Вартість: ${String.format(Locale.US, "%.2f", it)}" }).filterNotNull().joinToString("  •  ")
+            addAccountCard(root, material[3], cardSubtitle, balance) {
                 val detail = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8), dp(4), dp(8), dp(4)) }
                 addRow(detail, "Картка майна", material[3])
+                addRow(detail, "NSN / номенклатурний номер", "${material[1].ifBlank { "—" }} / ${material.getOrElse(2) { "" }.ifBlank { "—" }}")
+                addRow(detail, "Партія", material.getOrElse(5) { "" }.ifBlank { "—" })
                 addRow(detail, "Одиниця виміру", material[4])
+                addRow(detail, "Ціна за одиницю", unitPrice?.let { String.format(Locale.US, "%.2f", it) } ?: "Не визначена")
+                addRow(detail, "Загальна облікова вартість", totalValue?.let { String.format(Locale.US, "%.2f", it) } ?: "Не визначена")
                 addBalanceLine(detail, "Загальний залишок", balance, material[4], 0)
                 warehouses.forEach { warehouse ->
                     val warehouseId = warehouse[0].toLongOrNull() ?: return@forEach
