@@ -1135,6 +1135,7 @@ class MainActivity : Activity() {
         addAction(root, "▦  Відкрити всі залишки") { showAllInitialStock() }
         addAction(root, "⌕  Знайти номенклатуру") { showMaterials() }
         addAction(root, "▤  Журнал руху") { showJournal() }
+        addAction(root, "⇩  Експортувати залишки в CSV") { exportStockReportCsv() }
 
         addScreenSummary(root, "ВАРТІСТЬ", "Оцінка за Excel",
             if (hasPrices) String.format(Locale.US, "%.2f", totalValue) + " • за вказаними цінами"
@@ -1752,6 +1753,7 @@ class MainActivity : Activity() {
     }
 
     private val STOCK_OPEN = 4103
+    private val CSV_CREATE = 4104
 
     private fun importInitialStock() {
         AlertDialog.Builder(this).setTitle("Імпорт залишків Excel")
@@ -1880,6 +1882,63 @@ class MainActivity : Activity() {
 
     private fun databaseFile(): File = applicationContext.getDatabasePath("oblik_sklad.db")
 
+    private fun exportStockReportCsv() {
+        startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            type = "text/csv"
+            addCategory(Intent.CATEGORY_OPENABLE)
+            putExtra(Intent.EXTRA_TITLE, "sklad-zalyshky-${today()}.csv")
+        }, CSV_CREATE)
+    }
+
+    private fun createStockReportCsv(): String {
+        val stockRows = db.initialStockRowsForAll()
+        val warehouses = db.warehouseRows()
+        val header = listOf(
+            "Код складу з Excel", "Код складу в застосунку", "Назва складу", "МВО",
+            "Тип зберігання", "Комірка / місце", "Код матеріалу", "Найменування",
+            "NSN", "Розмір", "Партія", "Одиниця", "Кількість", "Ціна за одиницю", "Загальна вартість"
+        )
+        val lines = mutableListOf(header.joinToString(";") { csvField(it) })
+        stockRows.forEach { row ->
+            val sourceWarehouseCode = row.getOrNull(0).orEmpty()
+            val appWarehouseCode = row.getOrNull(1).orEmpty()
+            val warehouse = warehouses.firstOrNull { item ->
+                val number = item.getOrNull(6).orEmpty()
+                number.isNotBlank() && (
+                    number.equals(appWarehouseCode, true) ||
+                    number.equals(sourceWarehouseCode, true)
+                )
+            }
+            val quantity = row.getOrNull(10)?.replace(',', '.')?.toDoubleOrNull() ?: 0.0
+            val price = row.getOrNull(11)?.replace(',', '.')?.toDoubleOrNull() ?: 0.0
+            val values = listOf(
+                sourceWarehouseCode,
+                appWarehouseCode,
+                warehouse?.getOrNull(1).orEmpty(),
+                warehouse?.getOrNull(3).orEmpty().ifBlank { "МВО не вказано" },
+                row.getOrNull(2).orEmpty(),
+                row.getOrNull(3).orEmpty(),
+                row.getOrNull(4).orEmpty(),
+                row.getOrNull(5).orEmpty(),
+                row.getOrNull(6).orEmpty(),
+                row.getOrNull(7).orEmpty(),
+                row.getOrNull(8).orEmpty(),
+                row.getOrNull(9).orEmpty(),
+                formatQty(quantity),
+                formatQty(price),
+                formatQty(quantity * price)
+            )
+            lines += values.joinToString(";") { csvField(it) }
+        }
+        return "\uFEFF" + lines.joinToString("\r\n")
+    }
+
+    private fun csvField(value: String): String {
+        val safeValue = if (value.firstOrNull() in listOf('=', '+', '-', '@')) "'$value" else value
+        val escaped = safeValue.replace("\"", "\"\"")
+        return "\"$escaped\""
+    }
+
     private fun exportBackup() {
         startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             type = "application/octet-stream"
@@ -1920,6 +1979,13 @@ class MainActivity : Activity() {
                     AlertDialog.Builder(this).setTitle("Імпорт завершено")
                         .setMessage("Збережено рядків: " + count + "\\nСкладів у файлі: " + warehouses + "\\n\\n" + types + "\\n\\nВідкрито загальний список залишків.")
                         .setPositiveButton("Гаразд", null).show()
+                }
+                CSV_CREATE -> {
+                    val csv = createStockReportCsv()
+                    contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
+                        writer.write(csv)
+                    } ?: throw IllegalStateException("Не вдалося зберегти CSV-звіт.")
+                    Toast.makeText(this, "CSV-звіт залишків збережено.", Toast.LENGTH_LONG).show()
                 }
                 BACKUP_CREATE -> {
                     db.writableDatabase.rawQuery("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() }
