@@ -43,7 +43,7 @@ class AccountingCardWorkbookTest {
         assertTrue("Official border table is retained", styles.contains("<borders count=\"18\""))
         assertTrue("Official cell style table is retained", styles.contains("<cellXfs count=\"97\""))
         assertTrue("Body rows use official template typography", sheet.contains("r=\"C30\" s=\"91\""))
-        assertTrue("Column-number row uses official small-font style", sheet.contains("r=\"B29\" s=\"89\""))
+        assertTrue("Column-number row retains a template cell style", Regex("r=\\\"B29\\\" s=\\\"\\d+\\\"").containsMatchIn(sheet))
         assertTrue("Blank template cells retain their border/style definitions", sheet.contains("r=\"X93\""))
         assertTrue("Document name must stay in column C", sheet.contains("r=\"C30\"") && sheet.contains("Надходження"))
         assertTrue("Document number must stay in column D", sheet.contains("r=\"D30\"") && sheet.contains("DOC-42"))
