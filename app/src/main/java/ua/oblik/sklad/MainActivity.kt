@@ -1098,6 +1098,7 @@ class MainActivity : Activity() {
         page.addView(banner)
         val rows=db.warehouseRows(); val materials=db.list("materials")
         val importedRows=db.initialStockRowsForAll()
+        val importedByWarehouse = importedRows.groupBy { it.getOrNull(1).orEmpty() }
         val importedQty=importedRows.sumOf{it.getOrNull(10)?.replace(',','.')?.toDoubleOrNull()?:0.0}
         val importedValue=importedRows.sumOf{(it.getOrNull(10)?.replace(',','.')?.toDoubleOrNull()?:0.0)*(it.getOrNull(11)?.replace(',','.')?.toDoubleOrNull()?:0.0)}
         val hasPrices=importedRows.any{(it.getOrNull(11)?.replace(',','.')?.toDoubleOrNull()?:0.0)>0.0}
@@ -1165,7 +1166,7 @@ class MainActivity : Activity() {
             })
             ownerRows.forEach{row->
             val id=row[0].toLong();val name=row[1];var qty=0.0;var pos=0;materials.forEach{m->val materialId=m[0].toLongOrNull()?:return@forEach;val b=movementBalances[materialId to id]?:0.0;if(b!=0.0){pos++;qty+=b}}
-            val importedForWarehouse=db.initialStockRows(row.getOrNull(6).orEmpty().ifBlank{name})
+            val importedForWarehouse=importedByWarehouse[row.getOrNull(6).orEmpty().ifBlank{name}].orEmpty()
             val importedWarehouseQty=importedForWarehouse.sumOf{it.getOrNull(10)?.replace(',','.')?.toDoubleOrNull()?:0.0}
             qty+=importedWarehouseQty
             pos+=importedForWarehouse.size
