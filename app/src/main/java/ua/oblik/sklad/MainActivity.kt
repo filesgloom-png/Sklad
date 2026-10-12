@@ -2380,8 +2380,7 @@ class MainActivity : Activity() {
         val price = material.getOrElse(6) { "" }.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
         val movementRows = materialId?.let { db.movementRowsForMaterial(it) }.orEmpty().asReversed()
         val openingBalance = materialId?.let { db.initialStockBalanceForMaterial(it) } ?: 0.0
-        var running = openingBalance
-        val movements = buildList {
+        val rawMovements = buildList {
             if (openingBalance > 0.0) {
                 add(AccountingCardWorkbook.Movement(
                     date = "",
@@ -2391,7 +2390,7 @@ class MainActivity : Activity() {
                     recipient = "",
                     receipt = 0.0,
                     issue = 0.0,
-                    balance = openingBalance,
+                    balance = 0.0,
                     note = "Імпортовані залишки"
                 ))
             }
@@ -2400,7 +2399,6 @@ class MainActivity : Activity() {
                 val qty = row.getOrElse(3) { "0" }.replace(',', '.').toDoubleOrNull() ?: 0.0
                 val receipt = if (type == "RECEIPT") qty else 0.0
                 val issue = if (type == "ISSUE" || type == "WRITE_OFF") qty else 0.0
-                running += receipt - issue
                 AccountingCardWorkbook.Movement(
                     date = row.getOrElse(0) { "" },
                     document = typeLabel(type),
@@ -2409,11 +2407,12 @@ class MainActivity : Activity() {
                     recipient = row.getOrElse(6) { "" }.takeUnless { it == "—" }.orEmpty(),
                     receipt = receipt,
                     issue = issue,
-                    balance = running,
+                    balance = 0.0,
                     note = row.getOrElse(9) { "" }
                 )
             })
         }
+        val movements = AccountingCardWorkbook.withRunningBalances(openingBalance, rawMovements)
         val fields = listOf(
             "Номер картки" to "",
             "Матеріально відповідальна особа" to responsible,

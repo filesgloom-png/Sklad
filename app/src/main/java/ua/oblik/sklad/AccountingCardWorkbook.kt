@@ -12,6 +12,22 @@ object AccountingCardWorkbook {
         val receipt: Double, val issue: Double, val balance: Double, val note: String
     )
 
+    private fun dateParts(value: String): Pair<String, String> {
+        val iso = Regex("^(\\d{4})-(\\d{2})-(\\d{2})$").matchEntire(value)
+        if (iso != null) return (iso.groupValues[3] + "." + iso.groupValues[2] + ".") to (iso.groupValues[1] + ".")
+        val local = Regex("^(\\d{2})\\.(\\d{2})\\.(\\d{4})$").matchEntire(value)
+        if (local != null) return (local.groupValues[1] + "." + local.groupValues[2] + ".") to (local.groupValues[3] + ".")
+        return value to ""
+    }
+
+    fun withRunningBalances(openingBalance: Double, movements: List<Movement>): List<Movement> {
+        var balance = openingBalance
+        return movements.map { movement ->
+            balance += movement.receipt - movement.issue
+            movement.copy(balance = balance)
+        }
+    }
+
     fun write(output: OutputStream, fields: List<Pair<String, String>>, movements: List<Movement>) {
         val cells = linkedMapOf<String, Cell>()
         fun put(ref: String, value: String, style: Int = 0) { cells[ref] = Cell(value, style, false) }
@@ -25,9 +41,10 @@ object AccountingCardWorkbook {
         put("N4", "Картка № " + field("Номер картки"), 1)
         put("L5", "обліку військового майна (категорійного)", 1)
         put("T5", "Збройних Силах України", 1)
-        put("D6", "20____", 0)
+        put("B6", "\"         \"", 0)
+        put("G6", "20              .", 0)
         put("T7", "(пункт 1 розділу 2)", 0)
-        put("D10", field("Матеріально відповідальна особа"), 0)
+        put("D10", "(матеріально відповідальна особа)", 0)
         put("B12", "Сховище №", 1)
         put("C12", field("Сховище / місце зберігання"))
         put("F12", "Полиця №", 1)
@@ -35,7 +52,9 @@ object AccountingCardWorkbook {
         put("L12", "Ціна за одиницю", 1)
         put("M12", field("Ціна за одиницю", "Не визначена"))
         put("R12", "Розпочато", 1)
-        put("T12", field("Розпочато"))
+        val startedDate = dateParts(field("Розпочато"))
+        put("T12", startedDate.first)
+        put("W12", startedDate.second)
         put("B14", "Стелаж №", 1)
         put("C14", field("Стелаж"))
         put("F14", "Сховище №", 1)
@@ -43,7 +62,9 @@ object AccountingCardWorkbook {
         put("L14", "Вміст дорогоцінних металів", 1)
         put("M14", "—")
         put("R14", "Закінчено", 1)
-        put("T14", field("Закінчено"))
+        val endedDate = dateParts(field("Закінчено"))
+        put("T14", endedDate.first)
+        put("W14", endedDate.second)
         put("B17", "Реєстраційний номер", 1)
         put("C17", "Номер аркуша", 1)
         put("E17", "Найменування військового майна", 1)
@@ -108,7 +129,15 @@ object AccountingCardWorkbook {
             if (move.note.isNotBlank()) put("W$row", move.note)
         }
 
-        val rowNumbers = cells.keys.mapNotNull { it.dropWhile { c -> c.isLetter() }.toIntOrNull() }.toSet().sorted()
+        val rowHeights = mutableMapOf(
+            4 to 15.75, 11 to 15.75, 12 to 16.5, 14 to 15.75, 16 to 15.75,
+            17 to 15.75, 19 to 15.75, 21 to 15.75, 22 to 15.75, 23 to 15.75,
+            24 to 15.0, 25 to 15.75, 26 to 15.0, 28 to 33.0, 29 to 9.0,
+            50 to 15.75, 51 to 15.75, 53 to 15.75, 54 to 15.75, 57 to 9.0
+        )
+        (30..49).forEach { rowHeights[it] = 18.75 }
+        (58..93).forEach { rowHeights[it] = 18.75 }
+        val rowNumbers = (cells.keys.mapNotNull { it.dropWhile { c -> c.isLetter() }.toIntOrNull() } + rowHeights.keys).toSet().sorted()
         val rowXml = rowNumbers.joinToString("") { row ->
             val rowCells = cells.filterKeys { it.dropWhile { c -> c.isLetter() }.toIntOrNull() == row }
                 .entries.sortedBy { colIndex(it.key) }.joinToString("") { (ref, c) ->
@@ -116,7 +145,8 @@ object AccountingCardWorkbook {
                     if (c.numeric) "<c r=\"$ref\" s=\"${c.style}\"><v>$value</v></c>"
                     else "<c r=\"$ref\" s=\"${c.style}\" t=\"inlineStr\"><is><t xml:space=\"preserve\">$value</t></is></c>"
                 }
-            "<row r=\"$row\">$rowCells</row>"
+            val height = rowHeights[row]?.let { " ht=\"$it\"" }.orEmpty()
+            "<row r=\"$row\"$height>$rowCells</row>"
         }
         val merges = mutableListOf(
             "T2:W2","B3:I3","T3:W3","B4:I4","N4:O4","L5:P5","T5:W5","D6:F6","T7:W7","B9:I9","D10:G10",
@@ -133,7 +163,7 @@ object AccountingCardWorkbook {
         for (r in 58..93) merges += listOf("G$r:H$r","L$r:M$r","Q$r:R$r","V$r:X$r")
         val mergeXml = merges.joinToString("") { "<mergeCell ref=\"$it\"/>" }
         val sheet = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
-            "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><dimension ref=\"B2:X93\"/><sheetViews><sheetView workbookViewId=\"0\"/></sheetViews><sheetFormatPr defaultRowHeight=\"20\"/><cols><col min=\"2\" max=\"2\" width=\"13\" customWidth=\"1\"/><col min=\"3\" max=\"5\" width=\"12\" customWidth=\"1\"/><col min=\"6\" max=\"8\" width=\"12\" customWidth=\"1\"/><col min=\"9\" max=\"24\" width=\"9\" customWidth=\"1\"/></cols><sheetData>$rowXml</sheetData><mergeCells count=\"${merges.size}\">$mergeXml</mergeCells><pageMargins left=\"0.25\" right=\"0.25\" top=\"0.4\" bottom=\"0.4\" header=\"0.2\" footer=\"0.2\"/><pageSetup orientation=\"landscape\" paperSize=\"9\" fitToWidth=\"1\" fitToHeight=\"0\"/></worksheet>"
+            "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><dimension ref=\"B2:X93\"/><sheetViews><sheetView workbookViewId=\"0\"/></sheetViews><sheetFormatPr defaultRowHeight=\"15\"/><cols><col min=\"2\" max=\"2\" width=\"11.28515625\" customWidth=\"1\"/><col min=\"6\" max=\"6\" width=\"11.7109375\" customWidth=\"1\"/><col min=\"11\" max=\"11\" width=\"8.85546875\" customWidth=\"1\"/><col min=\"13\" max=\"13\" width=\"7\" customWidth=\"1\"/><col min=\"14\" max=\"14\" width=\"9.85546875\" customWidth=\"1\"/><col min=\"18\" max=\"18\" width=\"10.42578125\" customWidth=\"1\"/><col min=\"19\" max=\"19\" width=\"9.85546875\" customWidth=\"1\"/><col min=\"22\" max=\"22\" width=\"10.85546875\" customWidth=\"1\"/></cols><sheetData>$rowXml</sheetData><mergeCells count=\"${merges.size}\">$mergeXml</mergeCells><pageMargins left=\"0.7\" right=\"0.7\" top=\"0.75\" bottom=\"0.75\" header=\"0.3\" footer=\"0.3\"/><pageSetup paperSize=\"9\" scale=\"35\" orientation=\"landscape\" horizontalDpi=\"300\" verticalDpi=\"300\"/></worksheet>"
         val styles = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><styleSheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\"><fonts count=\"2\"><font><sz val=\"9\"/><name val=\"Arial\"/></font><font><b/><sz val=\"9\"/><name val=\"Arial\"/></font></fonts><fills count=\"1\"><fill><patternFill patternType=\"none\"/></fill></fills><borders count=\"2\"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style=\"thin\"><color rgb=\"FF000000\"/></left><right style=\"thin\"><color rgb=\"FF000000\"/></right><top style=\"thin\"><color rgb=\"FF000000\"/></top><bottom style=\"thin\"><color rgb=\"FF000000\"/></bottom><diagonal/></border></borders><cellStyleXfs count=\"1\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"0\"/></cellStyleXfs><cellXfs count=\"2\"><xf numFmtId=\"0\" fontId=\"0\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyBorder=\"1\"><alignment vertical=\"center\" wrapText=\"1\"/></xf><xf numFmtId=\"0\" fontId=\"1\" fillId=\"0\" borderId=\"1\" xfId=\"0\" applyBorder=\"1\"><alignment horizontal=\"center\" vertical=\"center\" wrapText=\"1\"/></xf></cellXfs><cellStyles count=\"1\"><cellStyle name=\"Normal\" xfId=\"0\" builtinId=\"0\"/></cellStyles></styleSheet>"
         val contentTypes = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/><Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/><Override PartName=\"/xl/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml\"/></Types>"
         val rootRels = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/></Relationships>"

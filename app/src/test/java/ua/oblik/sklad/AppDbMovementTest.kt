@@ -64,6 +64,29 @@ class AppDbMovementTest {
     }
 
     @Test
+    fun importedOpeningBalanceIsMatchedToCatalogAndUsedWithRealMovements() {
+        db.writableDatabase.execSQL(
+            """INSERT INTO initial_stock(
+                source_key, warehouse_code, app_warehouse_code, storage_type, storage_location,
+                material_code, description, nsn, size, batch, unit, quantity, price
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""".trimIndent(),
+            arrayOf<Any>(
+                "OPENING-LEDGER-TEST", "SRC-A", "WH-A", "Основний", "Комірка А",
+                "TEST-001", "Тестовий матеріал", "TEST-001", "", "", "шт.", 5.0, 1.0
+            )
+        )
+        assertEquals(5.0, db.initialStockBalanceForMaterial(material), 0.000001)
+        db.insertMovement(material, "RECEIPT", 4.0, null, warehouseA, null, locationA, "TEST-LEDGER-RECEIPT", "2026-10-12", "")
+        db.insertTransfer(material, 2.0, warehouseA, warehouseB, locationA, locationB, "TEST-LEDGER-TRANSFER", "2026-10-12", "")
+        db.insertMovement(material, "ISSUE", 3.0, warehouseB, null, locationB, null, "TEST-LEDGER-ISSUE", "2026-10-12", "")
+        db.insertMovement(material, "WRITE_OFF", 1.0, warehouseA, null, locationA, null, "TEST-LEDGER-WRITEOFF", "2026-10-12", "")
+        assertEquals("Movement-only net excludes transfers", 0.0, db.materialBalance(material), 0.000001)
+        assertEquals("Opening stock plus posted movements gives the real total", 5.0, db.initialStockBalanceForMaterial(material) + db.materialBalance(material), 0.000001)
+        assertEquals(4.0, db.warehouseBalance(material, warehouseB), 0.000001)
+        assertEquals(2.0, db.locationBalance(material, locationB), 0.000001)
+    }
+
+    @Test
     fun importedOpeningStockCanBeIssuedAndCannotBeOverIssued() {
         db.writableDatabase.execSQL(
             """INSERT INTO initial_stock(
