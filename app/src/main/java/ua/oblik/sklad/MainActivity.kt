@@ -1519,7 +1519,9 @@ class MainActivity : Activity() {
                     val warehouseBalance = db.warehouseBalance(materialId, warehouseId)
                     if (warehouseBalance != 0.0) addBalanceLine(detail, warehouse[1], warehouseBalance, material[4], 1)
                 }
-                AlertDialog.Builder(this).setTitle("Картка обліку").setView(detail).setPositiveButton("Готово", null).show()
+                AlertDialog.Builder(this).setTitle("Картка обліку").setView(detail)
+                    .setNeutralButton("Експорт Excel") { _, _ -> exportAccountingCard(material) }
+                    .setPositiveButton("Готово", null).show()
             }
             warehouses.forEach { warehouse ->
                 val warehouseId = warehouse[0].toLongOrNull() ?: return@forEach
@@ -2206,6 +2208,8 @@ class MainActivity : Activity() {
     private val CSV_CREATE = 4104
     private val CURRENT_BALANCE_CSV_CREATE = 4105
     private val STOCK_AUDIT_CSV_CREATE = 4106
+    private val ACCOUNTING_CARD_XLSX_CREATE = 4107
+    private var pendingAccountingCard: Array<String>? = null
 
     private fun importInitialStock() {
         AlertDialog.Builder(this).setTitle("Імпорт залишків Excel")
@@ -2334,6 +2338,68 @@ class MainActivity : Activity() {
 
     private fun databaseFile(): File = applicationContext.getDatabasePath("oblik_sklad.db")
 
+
+    private fun exportAccountingCard(material: Array<String>) {
+        pendingAccountingCard = material
+        startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            addCategory(Intent.CATEGORY_OPENABLE)
+            putExtra(Intent.EXTRA_TITLE, "kartka-obliku-" + material.getOrElse(2) { "" }.ifBlank { material.getOrElse(1) { "майно" } } + "-" + today() + ".xlsx")
+        }, ACCOUNTING_CARD_XLSX_CREATE)
+    }
+
+    private fun createAccountingCard(uri: Uri, material: Array<String>) {
+        val materialId = material.getOrNull(0)?.toLongOrNull()
+        val warehouseRows = db.warehouseRows()
+        val stockedWarehouses = if (materialId == null) emptyList() else warehouseRows.filter {
+            db.warehouseBalance(materialId, it[0].toLongOrNull() ?: 0L) != 0.0
+        }
+        val responsible = stockedWarehouses.map { it.getOrNull(3).orEmpty() }.filter { it.isNotBlank() && it != "Не призначено" }.distinct().joinToString(", ").ifBlank { "Не призначено" }
+        val warehouseNames = stockedWarehouses.map { it[1] }.distinct().joinToString(", ").ifBlank { "Не визначено" }
+        val price = material.getOrElse(6) { "" }.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
+        val movementRows = db.movementRows().filter { it.getOrNull(1).orEmpty() == material.getOrElse(3) { "" } }.asReversed()
+        var running = 0.0
+        val movements = movementRows.map { row ->
+            val type = row.getOrElse(2) { "" }
+            val qty = row.getOrElse(3) { "0" }.replace(',', '.').toDoubleOrNull() ?: 0.0
+            val receipt = if (type == "RECEIPT") qty else 0.0
+            val issue = if (type == "ISSUE" || type == "WRITE_OFF") qty else 0.0
+            running += receipt - issue
+            AccountingCardWorkbook.Movement(
+                date = row.getOrElse(0) { "" },
+                document = typeLabel(type) + " " + row.getOrElse(4) { "" },
+                supplier = if (type == "RECEIPT") row.getOrElse(5) { "" } else "",
+                recipient = if (type == "ISSUE" || type == "WRITE_OFF") row.getOrElse(5) { "" } else if (type.startsWith("TRANSFER")) row.getOrElse(6) { "" } else "",
+                receipt = receipt,
+                issue = issue,
+                balance = running,
+                note = row.getOrElse(9) { "" }
+            )
+        }
+        val fields = listOf(
+            "Номер картки" to "",
+            "Матеріально відповідальна особа" to responsible,
+            "Сховище / місце зберігання" to warehouseNames,
+            "Стелаж" to "",
+            "Полиця" to "",
+            "Ціна за одиницю" to (price?.let { String.format(Locale.US, "%.2f", it) } ?: "Не визначена"),
+            "Розпочато" to today(),
+            "Закінчено" to "",
+            "Реєстраційний номер / NSN" to material.getOrElse(1) { "" },
+            "Номенклатурний номер" to material.getOrElse(2) { "" },
+            "Найменування майна" to material.getOrElse(3) { "" },
+            "Одиниця виміру" to material.getOrElse(4) { "" },
+            "Номер партії" to material.getOrElse(5) { "" },
+            "Служба забезпечення" to "",
+            "Центр забезпечення" to "",
+            "Військова частина" to "",
+            "Максимальний запас" to "",
+            "Мінімальний запас" to ""
+        )
+        contentResolver.openOutputStream(uri)?.use { output ->
+            AccountingCardWorkbook.write(output, fields, movements)
+        } ?: throw IllegalStateException("Не вдалося зберегти Excel-картку.")
+    }
 
     private fun exportCurrentBalanceCsv() {
         startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
@@ -2690,6 +2756,12 @@ class MainActivity : Activity() {
                         writer.write(csv)
                     } ?: throw IllegalStateException("Не вдалося зберегти звіт поточних залишків.")
                     Toast.makeText(this, "Звіт поточних залишків збережено.", Toast.LENGTH_LONG).show()
+                }
+                ACCOUNTING_CARD_XLSX_CREATE -> {
+                    val material = pendingAccountingCard ?: throw IllegalStateException("Не вибрано картку майна.")
+                    createAccountingCard(uri, material)
+                    pendingAccountingCard = null
+                    Toast.makeText(this, "Excel-картку обліку збережено.", Toast.LENGTH_LONG).show()
                 }
                 STOCK_AUDIT_CSV_CREATE -> {
                     val csv = createStockAuditCsv()
