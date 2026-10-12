@@ -250,6 +250,36 @@ class AppDbMovementTest {
             .use { cursor -> cursor.moveToFirst(); cursor.getInt(0) })
     }
 
+    @Test
+    fun openingStockInOneCellCannotBeIssuedFromAnotherCellOfSameWarehouse() {
+        val secondCell = db.insertLocation(warehouseA, "Комірка А-2", "")
+        db.writableDatabase.execSQL(
+            """INSERT INTO initial_stock(
+                source_key, warehouse_code, app_warehouse_code, storage_type, storage_location,
+                material_code, description, nsn, size, batch, unit, quantity, price
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""".trimIndent(),
+            arrayOf<Any>(
+                "OPENING-CELL-ISOLATION", "SRC-A", "WH-A", "Основний", "Комірка А",
+                "TEST-001", "Тестовий матеріал", "TEST-001", "", "", "шт.", 5.0, 2.0
+            )
+        )
+
+        var rejected = false
+        try {
+            db.insertMovement(material, "ISSUE", 1.0, warehouseA, null, secondCell, null,
+                "TEST-CROSS-CELL-ISSUE", "2026-10-12", "")
+        } catch (_: SQLiteException) {
+            rejected = true
+        }
+
+        assertTrue("Залишок першої комірки не можна витрачати з іншої комірки того самого складу", rejected)
+        assertEquals(0.0, db.locationBalance(material, secondCell), 0.000001)
+        assertEquals(0, db.writableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM movements WHERE document_no='TEST-CROSS-CELL-ISSUE'",
+            null
+        ).use { cursor -> cursor.moveToFirst(); cursor.getInt(0) })
+    }
+
     private fun receipt(quantity: Double) {
         db.insertMovement(material, "RECEIPT", quantity, null, warehouseA, null, locationA, "TEST-RECEIPT", "2026-10-09", "")
     }
