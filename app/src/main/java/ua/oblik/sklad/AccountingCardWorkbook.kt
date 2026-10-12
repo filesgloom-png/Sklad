@@ -79,7 +79,7 @@ object AccountingCardWorkbook {
             val row = if (index < 20) 30 + index else 58 + index - 20
             put("B$row", move.date)
             val docParts = move.document.split(" ", limit = 2)
-            put("C$row", docParts.firstOrNull().orEmpty())
+            put("C$row", docParts.firstOrNull().orEmpty() + move.note.takeIf { it.isNotBlank() }?.let { " — $it" }.orEmpty())
             put("D$row", docParts.getOrNull(1).orEmpty())
             put("E$row", move.date)
             put("F$row", move.supplier)
