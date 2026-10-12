@@ -3521,7 +3521,7 @@ class MainActivity : Activity() {
                 GradientDrawable.Orientation.TL_BR,
                 intArrayOf(Color.rgb(18, 31, 31), Color.rgb(10, 21, 24))
             )
-            addView(panel, ScrollView.LayoutParams(-1, -2))
+            addView(panel, android.widget.FrameLayout.LayoutParams(-1, -2))
         }
         val dialog = AlertDialog.Builder(this)
             .setCustomTitle(LinearLayout(this).apply {
