@@ -658,6 +658,25 @@ class AppDb(context: Context) : SQLiteOpenHelper(context, "oblik_sklad.db", null
 
     fun locationsForWarehouse(warehouseId: Long): List<Array<String>> = locationRows(warehouseId)
 
+    /** Aggregate item balances with the same receipt/issue rules as materialBalance(). */
+    fun materialBalancesForAll(): Map<Long, Double> {
+        val result = mutableMapOf<Long, Double>()
+        val sql = """
+            SELECT material_id,
+                   COALESCE(SUM(CASE
+                       WHEN type = 'RECEIPT' THEN quantity
+                       WHEN type IN ('ISSUE', 'WRITE_OFF') THEN -quantity
+                       ELSE 0
+                   END), 0)
+            FROM movements
+            GROUP BY material_id
+        """.trimIndent()
+        readableDatabase.rawQuery(sql, null).use { cursor ->
+            while (cursor.moveToNext()) result[cursor.getLong(0)] = cursor.getDouble(1)
+        }
+        return result
+    }
+
     fun materialBalance(materialId: Long): Double {
         // Transfers only change the location of stock; they must not change the material's total balance.
         val sql = """

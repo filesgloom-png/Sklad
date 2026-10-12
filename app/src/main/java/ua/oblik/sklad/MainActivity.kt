@@ -1636,14 +1636,18 @@ class MainActivity : Activity() {
         val root = base("Картки обліку")
         val materials = db.list("materials")
         val warehouses = db.warehouseRows()
+        val warehouseBalances = db.warehouseBalancesForAll()
+        val materialBalances = db.materialBalancesForAll()
         val stockLines = materials.sumOf { material ->
             val materialId = material[0].toLongOrNull() ?: 0L
-            warehouses.count { warehouse -> db.warehouseBalance(materialId, warehouse[0].toLongOrNull() ?: 0L) != 0.0 }
+            warehouses.count { warehouse ->
+                (warehouseBalances[materialId to (warehouse[0].toLongOrNull() ?: 0L)] ?: 0.0) != 0.0
+            }
         }
         addScreenSummary(root, "КОНТРОЛЬ ТА ЗВІТНІСТЬ", "Картки обліку майна", "${materials.size} позицій  •  ${warehouses.size} складів  •  ${stockLines} складських залишків")
         materials.forEach { material ->
             val materialId = material[0].toLongOrNull() ?: return@forEach
-            val balance = db.materialBalance(materialId)
+            val balance = materialBalances[materialId] ?: 0.0
             val unitPrice = material.getOrElse(6) { "" }.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
             val totalValue = unitPrice?.let { it * balance }
             val identifiers = listOf("NSN ${material[1].ifBlank { "—" }}", "№ ${material.getOrElse(2) { "" }.ifBlank { "—" }}", material.getOrElse(5) { "" }.takeIf { it.isNotBlank() }?.let { "Партія $it" }, material[4]).filterNotNull().joinToString("  •  ")
@@ -1659,7 +1663,7 @@ class MainActivity : Activity() {
                 addBalanceLine(detail, "Загальний залишок", balance, material[4], 0)
                 warehouses.forEach { warehouse ->
                     val warehouseId = warehouse[0].toLongOrNull() ?: return@forEach
-                    val warehouseBalance = db.warehouseBalance(materialId, warehouseId)
+                    val warehouseBalance = warehouseBalances[materialId to warehouseId] ?: 0.0
                     if (warehouseBalance != 0.0) addBalanceLine(detail, warehouse[1], warehouseBalance, material[4], 1)
                 }
                 addRow(detail, "ІСТОРІЯ РУХУ МАЙНА", "Останні операції за вибраною номенклатурою")
@@ -1688,7 +1692,7 @@ class MainActivity : Activity() {
             }
             warehouses.forEach { warehouse ->
                 val warehouseId = warehouse[0].toLongOrNull() ?: return@forEach
-                val warehouseBalance = db.warehouseBalance(materialId, warehouseId)
+                val warehouseBalance = warehouseBalances[materialId to warehouseId] ?: 0.0
                 if (warehouseBalance != 0.0) {
                     addBalanceLine(root, warehouse[1], warehouseBalance, material[4], 1)
                     val unassigned = db.unassignedWarehouseBalance(materialId, warehouseId)
