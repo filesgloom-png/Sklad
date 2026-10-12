@@ -99,6 +99,34 @@ class AppDbMovementTest {
     }
 
     @Test
+    fun openingStockFromUnknownExcelCellCannotBeIssuedAsUnassignedStock() {
+        db.writableDatabase.execSQL(
+            """INSERT INTO initial_stock(
+                source_key, warehouse_code, app_warehouse_code, storage_type, storage_location,
+                material_code, description, nsn, size, batch, unit, quantity, price
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""".trimIndent(),
+            arrayOf<Any>(
+                "OPENING-UNKNOWN-CELL", "SRC-A", "WH-A", "Основний", "Комірка якої немає в довіднику",
+                "TEST-001", "Тестовий матеріал", "TEST-001", "", "", "шт.", 5.0, 1.0
+            )
+        )
+
+        var rejected = false
+        try {
+            db.insertMovement(material, "ISSUE", 1.0, warehouseA, null, null, null,
+                "TEST-UNKNOWN-CELL-ISSUE", "2026-10-12", "")
+        } catch (_: SQLiteException) {
+            rejected = true
+        }
+
+        assertTrue("Залишок із невідомої комірки Excel не можна видати без уточнення місця", rejected)
+        assertEquals(0, db.writableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM movements WHERE document_no='TEST-UNKNOWN-CELL-ISSUE'",
+            null
+        ).use { cursor -> cursor.moveToFirst(); cursor.getInt(0) })
+    }
+
+    @Test
     fun issueGreaterThanAvailableBalanceIsRejectedWithoutChangingStock() {
         receipt(5.0)
 
