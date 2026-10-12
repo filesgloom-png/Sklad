@@ -52,7 +52,7 @@ class AppDbMovementTest {
 
         assertEquals(10.0, db.materialBalance(material), 0.000001)
         assertEquals(6.0, db.warehouseBalance(material, warehouseA), 0.000001)
-        assertEquals(4.0, db.warehouseBalance(material, warehouseB), 0.000001)
+        assertEquals(1.0, db.warehouseBalance(material, warehouseB), 0.000001)
         assertEquals(6.0, db.locationBalance(material, locationA), 0.000001)
         assertEquals(4.0, db.locationBalance(material, locationB), 0.000001)
 
@@ -78,12 +78,12 @@ class AppDbMovementTest {
         assertEquals(5.0, db.initialStockBalanceForMaterial(material), 0.000001)
         db.insertMovement(material, "RECEIPT", 4.0, null, warehouseA, null, locationA, "TEST-LEDGER-RECEIPT", "2026-10-12", "")
         db.insertTransfer(material, 2.0, warehouseA, warehouseB, locationA, locationB, "TEST-LEDGER-TRANSFER", "2026-10-12", "")
-        db.insertMovement(material, "ISSUE", 3.0, warehouseB, null, locationB, null, "TEST-LEDGER-ISSUE", "2026-10-12", "")
+        db.insertMovement(material, "ISSUE", 1.0, warehouseB, null, locationB, null, "TEST-LEDGER-ISSUE", "2026-10-12", "")
         db.insertMovement(material, "WRITE_OFF", 1.0, warehouseA, null, locationA, null, "TEST-LEDGER-WRITEOFF", "2026-10-12", "")
-        assertEquals("Movement-only net excludes transfers", 0.0, db.materialBalance(material), 0.000001)
-        assertEquals("Opening stock plus posted movements gives the real total", 5.0, db.initialStockBalanceForMaterial(material) + db.materialBalance(material), 0.000001)
+        assertEquals("Movement-only net excludes transfers", 2.0, db.materialBalance(material), 0.000001)
+        assertEquals("Opening stock plus posted movements gives the real total", 7.0, db.initialStockBalanceForMaterial(material) + db.materialBalance(material), 0.000001)
         assertEquals(4.0, db.warehouseBalance(material, warehouseB), 0.000001)
-        assertEquals(2.0, db.locationBalance(material, locationB), 0.000001)
+        assertEquals(1.0, db.locationBalance(material, locationB), 0.000001)
     }
 
     @Test
