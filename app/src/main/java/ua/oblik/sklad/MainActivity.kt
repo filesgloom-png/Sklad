@@ -1109,6 +1109,28 @@ class MainActivity : Activity() {
             val b=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER};b.addView(DashboardIconView(this,x.first,Color.rgb(226,195,111)),LinearLayout.LayoutParams(-1,dp(23)));b.addView(TextView(this).apply{text=x.second;textSize=10f;setTextColor(Color.rgb(194,204,205));gravity=Gravity.CENTER;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END});b.addView(TextView(this).apply{text=x.third;textSize=if(x.third.length>8)11f else 17f;setTypeface(null,Typeface.BOLD);setTextColor(Color.WHITE);gravity=Gravity.CENTER;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END});stats.addView(b,LinearLayout.LayoutParams(0,dp(64),1f));if(i<3)stats.addView(View(this).apply{setBackgroundColor(Color.rgb(65,73,72))},LinearLayout.LayoutParams(dp(1),dp(42))) }
         page.addView(stats,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(8);bottomMargin=dp(8)})
         val search=EditText(this).apply{hint="⌕  Пошук за номером, назвою або місцем";setText(query);textSize=14f;setSingleLine();setTextColor(Color.WHITE);setHintTextColor(Color.rgb(154,168,171));setPadding(dp(14),0,dp(10),0);background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.rgb(22,35,36),Color.rgb(14,25,27))).apply{cornerRadius=dp(13).toFloat();setStroke(dp(1),Color.rgb(55,75,72))}}
+        search.imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+        search.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH ||
+                actionId == android.view.inputmethod.EditorInfo.IME_ACTION_DONE) {
+                val term = search.text.toString().trim()
+                if (term != query) showWarehouses(term, filter, sortMode)
+                true
+            } else false
+        }
+        var pendingSearch: Runnable? = null
+        search.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                pendingSearch?.let { search.removeCallbacks(it) }
+                val term = s?.toString()?.trim().orEmpty()
+                if (term == query) return
+                val task = Runnable { if (!isFinishing && !isDestroyed) showWarehouses(term, filter, sortMode) }
+                pendingSearch = task
+                search.postDelayed(task, 320L)
+            }
+            override fun afterTextChanged(s: android.text.Editable?) = Unit
+        })
         page.addView(search,LinearLayout.LayoutParams(-1,dp(52)).apply{bottomMargin=dp(7)})
         val chips=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
         fun chip(t:String,sel:Boolean,act:()->Unit)=TextView(this).apply{text=t;textSize=10.5f;setTypeface(null,Typeface.BOLD);setTextColor(if(sel)Color.rgb(245,221,151)else Color.rgb(180,190,194));gravity=Gravity.CENTER;background=rounded(if(sel)Color.rgb(75,61,30)else Color.rgb(17,28,31),10);if(sel)(background as GradientDrawable).setStroke(dp(1),Color.rgb(180,145,61));setOnClickListener{act()}}
@@ -1774,9 +1796,39 @@ class MainActivity : Activity() {
         })
 
         addActionRow(root, listOf(
-            "⌕  Пошук" to { searchDialog("Пошук у журналі", query) { q -> showJournal(q, filter) } },
+            (if (query.isBlank()) "⌕  Пошук" else "⌕  " + query.take(12) + if (query.length > 12) "…" else "") to {
+                searchDialog("Пошук у журналі", query) { q -> showJournal(q, filter) }
+            },
             "⇩  Експорт CSV" to { exportCurrentBalanceCsv() }
         ))
+        if (query.isNotBlank()) {
+            val activeQuery = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                background = rounded(Color.rgb(18, 42, 35), 10)
+                setPadding(dp(12), dp(8), dp(8), dp(8))
+            }
+            activeQuery.addView(TextView(this).apply {
+                text = "ФІЛЬТР  ·  $query"
+                textSize = 11f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(128, 225, 177))
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            activeQuery.addView(TextView(this).apply {
+                text = "✕  Очистити"
+                textSize = 11f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(Color.rgb(226, 195, 111))
+                setPadding(dp(9), dp(7), dp(9), dp(7))
+                background = rounded(Color.rgb(39, 48, 37), 8)
+                setOnClickListener { showJournal("", filter) }
+            })
+            root.addView(activeQuery, LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(9)
+            })
+        }
 
         val filterScroll = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
