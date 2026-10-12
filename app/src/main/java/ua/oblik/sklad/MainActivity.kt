@@ -1189,7 +1189,13 @@ class MainActivity : Activity() {
         if (group.isEmpty()) return
         val first = group.first()
         val title = first.getOrElse(5) { "" }.ifBlank { first.getOrElse(4) { "Номенклатура" } }
-        val total = group.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 }
+        val total = group.sumOf { it.getOrElse(10) { "0" }.replace(',', '.').toDoubleOrNull() ?: 0.0 }
+        val pricedRows = group.mapNotNull { row ->
+            val quantity = row.getOrElse(10) { "" }.replace(',', '.').toDoubleOrNull()
+            val price = row.getOrElse(11) { "" }.replace(',', '.').toDoubleOrNull()
+            if (quantity != null && price != null && quantity.isFinite() && price.isFinite()) quantity * price else null
+        }
+        val totalValue = pricedRows.takeIf { it.size == group.size }?.sum()
         val unit = first.getOrElse(9) { "" }
         val warehouses = db.warehouseRows()
         val byWarehouse = group.groupBy { it.getOrElse(1) { "" } }.toSortedMap()
@@ -1208,6 +1214,7 @@ class MainActivity : Activity() {
             })
         }
         line("Загальний залишок: ${formatQty(total)} $unit", true)
+        line("Загальна облікова вартість: ${totalValue?.let { String.format(Locale.US, "%.2f", it) } ?: "не визначена"}", true)
         line("Код: ${first.getOrElse(4) { "" }.ifBlank { "—" }} • NSN: ${first.getOrElse(6) { "" }.ifBlank { "—" }}")
         line("Розмір: ${first.getOrElse(7) { "" }.ifBlank { "—" }} • Партія: ${first.getOrElse(8) { "" }.ifBlank { "—" }}")
         line("ЗАЛИШКИ ЗА СКЛАДАМИ", true)
