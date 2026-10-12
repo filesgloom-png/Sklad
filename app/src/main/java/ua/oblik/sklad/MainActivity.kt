@@ -1136,6 +1136,7 @@ class MainActivity : Activity() {
         addAction(root, "⌕  Знайти номенклатуру") { showMaterials() }
         addAction(root, "▤  Журнал руху") { showJournal() }
         addAction(root, "⇩  Експортувати залишки в CSV") { exportStockReportCsv() }
+        addAction(root, "▦  Експортувати поточні залишки (рух + Excel)") { exportCurrentBalanceCsv() }
 
         addScreenSummary(root, "ВАРТІСТЬ", "Оцінка за Excel",
             if (hasPrices) String.format(Locale.US, "%.2f", totalValue) + " • за вказаними цінами"
@@ -1754,6 +1755,7 @@ class MainActivity : Activity() {
 
     private val STOCK_OPEN = 4103
     private val CSV_CREATE = 4104
+    private val CURRENT_BALANCE_CSV_CREATE = 4105
 
     private fun importInitialStock() {
         AlertDialog.Builder(this).setTitle("Імпорт залишків Excel")
@@ -1882,6 +1884,210 @@ class MainActivity : Activity() {
 
     private fun databaseFile(): File = applicationContext.getDatabasePath("oblik_sklad.db")
 
+
+    private fun exportCurrentBalanceCsv() {
+        startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            type = "text/csv"
+            addCategory(Intent.CATEGORY_OPENABLE)
+            putExtra(Intent.EXTRA_TITLE, "sklad-potochni-zalyshky-${today()}.csv")
+        }, CURRENT_BALANCE_CSV_CREATE)
+    }
+
+    /**
+     * Combines the imported Excel opening balance with posted movements.
+     * The opening stock is matched to catalog materials by NSN, nomenclature number,
+     * then name + unit + batch. Warehouse matching uses the app warehouse number,
+     * with the source Excel code as a fallback.
+     */
+    private fun createCurrentBalanceCsv(): String {
+        val imported = db.initialStockRowsForAll()
+        val warehouses = db.warehouseRows()
+        val materials = db.list("materials")
+        val responsibleByWarehouse = warehouses.associate { it[0] to it.getOrNull(3).orEmpty() }
+        fun normalized(value: String?): String = value.orEmpty().trim().replace(Regex("\\s+"), " ").uppercase(Locale.ROOT)
+        fun number(value: String?): Double = value.orEmpty().trim().replace(" ", "").replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() } ?: 0.0
+        fun findWarehouse(row: Array<String>): Array<String>? {
+            val appCode = normalized(row.getOrNull(1))
+            val sourceCode = normalized(row.getOrNull(0))
+            return warehouses.firstOrNull { w ->
+                val number = normalized(w.getOrNull(6))
+                number.isNotBlank() && (number == appCode || number == sourceCode)
+            }
+        }
+        fun findMaterial(row: Array<String>): Array<String>? {
+            val nsn = normalized(row.getOrNull(6))
+            val code = normalized(row.getOrNull(4))
+            val name = normalized(row.getOrNull(5))
+            val unit = normalized(row.getOrNull(9))
+            val batch = normalized(row.getOrNull(8))
+            return materials.firstOrNull { m -> nsn.isNotBlank() && normalized(m.getOrNull(1)) == nsn }
+                ?: materials.firstOrNull { m -> code.isNotBlank() && normalized(m.getOrNull(2)) == code }
+                ?: materials.firstOrNull { m ->
+                    name.isNotBlank() && normalized(m.getOrNull(3)) == name &&
+                        (unit.isBlank() || normalized(m.getOrNull(4)) == unit) &&
+                        (batch.isBlank() || normalized(m.getOrNull(5)) == batch)
+                }
+        }
+        data class StockKey(val warehouseId: Long, val materialId: Long)
+        data class StockLine(
+            val warehouseCode: String,
+            val warehouseName: String,
+            val mvo: String,
+            val materialCode: String,
+            val name: String,
+            val nsn: String,
+            val size: String,
+            val batch: String,
+            val unit: String,
+            val price: Double,
+            var openingQty: Double = 0.0,
+            var matchedMovementQty: Double = 0.0,
+            val cells: MutableSet<String> = linkedSetOf(),
+            val storageTypes: MutableSet<String> = linkedSetOf(),
+            var materialId: Long? = null,
+            var warehouseId: Long? = null
+        )
+        val lines = linkedMapOf<String, StockLine>()
+        val mappedOpeningByKey = linkedMapOf<StockKey, StockLine>()
+        var matchedOpeningRows = 0
+        var unmatchedOpeningRows = 0
+
+        imported.forEach { row ->
+            val warehouse = findWarehouse(row)
+            val material = findMaterial(row)
+            val warehouseId = warehouse?.getOrNull(0)?.toLongOrNull()
+            val materialId = material?.getOrNull(0)?.toLongOrNull()
+            if (warehouseId != null && materialId != null) {
+                val key = StockKey(warehouseId, materialId)
+                val line = mappedOpeningByKey.getOrPut(key) {
+                    StockLine(
+                        warehouseCode = warehouse.getOrNull(6).orEmpty().ifBlank { row.getOrNull(1).orEmpty() },
+                        warehouseName = warehouse.getOrNull(1).orEmpty(),
+                        mvo = warehouse.getOrNull(3).orEmpty(),
+                        materialCode = material.getOrNull(2).orEmpty().ifBlank { row.getOrNull(4).orEmpty() },
+                        name = material.getOrNull(3).orEmpty().ifBlank { row.getOrNull(5).orEmpty() },
+                        nsn = material.getOrNull(1).orEmpty().ifBlank { row.getOrNull(6).orEmpty() },
+                        size = row.getOrNull(7).orEmpty(),
+                        batch = material.getOrNull(5).orEmpty().ifBlank { row.getOrNull(8).orEmpty() },
+                        unit = material.getOrNull(4).orEmpty().ifBlank { row.getOrNull(9).orEmpty() },
+                        price = number(row.getOrNull(11)).takeIf { it > 0.0 } ?: number(material.getOrNull(6)),
+                        materialId = materialId,
+                        warehouseId = warehouseId
+                    )
+                }
+                line.openingQty += number(row.getOrNull(10))
+                row.getOrNull(3).orEmpty().trim().takeIf { it.isNotBlank() }?.let { line.cells.add(it) }
+                row.getOrNull(2).orEmpty().trim().takeIf { it.isNotBlank() }?.let { line.storageTypes.add(it) }
+                matchedOpeningRows++
+            } else {
+                val key = listOf(row.getOrNull(0), row.getOrNull(1), row.getOrNull(4), row.getOrNull(5), row.getOrNull(6), row.getOrNull(7), row.getOrNull(8), row.getOrNull(3)).joinToString("|")
+                val line = lines.getOrPut("UNMATCHED|$key") {
+                    StockLine(
+                        warehouseCode = row.getOrNull(1).orEmpty().ifBlank { row.getOrNull(0).orEmpty() },
+                        warehouseName = warehouse?.getOrNull(1).orEmpty().ifBlank { "Склад не сопоставлен" },
+                        mvo = warehouse?.getOrNull(3).orEmpty().ifBlank { "МВО не указано" },
+                        materialCode = row.getOrNull(4).orEmpty(),
+                        name = row.getOrNull(5).orEmpty(),
+                        nsn = row.getOrNull(6).orEmpty(),
+                        size = row.getOrNull(7).orEmpty(),
+                        batch = row.getOrNull(8).orEmpty(),
+                        unit = row.getOrNull(9).orEmpty(),
+                        price = number(row.getOrNull(11))
+                    )
+                }
+                line.openingQty += number(row.getOrNull(10))
+                row.getOrNull(3).orEmpty().trim().takeIf { it.isNotBlank() }?.let { line.cells.add(it) }
+                row.getOrNull(2).orEmpty().trim().takeIf { it.isNotBlank() }?.let { line.storageTypes.add(it) }
+                unmatchedOpeningRows++
+            }
+        }
+
+        mappedOpeningByKey.forEach { (key, line) ->
+            val materialId = key.materialId
+            val warehouseId = key.warehouseId
+            line.matchedMovementQty = db.warehouseBalance(materialId, warehouseId)
+            db.locationRows(warehouseId).forEach { loc ->
+                val locationId = loc.getOrNull(0)?.toLongOrNull() ?: return@forEach
+                val balance = db.locationBalance(materialId, locationId)
+                if (kotlin.math.abs(balance) > 1e-9) {
+                    line.cells.add("${loc.getOrNull(1).orEmpty()} (рух: ${formatQty(balance)})")
+                }
+            }
+            lines["MAPPED|${key.warehouseId}|${key.materialId}"] = line
+        }
+
+        // Include posted-operation balances for catalog materials that have no imported opening row.
+        materials.forEach { material ->
+            val materialId = material.getOrNull(0)?.toLongOrNull() ?: return@forEach
+            warehouses.forEach warehouseLoop@{ warehouse ->
+                val warehouseId = warehouse.getOrNull(0)?.toLongOrNull() ?: return@warehouseLoop
+                val balance = db.warehouseBalance(materialId, warehouseId)
+                val key = StockKey(warehouseId, materialId)
+                if (key !in mappedOpeningByKey && kotlin.math.abs(balance) > 1e-9) {
+                    val line = StockLine(
+                        warehouseCode = warehouse.getOrNull(6).orEmpty(),
+                        warehouseName = warehouse.getOrNull(1).orEmpty(),
+                        mvo = warehouse.getOrNull(3).orEmpty(),
+                        materialCode = material.getOrNull(2).orEmpty(),
+                        name = material.getOrNull(3).orEmpty(),
+                        nsn = material.getOrNull(1).orEmpty(),
+                        size = "",
+                        batch = material.getOrNull(5).orEmpty(),
+                        unit = material.getOrNull(4).orEmpty(),
+                        price = number(material.getOrNull(6)),
+                        matchedMovementQty = balance,
+                        materialId = materialId,
+                        warehouseId = warehouseId
+                    )
+                    db.locationRows(warehouseId).forEach { loc ->
+                        val locationId = loc.getOrNull(0)?.toLongOrNull() ?: return@forEach
+                        val locationBalance = db.locationBalance(materialId, locationId)
+                        if (kotlin.math.abs(locationBalance) > 1e-9) line.cells.add("${loc.getOrNull(1).orEmpty()} (рух: ${formatQty(locationBalance)})")
+                    }
+                    if (line.cells.isEmpty()) line.cells.add("Без привязки к комірке")
+                    lines["MOVEMENT|${warehouseId}|${materialId}"] = line
+                }
+            }
+        }
+
+        val header = listOf(
+            "Код складу", "Склад", "МВО", "Тип зберігання", "Комірки / місця",
+            "Код матеріалу", "Найменування", "NSN", "Розмір", "Партія", "Одиниця",
+            "Початковий залишок Excel", "Изменение по операциям", "Текущий остаток",
+            "Цена за единицу", "Текущая стоимость", "Сопоставление"
+        )
+        val csv = mutableListOf(header.joinToString(";") { csvField(it) })
+        val allLines = lines.values.sortedWith(compareBy<StockLine> { it.warehouseName.lowercase(Locale.ROOT) }.thenBy { it.name.lowercase(Locale.ROOT) })
+        allLines.forEach { line ->
+            val currentQty = line.openingQty + line.matchedMovementQty
+            val status = when {
+                line.materialId == null || line.warehouseId == null -> "Не сопоставлено: только Excel"
+                line.openingQty != 0.0 -> "Excel + операции"
+                else -> "Только операции"
+            }
+            val values = listOf(
+                line.warehouseCode, line.warehouseName, line.mvo,
+                line.storageTypes.joinToString(", ").ifBlank { "Не указано" },
+                line.cells.joinToString(", ").ifBlank { "Без указанной ячейки" },
+                line.materialCode, line.name, line.nsn, line.size, line.batch, line.unit,
+                formatQty(line.openingQty), formatQty(line.matchedMovementQty),
+                formatQty(currentQty), formatQty(line.price), formatQty(currentQty * line.price), status
+            )
+            csv += values.joinToString(";") { csvField(it) }
+        }
+        val totals = allLines.fold(Triple(0.0, 0.0, 0.0)) { acc, line ->
+            Triple(acc.first + line.openingQty, acc.second + line.matchedMovementQty,
+                acc.third + (line.openingQty + line.matchedMovementQty) * line.price)
+        }
+        csv += ""
+        csv += listOf("ИТОГО", "", "", "", "", "", "", "", "", "", "",
+            formatQty(totals.first), formatQty(totals.second),
+            formatQty(totals.first + totals.second), "", formatQty(totals.third),
+            "Сопоставлено строк Excel: $matchedOpeningRows; не сопоставлено: $unmatchedOpeningRows"
+        ).joinToString(";") { csvField(it) }
+        return "\uFEFF" + csv.joinToString("\r\n")
+    }
+
     private fun exportStockReportCsv() {
         startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             type = "text/csv"
@@ -1986,6 +2192,13 @@ class MainActivity : Activity() {
                         writer.write(csv)
                     } ?: throw IllegalStateException("Не вдалося зберегти CSV-звіт.")
                     Toast.makeText(this, "CSV-звіт залишків збережено.", Toast.LENGTH_LONG).show()
+                }
+                CURRENT_BALANCE_CSV_CREATE -> {
+                    val csv = createCurrentBalanceCsv()
+                    contentResolver.openOutputStream(uri)?.bufferedWriter(Charsets.UTF_8)?.use { writer ->
+                        writer.write(csv)
+                    } ?: throw IllegalStateException("Не вдалося зберегти звіт поточних залишків.")
+                    Toast.makeText(this, "Звіт поточних залишків збережено.", Toast.LENGTH_LONG).show()
                 }
                 BACKUP_CREATE -> {
                     db.writableDatabase.rawQuery("PRAGMA wal_checkpoint(FULL)", null).use { it.moveToFirst() }
