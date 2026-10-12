@@ -1906,7 +1906,7 @@ class MainActivity : Activity() {
     /** Exports only balance exceptions from the same reconciled report used by the full balance export. */
     private fun createStockAuditCsv(): String {
         val fullReport = createCurrentBalanceCsv()
-        val rows = fullReport.removePrefix("\uFEFF").split("\\r\\n")
+        val rows = fullReport.removePrefix("\uFEFF").split("\r\n")
         if (rows.isEmpty()) return "\uFEFF"
         val header = rows.first()
         val exceptions = rows.drop(1).filter { row ->
@@ -1922,7 +1922,7 @@ class MainActivity : Activity() {
             "",
             csvField("ИТОГО АУДИТУ") + ";" + csvField("Проблемних рядків: ${exceptions.size}") + ";" +
                 csvField("Від’ємних залишків: $negative") + ";" + csvField("Несопоставлених рядків Excel: $unmatched")
-        ).joinToString("\\r\\n")
+        ).joinToString("\r\n")
     }
 
     /**
