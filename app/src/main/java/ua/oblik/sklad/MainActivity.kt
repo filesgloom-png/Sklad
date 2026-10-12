@@ -435,81 +435,124 @@ class MainActivity : Activity() {
     }
 
     private fun base(title: String): LinearLayout {
-        window.statusBarColor = Color.rgb(7, 18, 21)
-        window.navigationBarColor = Color.rgb(7, 18, 21)
+        val night = Color.rgb(7, 18, 21)
+        val panel = Color.rgb(15, 29, 31)
+        val line = Color.rgb(43, 68, 62)
+        val gold = Color.rgb(226, 195, 111)
+        val mint = Color.rgb(103, 219, 178)
+        window.statusBarColor = night
+        window.navigationBarColor = night
         window.decorView.systemUiVisibility = 0
+
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.rgb(7, 18, 21))
+            setBackgroundColor(night)
+            clipToPadding = false
         }
         root.setOnApplyWindowInsetsListener { view, insets ->
             val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
             view.setPadding(dp(16), bars.top + dp(5), dp(16), bars.bottom)
             insets
         }
+
+        val accent = View(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(51, 145, 111), gold, Color.rgb(25, 66, 57))
+            )
+        }
+        root.addView(accent, LinearLayout.LayoutParams(-1, dp(2)))
+
         val bar = LinearLayout(this).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(7), 0, dp(12))
+            setPadding(0, dp(12), 0, dp(15))
         }
         val back = TextView(this).apply {
             text = "‹"
             textSize = 34f
             gravity = Gravity.CENTER
-            setTextColor(Color.rgb(226, 195, 111))
+            setTextColor(gold)
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(35, 45, 39), Color.rgb(15, 27, 29))
+                intArrayOf(Color.rgb(35, 52, 45), Color.rgb(15, 29, 31))
             ).apply {
-                cornerRadius = dp(15).toFloat()
-                setStroke(dp(1), Color.rgb(83, 76, 48))
+                cornerRadius = dp(16).toFloat()
+                setStroke(dp(1), Color.rgb(76, 105, 82))
             }
-            elevation = dp(2).toFloat()
+            contentDescription = "Назад на головну"
             setOnClickListener { showHome() }
         }
         bar.addView(back, LinearLayout.LayoutParams(dp(48), dp(48)))
+
         val titleStack = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(13), 0, 0, 0)
+            setPadding(dp(13), 0, dp(6), 0)
         }
         titleStack.addView(TextView(this).apply {
-            text = "SKLAD  /  CONTROL"
+            text = "SKLAD+   /   WORKSPACE"
             textSize = 9f
             setTypeface(null, Typeface.BOLD)
-            letterSpacing = .16f
-            setTextColor(Color.rgb(226, 195, 111))
+            letterSpacing = .15f
+            setTextColor(gold)
         })
         titleStack.addView(TextView(this).apply {
             text = title
             textSize = 21f
-            setTypeface(null, Typeface.BOLD)
+            setTypeface(Typeface.create("sans-serif", Typeface.BOLD), Typeface.BOLD)
             setTextColor(Color.WHITE)
             maxLines = 2
             includeFontPadding = false
-            setPadding(0, dp(3), 0, 0)
+            setPadding(0, dp(4), 0, 0)
         })
         bar.addView(titleStack, LinearLayout.LayoutParams(0, -2, 1f))
-        bar.addView(TextView(this).apply {
-            text = "●"
-            textSize = 11f
+        val status = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setTextColor(Color.rgb(103, 219, 178))
-            background = rounded(Color.rgb(17, 38, 33), 12)
-            contentDescription = "Локальна база даних"
-        }, LinearLayout.LayoutParams(dp(34), dp(34)))
+            setPadding(dp(9), dp(7), dp(9), dp(7))
+            background = GradientDrawable().apply {
+                setColor(Color.rgb(17, 43, 36))
+                cornerRadius = dp(20).toFloat()
+                setStroke(dp(1), Color.rgb(40, 94, 72))
+            }
+        }
+        status.addView(View(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(mint)
+            }
+        }, LinearLayout.LayoutParams(dp(6), dp(6)).apply { rightMargin = dp(6) })
+        status.addView(TextView(this).apply {
+            text = "LOCAL"
+            textSize = 9f
+            letterSpacing = .08f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(Color.rgb(179, 226, 205))
+        })
+        bar.addView(status)
         root.addView(bar)
+
+        val divider = View(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(line, Color.rgb(25, 43, 42), Color.TRANSPARENT.toInt())
+            )
+        }
+        root.addView(divider, LinearLayout.LayoutParams(-1, dp(1)))
+
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(3), 0, dp(16))
+            setPadding(0, dp(12), 0, dp(20))
         }
         root.addView(ScrollView(this).apply {
             isFillViewport = false
             clipToPadding = false
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
             addView(content)
         }, LinearLayout.LayoutParams(-1, 0, 1f))
         return root
     }
 
-    private fun showHome() {
+    private fun showHome()    private fun showHome() {
         window.statusBarColor = Color.rgb(7, 18, 21)
         window.navigationBarColor = Color.rgb(7, 18, 21)
         window.decorView.systemUiVisibility = 0
