@@ -2049,7 +2049,7 @@ class MainActivity : Activity() {
             } else {
                 db.unassignedWarehouseBalance(materialId, warehouseId)
             }
-            lines["MAPPED|${key.warehouseId}|${key.materialId}"] = line
+            lines["MAPPED|${key.warehouseId}|${key.materialId}|${key.cellKey}"] = line
         }
 
         // Include operation-only balances per exact configured cell and unassigned stock.
@@ -2086,7 +2086,7 @@ class MainActivity : Activity() {
                             warehouseId = warehouseId,
                             cellId = cell.second
                         )
-                        lines["MOVEMENT|\${warehouseId}|\${materialId}|\${cell.first}"] = line
+                        lines["MOVEMENT|${warehouseId}|${materialId}|${cell.first}"] = line
                     }
                 }
             }
