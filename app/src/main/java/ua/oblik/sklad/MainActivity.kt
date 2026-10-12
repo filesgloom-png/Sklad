@@ -1519,7 +1519,27 @@ class MainActivity : Activity() {
                     val warehouseBalance = db.warehouseBalance(materialId, warehouseId)
                     if (warehouseBalance != 0.0) addBalanceLine(detail, warehouse[1], warehouseBalance, material[4], 1)
                 }
-                AlertDialog.Builder(this).setTitle("Картка обліку").setView(detail)
+                addSectionTitle(detail, "ІСТОРІЯ РУХУ МАЙНА")
+                val history = db.movementRowsForMaterial(materialId)
+                if (history.isEmpty()) {
+                    addRow(detail, "Операції", "Документів руху поки немає")
+                } else {
+                    history.take(12).forEach { movement ->
+                        val qty = movement.getOrElse(3) { "0" }.replace(',', '.').toDoubleOrNull() ?: 0.0
+                        val route = if (movement.getOrElse(2) { "" }.startsWith("TRANSFER")) {
+                            "${movement.getOrElse(5) { "—" }} → ${movement.getOrElse(6) { "—" }}"
+                        } else {
+                            movement.getOrElse(5) { "—" }
+                        }
+                        addRow(detail, "${movement.getOrElse(0) { "" }} · ${typeLabel(movement.getOrElse(2) { "" })}",
+                            "${formatQty(qty)} ${material[4]} · Документ: ${movement.getOrElse(4) { "—" }} · $route")
+                    }
+                }
+                val detailScroll = ScrollView(this).apply {
+                    isFillViewport = false
+                    addView(detail)
+                }
+                AlertDialog.Builder(this).setTitle("Картка обліку").setView(detailScroll)
                     .setNeutralButton("Експорт Excel") { _, _ -> exportAccountingCard(material) }
                     .setPositiveButton("Готово", null).show()
             }
@@ -2357,7 +2377,7 @@ class MainActivity : Activity() {
         val responsible = stockedWarehouses.map { it.getOrNull(3).orEmpty() }.filter { it.isNotBlank() && it != "Не призначено" }.distinct().joinToString(", ").ifBlank { "Не призначено" }
         val warehouseNames = stockedWarehouses.map { it[1] }.distinct().joinToString(", ").ifBlank { "Не визначено" }
         val price = material.getOrElse(6) { "" }.replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 }
-        val movementRows = db.movementRows().filter { it.getOrNull(1).orEmpty() == material.getOrElse(3) { "" } }.asReversed()
+        val movementRows = materialId?.let { db.movementRowsForMaterial(it) }.orEmpty().asReversed()
         var running = 0.0
         val movements = movementRows.map { row ->
             val type = row.getOrElse(2) { "" }
