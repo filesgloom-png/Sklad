@@ -2057,7 +2057,7 @@ class MainActivity : Activity() {
             val materialId = material.getOrNull(0)?.toLongOrNull() ?: return@forEach
             warehouses.forEach warehouseLoop@{ warehouse ->
                 val warehouseId = warehouse.getOrNull(0)?.toLongOrNull() ?: return@warehouseLoop
-                val cells = db.locationRows(warehouseId).mapNotNull { loc ->
+                val cells: MutableList<Triple<String, Long?, String>> = db.locationRows(warehouseId).mapNotNull { loc ->
                     val locationId = loc.getOrNull(0)?.toLongOrNull() ?: return@mapNotNull null
                     Triple(locationId.toString(), locationId, loc.getOrNull(1).orEmpty())
                 }.toMutableList()
