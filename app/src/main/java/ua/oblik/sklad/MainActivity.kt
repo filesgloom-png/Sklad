@@ -1124,7 +1124,7 @@ class MainActivity : Activity() {
                 row.getOrElse(7) { "" }, row.getOrElse(8) { "" }, row.getOrElse(9) { "" }).joinToString("|")
         }.values.sortedBy { group -> group.firstOrNull()?.getOrElse(5) { "" }?.lowercase(Locale.ROOT) ?: "" }
         val totalBalance = all.sumOf { row -> db.materialBalance(row[0].toLongOrNull() ?: 0L) }
-        val importedQty = importedRows.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 }
+        val importedQty = importedRows.sumOf { it.getOrElse(10) { "0" }.replace(',', '.').toDoubleOrNull() ?: 0.0 }
         addScreenSummary(root, "ДОВІДНИК МАЙНА", "Номенклатурні позиції",
             "${all.size + importedGroups.size} позицій  •  Excel: ${formatQty(importedQty)} од.")
         addActionRow(root, listOf(
@@ -1146,7 +1146,14 @@ class MainActivity : Activity() {
         } else {
             importedGroups.forEach { group ->
                 val first = group.first()
-                val qty = group.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 }
+                val qty = group.sumOf { it.getOrElse(10) { "0" }.replace(',', '.').toDoubleOrNull() ?: 0.0 }
+                val pricedRows = group.mapNotNull { stockRow ->
+                    val quantity = stockRow.getOrElse(10) { "" }.replace(',', '.').toDoubleOrNull()
+                    val price = stockRow.getOrElse(11) { "" }.replace(',', '.').toDoubleOrNull()
+                    if (quantity != null && price != null && quantity.isFinite() && price.isFinite()) quantity * price else null
+                }
+                val accountingValue = pricedRows.takeIf { it.size == group.size }?.sum()
+                val valueLabel = accountingValue?.let { "Обл. вартість: ${String.format(Locale.US, "%.2f", it)}" }
                 val warehouseCount = group.map { it.getOrElse(1) { "" } }.distinct().size
                 val title = first.getOrElse(5) { "" }.ifBlank { first.getOrElse(4) { "Без назви" } }
                 val identifiers = listOf(first.getOrElse(4) { "" }, first.getOrElse(6) { "" })
@@ -1163,7 +1170,8 @@ class MainActivity : Activity() {
                 val details = listOf(
                     "${warehouseCount} складів",
                     identifiers.takeIf { it.isNotBlank() },
-                    mvoLabel
+                    mvoLabel,
+                    valueLabel
                 ).filterNotNull().joinToString(" • ")
                 addNomenclatureCard(root, title, details, "${formatQty(qty)} ${first.getOrElse(9) { "" }}") {
                     showImportedNomenclatureDetail(group)
@@ -1220,14 +1228,14 @@ class MainActivity : Activity() {
         line("ЗАЛИШКИ ЗА СКЛАДАМИ", true)
         var detailDialog: AlertDialog? = null
         byWarehouse.forEach { (code, entries) ->
-            val qty = entries.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 }
+            val qty = entries.sumOf { it.getOrElse(10) { "0" }.replace(',', '.').toDoubleOrNull() ?: 0.0 }
             val warehouse = warehouses.firstOrNull { it.getOrElse(6) { "" }.equals(code, true) }
             val warehouseName = warehouse?.getOrElse(1) { "" }?.ifBlank { "Склад $code" } ?: "Склад $code"
             val responsible = warehouse?.getOrElse(3) { "" }?.takeIf { it.isNotBlank() } ?: "МВО не вказано"
             val types = entries.groupBy { it.getOrElse(2) { "" } }
                 .entries.sortedBy { it.key }
                 .joinToString(" • ") { (type, values) ->
-                    "$type: ${formatQty(values.sumOf { it.getOrElse(10) { "0" }.toDoubleOrNull() ?: 0.0 })}"
+                    "$type: ${formatQty(values.sumOf { it.getOrElse(10) { "0" }.replace(',', '.').toDoubleOrNull() ?: 0.0 })}"
                 }
             line("$warehouseName ($code)", true)
             line("МВО: $responsible")
@@ -2981,7 +2989,7 @@ class MainActivity : Activity() {
             textSize = 12f
             setTextColor(Color.rgb(164, 179, 178))
             setPadding(0, dp(7), 0, dp(8))
-            maxLines = 2
+            maxLines = 3
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
         val footer = LinearLayout(this).apply {
