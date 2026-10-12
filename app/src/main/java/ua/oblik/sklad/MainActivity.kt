@@ -2659,8 +2659,8 @@ class MainActivity : Activity() {
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
         hero.addView(copy, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER_VERTICAL))
+        hero.minimumHeight = dp(126)
         root.addView(hero, LinearLayout.LayoutParams(-1, -2).apply {
-            minimumHeight = dp(126)
             bottomMargin = dp(12)
         })
         animateEntrance(hero, 25L)
@@ -3092,22 +3092,14 @@ class MainActivity : Activity() {
         val dialog = AlertDialog.Builder(this)
             .setCustomTitle(LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                setPadding(dp(20), dp(15), dp(20), dp(2))
+                setPadding(dp(20), dp(12), dp(20), dp(3))
                 setBackgroundColor(Color.rgb(14, 25, 27))
-                addView(TextView(this@MainActivity).apply {
-                    text = "НОВА ЗАПИСЬ"
-                    textSize = 9f
-                    setTypeface(null, Typeface.BOLD)
-                    letterSpacing = .14f
-                    setTextColor(gold)
-                })
-                addView(TextView(this@MainActivity).apply {
-                    text = title
-                    textSize = 21f
-                    setTypeface(null, Typeface.BOLD)
-                    setTextColor(Color.WHITE)
-                    setPadding(0, dp(4), 0, 0)
-                })
+                addView(View(this@MainActivity).apply {
+                    background = GradientDrawable(
+                        GradientDrawable.Orientation.LEFT_RIGHT,
+                        intArrayOf(Color.rgb(226, 195, 111), Color.rgb(103, 133, 87), Color.argb(0, 103, 133, 87))
+                    )
+                }, LinearLayout.LayoutParams(-1, dp(2)))
             })
             .setView(panel)
             .setNegativeButton("Скасувати", null)
