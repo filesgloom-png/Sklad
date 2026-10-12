@@ -3319,18 +3319,20 @@ class MainActivity : Activity() {
     private fun addNomenclatureCard(root: LinearLayout, title: String, subtitle: String, metric: String, action: () -> Unit) {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(13), dp(12), dp(13), dp(11))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(28, 46, 40), Color.rgb(13, 27, 30))
-            ).apply {
-                cornerRadius = dp(17).toFloat()
-                setStroke(dp(1), Color.rgb(51, 85, 71))
+            setPadding(dp(14), dp(13), dp(14), dp(12))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(27, 46, 39), Color.rgb(12, 25, 29))).apply {
+                cornerRadius = dp(18).toFloat()
+                setStroke(dp(1), Color.rgb(52, 85, 68))
             }
             isClickable = true
             isFocusable = true
             setOnClickListener { action() }
         }
+        card.addView(View(this).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.rgb(76, 151, 102), Color.rgb(226, 195, 111), Color.argb(0, 226, 195, 111)))
+        }, LinearLayout.LayoutParams(-1, dp(2)).apply { bottomMargin = dp(11) })
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -3349,58 +3351,64 @@ class MainActivity : Activity() {
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(226, 195, 111))
             gravity = Gravity.CENTER
-            background = rounded(Color.rgb(46, 42, 28), 9)
-            setPadding(dp(9), dp(7), dp(9), dp(7))
+            background = rounded(Color.rgb(43, 42, 29), 10)
+            setPadding(dp(10), dp(8), dp(10), dp(8))
         }, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
         card.addView(top)
         card.addView(TextView(this).apply {
             text = subtitle
             textSize = 12f
             setTextColor(Color.rgb(164, 179, 178))
-            setPadding(0, dp(7), 0, dp(8))
+            setPadding(0, dp(8), 0, dp(10))
             maxLines = 3
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
         val footer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = rounded(Color.rgb(19, 31, 31), 9)
-            setPadding(dp(10), dp(8), dp(10), dp(8))
+            background = rounded(Color.rgb(18, 31, 31), 10)
+            setPadding(dp(11), dp(9), dp(11), dp(9))
         }
         footer.addView(TextView(this).apply {
-            text = "▦  КІЛЬКІСТЬ / БАЛАНС"
+            text = "▦  ОБЛІКОВА ПОЗИЦІЯ"
             textSize = 9f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(143, 164, 160))
-            letterSpacing = 0.04f
+            letterSpacing = .04f
         }, LinearLayout.LayoutParams(0, -2, 1f))
         footer.addView(TextView(this).apply {
-            text = "Відкрити  ↗"
-            textSize = 11f
+            text = "ДЕТАЛІ  ↗"
+            textSize = 10f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(226, 195, 111))
             gravity = Gravity.CENTER
+            letterSpacing = .04f
         })
         card.addView(footer)
-        root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(8) })
-        animateEntrance(card, ((root.childCount % 8) * 32L))
+        root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) })
+        animateEntrance(card)
     }
 
     private fun addAccountCard(root: LinearLayout, title: String, subtitle: String, balance: Double, action: () -> Unit) {
+        val positive = balance > 0.0
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(13), dp(14), dp(12))
+            setPadding(dp(15), dp(14), dp(15), dp(13))
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(34, 47, 38), Color.rgb(13, 26, 29))
+                intArrayOf(if (positive) Color.rgb(31, 49, 39) else Color.rgb(31, 38, 38), Color.rgb(12, 24, 28))
             ).apply {
-                cornerRadius = dp(17).toFloat()
-                setStroke(dp(1), Color.rgb(91, 87, 54))
+                cornerRadius = dp(18).toFloat()
+                setStroke(dp(1), if (positive) Color.rgb(68, 103, 76) else Color.rgb(62, 75, 72))
             }
             isClickable = true
             isFocusable = true
             setOnClickListener { action() }
         }
+        card.addView(View(this).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(if (positive) Color.rgb(91, 176, 116) else Color.rgb(110, 126, 119), Color.rgb(226, 195, 111)))
+        }, LinearLayout.LayoutParams(-1, dp(2)).apply { bottomMargin = dp(12) })
         val heading = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -3417,31 +3425,44 @@ class MainActivity : Activity() {
             text = formatQty(balance)
             textSize = 16f
             setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.rgb(226, 195, 111))
+            setTextColor(if (positive) Color.rgb(153, 220, 164) else Color.rgb(190, 200, 195))
             gravity = Gravity.CENTER
-            background = rounded(Color.rgb(48, 43, 28), 9)
-            setPadding(dp(10), dp(7), dp(10), dp(7))
-        })
+            background = rounded(if (positive) Color.rgb(29, 59, 39) else Color.rgb(37, 47, 45), 10)
+            setPadding(dp(11), dp(8), dp(11), dp(8))
+        }, LinearLayout.LayoutParams(-2, -2).apply { leftMargin = dp(8) })
         card.addView(heading)
         card.addView(TextView(this).apply {
             text = subtitle
             textSize = 12f
             setTextColor(Color.rgb(164, 179, 178))
-            setPadding(0, dp(7), 0, dp(9))
-            maxLines = 2
+            setPadding(0, dp(8), 0, dp(11))
+            maxLines = 3
             ellipsize = android.text.TextUtils.TruncateAt.END
         })
-        card.addView(TextView(this).apply {
-            text = "Відкрити картку  ›"
-            textSize = 12f
+        val footer = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = rounded(Color.rgb(18, 31, 31), 10)
+            setPadding(dp(11), dp(9), dp(11), dp(9))
+        }
+        footer.addView(TextView(this).apply {
+            text = if (positive) "●  Є залишок" else "○  Немає залишку"
+            textSize = 10f
+            setTypeface(null, Typeface.BOLD)
+            setTextColor(if (positive) Color.rgb(133, 207, 151) else Color.rgb(155, 169, 164))
+            letterSpacing = .02f
+        }, LinearLayout.LayoutParams(0, -2, 1f))
+        footer.addView(TextView(this).apply {
+            text = "КАРТКА  ↗"
+            textSize = 10f
             setTypeface(null, Typeface.BOLD)
             setTextColor(Color.rgb(226, 195, 111))
-            gravity = Gravity.CENTER_VERTICAL
-            background = rounded(Color.rgb(35, 39, 29), 8)
-            setPadding(dp(10), dp(8), dp(10), dp(8))
+            gravity = Gravity.CENTER
+            letterSpacing = .04f
         })
-        root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(9) })
-        animateEntrance(card, ((root.childCount % 8) * 32L))
+        card.addView(footer)
+        root.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) })
+        animateEntrance(card)
     }
 
     private fun addBalanceLine(root: LinearLayout, title: String, balance: Double, unit: String, level: Int) {
