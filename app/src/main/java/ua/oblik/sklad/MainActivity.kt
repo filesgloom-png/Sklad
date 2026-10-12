@@ -1277,7 +1277,8 @@ class MainActivity : Activity() {
             listOf(row.getOrElse(4) { "" }, row.getOrElse(5) { "" }, row.getOrElse(6) { "" },
                 row.getOrElse(7) { "" }, row.getOrElse(8) { "" }, row.getOrElse(9) { "" }).joinToString("|")
         }.values.sortedBy { group -> group.firstOrNull()?.getOrElse(5) { "" }?.lowercase(Locale.ROOT) ?: "" }
-        val totalBalance = all.sumOf { row -> db.materialBalance(row[0].toLongOrNull() ?: 0L) }
+        val materialBalances = db.materialBalancesForAll()
+        val totalBalance = materialBalances.values.sum()
         val importedQty = importedRows.sumOf { it.getOrElse(10) { "0" }.replace(',', '.').toDoubleOrNull() ?: 0.0 }
         addScreenSummary(root, "ДОВІДНИК МАЙНА", "Номенклатурні позиції",
             "${all.size + importedGroups.size} позицій  •  Excel: ${formatQty(importedQty)} од.")
@@ -1336,7 +1337,7 @@ class MainActivity : Activity() {
         addScreenSummary(root, "РУЧНИЙ ДОВІДНИК", "Створені позиції", "${rows.size} позицій • ${formatQty(totalBalance)} од. за рухами")
         rows.forEach { row ->
             val id = row[0].toLongOrNull() ?: return@forEach
-            val balance = db.materialBalance(id)
+            val balance = materialBalances[id] ?: 0.0
             addNomenclatureCard(root, row[3], "${row[4]}  •  NSN ${row[1].ifBlank { "—" }}", "${formatQty(balance)} ${row[4]}") {
                 showMaterialActions(id, row)
             }
