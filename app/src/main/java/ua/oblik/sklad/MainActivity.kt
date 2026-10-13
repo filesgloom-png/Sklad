@@ -550,432 +550,176 @@ class MainActivity : Activity() {
     }
 
     private fun showHome() {
-        window.statusBarColor = Color.rgb(7, 18, 21)
-        window.navigationBarColor = Color.rgb(7, 18, 21)
-        window.decorView.systemUiVisibility = 0
+        val ink = Color.rgb(18, 29, 52)
+        val muted = Color.rgb(105, 119, 143)
+        val paper = Color.rgb(244, 247, 252)
+        val blue = Color.rgb(57, 105, 255)
+        val mint = Color.rgb(88, 225, 190)
+        window.statusBarColor = paper
+        window.navigationBarColor = paper
+        window.decorView.systemUiVisibility = android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.rgb(7, 18, 21))
+            setBackgroundColor(paper)
         }
         root.setOnApplyWindowInsetsListener { view, insets ->
             val bars = insets.getInsets(android.view.WindowInsets.Type.systemBars())
             view.setPadding(0, bars.top, 0, bars.bottom)
             insets
         }
-
-        val scroll = ScrollView(this).apply {
-            isFillViewport = true
-            setPadding(0, 0, 0, dp(3))
-        }
+        val scroll = ScrollView(this).apply { clipToPadding = false; isFillViewport = true }
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(14), dp(20), dp(12))
+            setPadding(dp(20), dp(18), dp(20), dp(24))
         }
-
-        var dashboardCardEntranceIndex = 0
-
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        val titleBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val title = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        title.addView(TextView(this).apply {
-            text = "СКЛАД"
-            textSize = 29f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.WHITE)
-            includeFontPadding = false
-        })
-        title.addView(TextView(this).apply {
-            text = "+"
-            textSize = 28f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.rgb(226, 195, 111))
-            includeFontPadding = false
-        })
-        titleBox.addView(title)
-        titleBox.addView(TextView(this).apply {
-            text = "СИСТЕМА КЕРУВАННЯ МАЙНОМ"
-            textSize = 15f
-            setTextColor(Color.rgb(174, 184, 190))
-            setPadding(0, dp(2), 0, 0)
-        })
-        header.addView(titleBox, LinearLayout.LayoutParams(0, -2, 1f))
-        header.addView(TextView(this).apply {
-            text = "●  СИСТЕМА АКТИВНА"
-            textSize = 12f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.rgb(179, 226, 205))
-            gravity = Gravity.CENTER
-            setPadding(dp(12), dp(9), dp(12), dp(9))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.rgb(19, 66, 53), Color.rgb(16, 42, 37))
-            ).apply {
-                cornerRadius = dp(24).toFloat()
-                setStroke(dp(1), Color.rgb(48, 117, 91))
+        fun label(text: String, size: Float, color: Int, bold: Boolean = false): TextView =
+            TextView(this).apply {
+                this.text = text; textSize = size; setTextColor(color)
+                if (bold) setTypeface(Typeface.create("sans-serif", Typeface.BOLD), Typeface.BOLD)
+                includeFontPadding = false
             }
-        })
-        page.addView(header)
+        fun surface(bg: Int, radius: Int, stroke: Int = Color.TRANSPARENT): GradientDrawable =
+            GradientDrawable().apply { setColor(bg); cornerRadius = dp(radius).toFloat(); if (stroke != Color.TRANSPARENT) setStroke(dp(1), stroke) }
+        fun section(text: String, right: String = "") {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(23), 0, dp(11)) }
+            row.addView(label(text, 18f, ink, true), LinearLayout.LayoutParams(0, -2, 1f))
+            if (right.isNotEmpty()) row.addView(label(right, 11f, muted, true))
+            page.addView(row)
+        }
+        fun pill(text: String, color: Int, bg: Int): TextView = label(text, 10f, color, true).apply {
+            gravity = Gravity.CENTER; setPadding(dp(10), dp(7), dp(10), dp(7)); background = surface(bg, 20)
+        }
+        fun actionTile(icon: String, title: String, sub: String, accent: Int, action: () -> Unit): LinearLayout {
+            val tile = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(14), dp(12), dp(14))
+                background = surface(Color.WHITE, 20, Color.rgb(227, 233, 243))
+                isClickable = true; isFocusable = true; elevation = dp(1).toFloat()
+                setOnClickListener { action() }
+            }
+            val iconBox = FrameLayout(this).apply { background = surface(accent, 13) }
+            iconBox.addView(DashboardIconView(this, icon, Color.WHITE), FrameLayout.LayoutParams(dp(25), dp(25), Gravity.CENTER))
+            tile.addView(iconBox, LinearLayout.LayoutParams(dp(44), dp(44)).apply { bottomMargin = dp(16) })
+            tile.addView(label(title, 14f, ink, true))
+            tile.addView(label(sub, 11f, muted).apply { setPadding(0, dp(5), 0, 0); maxLines = 2 }, LinearLayout.LayoutParams(-1, -2))
+            tile.addView(label("↗", 17f, accent, true).apply { gravity = Gravity.RIGHT; setPadding(0, dp(7), dp(1), 0) })
+            addPressFeedback(tile)
+            return tile
+        }
+        fun tileRow(a: Triple<String,String,String>, b: Triple<String,String,String>, ca: Int, cb: Int, aa: () -> Unit, ab: () -> Unit) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            row.addView(actionTile(a.first,a.second,a.third,ca,aa), LinearLayout.LayoutParams(0,-2,1f).apply { rightMargin = dp(6) })
+            row.addView(actionTile(b.first,b.second,b.third,cb,ab), LinearLayout.LayoutParams(0,-2,1f).apply { leftMargin = dp(6) })
+            page.addView(row)
+        }
+
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val brandMark = FrameLayout(this).apply { background = surface(ink, 15) }
+        brandMark.addView(DashboardIconView(this, "cube", mint), FrameLayout.LayoutParams(dp(27), dp(27), Gravity.CENTER))
+        top.addView(brandMark, LinearLayout.LayoutParams(dp(48), dp(48)).apply { rightMargin = dp(12) })
+        val brandText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        brandText.addView(label("SKLAD+", 21f, ink, true))
+        brandText.addView(label("SMART INVENTORY SYSTEM", 9f, muted, true).apply { letterSpacing = .12f; setPadding(0, dp(4), 0, 0) })
+        top.addView(brandText, LinearLayout.LayoutParams(0,-2,1f))
+        top.addView(pill("●  ONLINE", Color.rgb(18,151,112), Color.rgb(221,249,239)))
+        page.addView(top)
 
         val hero = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(17), dp(16), dp(8), dp(15))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(24, 58, 49), Color.rgb(15, 31, 31), Color.rgb(25, 31, 29))
-            ).apply {
-                cornerRadius = dp(22).toFloat()
-                setStroke(dp(1), Color.rgb(76, 117, 88))
-            }
+            orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(21), dp(20), dp(20))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.rgb(18,29,52), Color.rgb(37,58,103), Color.rgb(57,105,255))).apply { cornerRadius = dp(27).toFloat() }
             elevation = dp(5).toFloat()
         }
-        val heroText = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        heroText.addView(TextView(this).apply {
-            text = "SKLAD+  /  COMMAND CENTER"
-            textSize = 9.5f
-            letterSpacing = .13f
-            setTypeface(null, Typeface.BOLD)
-            setTextColor(Color.rgb(172, 214, 170))
+        hero.addView(label("ПОНЕДІЛОК • КОНТРОЛЬ МАЙНА", 10f, Color.rgb(177,197,255), true).apply { letterSpacing = .08f })
+        hero.addView(label("Склад під\nповним контролем.", 29f, Color.WHITE, true).apply { setPadding(0, dp(12), 0, dp(10)); setLineSpacing(dp(1).toFloat(),1f) })
+        hero.addView(label("Операції, залишки та відповідальні — в одному робочому просторі.", 12f, Color.rgb(222,230,250)).apply { setLineSpacing(dp(3).toFloat(),1f) })
+        val heroActions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(18), 0, 0) }
+        val primary = label("＋  НОВА ОПЕРАЦІЯ", 12f, ink, true).apply {
+            gravity = Gravity.CENTER; setPadding(dp(16), dp(13), dp(16), dp(13)); background = surface(mint, 14)
+            setOnClickListener { showMovement("RECEIPT", "Надходження") }
+        }
+        heroActions.addView(primary)
+        heroActions.addView(label("  Переглянути журнал  ›", 11f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER; setPadding(dp(10), dp(10), 0, dp(10)); setOnClickListener { showJournal() }
         })
-        heroText.addView(TextView(this).apply {
-            text = "Усе майно.\nПід контролем."
-            textSize = 24f
-            setTypeface(Typeface.create("sans-serif", Typeface.BOLD), Typeface.BOLD)
-            setTextColor(Color.WHITE)
-            includeFontPadding = false
-            setPadding(0, dp(7), 0, dp(6))
-            maxLines = 2
-        })
-        heroText.addView(TextView(this).apply {
-            text = "Складський облік нового рівня"
-            textSize = 11.5f
-            setTextColor(Color.rgb(184, 202, 192))
-        })
-        heroText.addView(LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(9), dp(5), dp(10), dp(5))
-            background = GradientDrawable().apply {
-                setColor(Color.rgb(20, 52, 42))
-                cornerRadius = dp(20).toFloat()
-                setStroke(dp(1), Color.rgb(57, 125, 87))
-            }
-            addView(View(this@MainActivity).apply {
-                background = rounded(Color.rgb(105, 232, 155), 6)
-            }, LinearLayout.LayoutParams(dp(6), dp(6)).apply { rightMargin = dp(6) })
-            addView(TextView(this@MainActivity).apply {
-                text = "ЗАХИЩЕНІ ЛОКАЛЬНІ ДАНІ"
-                textSize = 8.5f
-                letterSpacing = .035f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.rgb(181, 235, 199))
-            })
-        }, LinearLayout.LayoutParams(-2, -2).apply { topMargin = dp(12) })
-        hero.addView(heroText, LinearLayout.LayoutParams(0, -2, 1f))
-        hero.addView(WarehouseHeroArt(this), LinearLayout.LayoutParams(dp(104), dp(124)))
-        page.addView(hero, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(15)
-            bottomMargin = dp(10)
-        })
-        animateEntrance(hero, 70L)
+        hero.addView(heroActions)
+        page.addView(hero, LinearLayout.LayoutParams(-1,-2).apply { topMargin = dp(22) })
+        animateEntrance(hero, 60L)
 
-        val warehouseRows = db.warehouseRows()
-        val warehouseCount = warehouseRows.count { it.getOrNull(8) != "0" }
-        val personCount = db.list("responsible_persons").size
+        val warehouses = db.warehouseRows().count { it.getOrNull(8) != "0" }
+        val people = db.list("responsible_persons").size
         val stockRows = db.initialStockRowsForAll()
-        val nomenclatureCount = stockRows
-            .map { listOf(it.getOrNull(4).orEmpty(), it.getOrNull(5).orEmpty(), it.getOrNull(6).orEmpty(), it.getOrNull(7).orEmpty(), it.getOrNull(8).orEmpty()).joinToString("|") }
-            .distinct()
-            .size
-
-        val stats = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(dp(5), dp(8), dp(5), dp(8))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(29, 39, 37), Color.rgb(13, 22, 23))
-            ).apply {
-                cornerRadius = dp(19).toFloat()
-                setStroke(dp(1), Color.rgb(66, 91, 78))
-            }
+        val materials = stockRows.map { listOf(it.getOrNull(4).orEmpty(),it.getOrNull(5).orEmpty(),it.getOrNull(6).orEmpty(),it.getOrNull(7).orEmpty(),it.getOrNull(8).orEmpty()).joinToString("|") }.distinct().size
+        section("Панель показників", "LIVE DATA")
+        val metrics = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        fun metric(value: String, caption: String, accent: Int): LinearLayout {
+            val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(13),dp(15),dp(8),dp(14)); background = surface(Color.WHITE,18,Color.rgb(227,233,243)) }
+            box.addView(View(this).apply { background = surface(accent,4) }, LinearLayout.LayoutParams(dp(28),dp(4)).apply { bottomMargin = dp(13) })
+            box.addView(label(value,23f,ink,true))
+            box.addView(label(caption,10f,muted,true).apply { setPadding(0,dp(5),0,0) })
+            return box
         }
-
-        val statItems = listOf(
-            Triple("home", "Склади", warehouseCount.toString()),
-            Triple("person", "МВО", personCount.toString()),
-            Triple("boxes", "Номенкл.", nomenclatureCount.toString()),
-            Triple("database", "Рядки Excel", stockRows.size.toString())
-        )
-        statItems.forEachIndexed { index, item ->
-            val box = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-            }
-            box.addView(DashboardIconView(this, item.first, Color.rgb(226, 195, 111)),
-                LinearLayout.LayoutParams(-1, dp(23)))
-            box.addView(TextView(this).apply {
-                text = item.second
-                textSize = 10.5f
-                setTextColor(Color.rgb(205, 214, 215))
-                gravity = Gravity.CENTER
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setPadding(0, dp(2), 0, 0)
-            })
-            val countLabel = TextView(this).apply {
-                text = if (item.third.toIntOrNull() != null) "0" else item.third
-                textSize = 18f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.WHITE)
-                gravity = Gravity.CENTER
-                setPadding(0, dp(1), 0, 0)
-            }
-            box.addView(countLabel)
-            item.third.toIntOrNull()?.let { target ->
-                countLabel.postDelayed({
-                    if (countLabel.isAttachedToWindow) {
-                        ValueAnimator.ofInt(0, target).apply {
-                            duration = 720L
-                            startDelay = index * 95L
-                            addUpdateListener { countLabel.text = (it.animatedValue as Int).toString() }
-                            start()
-                        }
-                    }
-                }, 120L)
-            }
-            stats.addView(box, LinearLayout.LayoutParams(0, dp(68), 1f))
-            if (index < 3) stats.addView(View(this).apply {
-                setBackgroundColor(Color.rgb(70, 78, 75))
-            }, LinearLayout.LayoutParams(dp(1), dp(44)))
+        listOf(Triple(warehouses.toString(),"СКЛАДИ",blue),Triple(people.toString(),"МВО",Color.rgb(18,166,139)),Triple(materials.toString(),"ПОЗИЦІЇ",Color.rgb(244,164,55))).forEachIndexed { i, m ->
+            metrics.addView(metric(m.first,m.second,m.third), LinearLayout.LayoutParams(0,-2,1f).apply { if(i>0) leftMargin=dp(6); if(i<2) rightMargin=dp(3) })
         }
-        page.addView(stats, LinearLayout.LayoutParams(-1, -2).apply {
-            topMargin = dp(8)
-            bottomMargin = dp(4)
-        })
+        page.addView(metrics)
+        page.addView(label("Імпортовано з Excel: ${stockRows.size} рядків", 11f, muted).apply { setPadding(dp(3),dp(10),0,0) })
 
-        fun sectionHeader(titleText: String, hint: String) {
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(11), 0, dp(7))
-            }
-            row.addView(View(this).apply {
-                background = rounded(Color.rgb(224, 193, 102), 3)
-            }, LinearLayout.LayoutParams(dp(5), dp(27)))
-            row.addView(TextView(this).apply {
-                text = titleText
-                textSize = 16f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.rgb(235, 240, 241))
-                setPadding(dp(10), 0, 0, 0)
-            }, LinearLayout.LayoutParams(0, -2, 1f))
-            row.addView(TextView(this).apply {
-                text = "$hint  ›"
-                textSize = 12f
-                setTextColor(Color.rgb(119, 132, 136))
-                gravity = Gravity.CENTER_VERTICAL
-            })
-            page.addView(row)
+        val tabs = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; setPadding(dp(4),dp(4),dp(4),dp(4)); background = surface(Color.rgb(230,235,245),16)
         }
-
-        fun darkCard(
-            icon: String,
-            titleText: String,
-            subtitle: String,
-            accent: Int,
-            tint: Int,
-            action: () -> Unit
-        ): LinearLayout {
-            val card = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(10), dp(9), dp(8), dp(9))
-                background = GradientDrawable(
-                    GradientDrawable.Orientation.LEFT_RIGHT,
-                    intArrayOf(
-                        Color.argb(105, Color.red(accent), Color.green(accent), Color.blue(accent)),
-                        Color.rgb(15, 23, 23)
-                    )
-                ).apply {
-                    cornerRadius = dp(17).toFloat()
-                    setStroke(dp(1), Color.argb(145, Color.red(accent), Color.green(accent), Color.blue(accent)))
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        fun tabButton(title: String, selected: Boolean, action: () -> Unit): TextView = label(title,12f,if(selected) Color.WHITE else muted,true).apply {
+            gravity = Gravity.CENTER; setPadding(0,dp(12),0,dp(12)); background = if(selected) surface(ink,12) else null
+            setOnClickListener { action() }
+        }
+        fun buildTab(mode: Int) {
+            content.removeAllViews()
+            tabs.removeAllViews()
+            listOf("Огляд","Операції","Довідники").forEachIndexed { idx, text ->
+                tabs.addView(tabButton(text,idx==mode) { buildTab(idx) },LinearLayout.LayoutParams(0,dp(42),1f))
+            }
+            when(mode) {
+                0 -> {
+                    section("Швидкий доступ")
+                    tileRow(Triple("home","Склади","Залишки та деталі"),Triple("clipboard","Картки обліку","Рух по позиціях"),blue,Color.rgb(125,88,255),{showWarehouses()},{showCards()})
+                    tileRow(Triple("cube","Номенклатура","Пошук майна"),Triple("person","Відповідальні","МВО та закріплення"),Color.rgb(18,166,139),Color.rgb(244,164,55),{showMaterials()},{showPersons()})
                 }
-                elevation = dp(3).toFloat()
-                isClickable = true
-                isFocusable = true
-                setOnClickListener { action() }
-            }
-
-            val iconHolder = FrameLayout(this).apply {
-                background = GradientDrawable(
-                    GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(
-                        Color.argb(125, Color.red(accent), Color.green(accent), Color.blue(accent)),
-                        Color.argb(55, Color.red(accent), Color.green(accent), Color.blue(accent))
-                    )
-                ).apply {
-                    cornerRadius = dp(12).toFloat()
-                    setStroke(dp(1), Color.argb(170, Color.red(accent), Color.green(accent), Color.blue(accent)))
+                1 -> {
+                    section("Центр операцій","4 ТИПИ")
+                    tileRow(Triple("plus","Надходження","Прийняти майно"),Triple("issue","Видача","Видати зі складу"),Color.rgb(18,166,139),Color.rgb(244,164,55),{showMovement("RECEIPT","Надходження")},{showMovement("ISSUE","Видача")})
+                    tileRow(Triple("transfer","Переміщення","Між складами"),Triple("trash","Списання","Оформити списання"),blue,Color.rgb(231,82,104),{showMovement("TRANSFER","Переміщення")},{showMovement("WRITE_OFF","Списання")})
+                    val banner = label("Перевірити всі рухи майна  →",13f,ink,true).apply { gravity=Gravity.CENTER; setPadding(0,dp(17),0,dp(17)); background=surface(Color.WHITE,16,Color.rgb(227,233,243)); setOnClickListener{showJournal()} }
+                    content.addView(banner,LinearLayout.LayoutParams(-1,-2).apply{topMargin=dp(12)})
+                }
+                else -> {
+                    section("Дані та контроль")
+                    tileRow(Triple("boxes","Залишки Excel","Перегляд імпорту"),Triple("database","Імпорт Excel","Оновити дані"),Color.rgb(18,166,139),blue,{showAllInitialStock()},{importInitialStock()})
+                    tileRow(Triple("chart","Аналітика","Звіти по складу"),Triple("settings","Резервна копія","Захистити дані"),Color.rgb(125,88,255),ink,{showReports()},{showBackupMenu()})
                 }
             }
-            iconHolder.addView(DashboardIconView(this, icon, tint), FrameLayout.LayoutParams(-1, -1))
-            card.addView(iconHolder, LinearLayout.LayoutParams(dp(46), dp(46)))
-
-            val labels = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(5), 0, 0, 0)
-            }
-            labels.addView(TextView(this).apply {
-                text = titleText
-                textSize = 14f
-                setTypeface(null, Typeface.BOLD)
-                setTextColor(Color.WHITE)
-                maxLines = 2
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                includeFontPadding = false
-            })
-            labels.addView(TextView(this).apply {
-                text = subtitle
-                textSize = 10.5f
-                setTextColor(Color.rgb(193, 201, 202))
-                maxLines = 2
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                includeFontPadding = false
-                setPadding(0, dp(2), 0, 0)
-            })
-            card.addView(labels, LinearLayout.LayoutParams(0, -1, 1f))
-            card.addView(TextView(this).apply {
-                text = "›"
-                textSize = 21f
-                setTextColor(Color.rgb(225, 195, 111))
-                gravity = Gravity.CENTER
-            }, LinearLayout.LayoutParams(dp(14), dp(42)))
-            addPressFeedback(card)
-            animateEntrance(card, 120L + dashboardCardEntranceIndex * 38L)
-            dashboardCardEntranceIndex++
-            return card
         }
-
-        fun grid(
-            left: Triple<String, String, String>,
-            right: Triple<String, String, String>,
-            leftAccent: Int,
-            rightAccent: Int,
-            leftAction: () -> Unit,
-            rightAction: () -> Unit
-        ) {
-            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            row.addView(
-                darkCard(left.first, left.second, left.third, leftAccent, Color.WHITE, leftAction),
-                LinearLayout.LayoutParams(0, dp(94), 1f).apply { rightMargin = dp(5) }
-            )
-            row.addView(
-                darkCard(right.first, right.second, right.third, rightAccent, Color.WHITE, rightAction),
-                LinearLayout.LayoutParams(0, dp(94), 1f).apply { leftMargin = dp(5) }
-            )
-            page.addView(row)
-        }
-
-        sectionHeader("РАБОЧЕЕ ПРОСТРАНСТВО", "Основные инструменты")
-        grid(
-            Triple("home", "Склади", "Список складів та залишки"),
-            Triple("person", "МВО", "Матеріально відповідальні особи"),
-            Color.rgb(102, 126, 92), Color.rgb(92, 101, 103),
-            { showWarehouses() }, { showPersons() }
-        )
-        grid(
-            Triple("clipboard", "Картки обліку", "Облік по позиціях"),
-            Triple("cube", "Номенклатура", "Довідник майна"),
-            Color.rgb(171, 127, 40), Color.rgb(112, 64, 160),
-            { showCards() }, { showMaterials() }
-        )
-
-        grid(
-            Triple("boxes", "Залишки", "Імпортовані залишки Excel"),
-            Triple("database", "Імпорт Excel", "Завантажити таблицю залишків"),
-            Color.rgb(18, 115, 108), Color.rgb(171, 127, 40),
-            { showAllInitialStock() }, { importInitialStock() }
-        )
-
-        sectionHeader("ДВИЖЕНИЕ ИМУЩЕСТВА", "Все складские операции")
-        grid(
-            Triple("plus", "Надходження", "Приймання майна"),
-            Triple("issue", "Видача", "Видача зі складу"),
-            Color.rgb(12, 128, 91), Color.rgb(178, 124, 32),
-            { showMovement("RECEIPT", "Надходження") }, { showMovement("ISSUE", "Видача") }
-        )
-        grid(
-            Triple("transfer", "Переміщення", "Між складами"),
-            Triple("trash", "Списання", "Списання майна"),
-            Color.rgb(20, 105, 157), Color.rgb(177, 43, 55),
-            { showMovement("TRANSFER", "Переміщення") }, { showMovement("WRITE_OFF", "Списання") }
-        )
-
-        sectionHeader("АНАЛИТИКА И КОНТРОЛЬ", "История и отчётность")
-        grid(
-            Triple("journal", "Журнал руху", "Всі операції"),
-            Triple("chart", "Звіти", "Залишки по складах та типах"),
-            Color.rgb(112, 55, 157), Color.rgb(13, 122, 133),
-            { showJournal() }, { showReports() }
-        )
-
+        page.addView(tabs,LinearLayout.LayoutParams(-1,-2).apply { topMargin=dp(23) })
+        page.addView(content)
         scroll.addView(page)
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        root.addView(scroll,LinearLayout.LayoutParams(-1,0,1f))
         val nav = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(dp(3), dp(2), dp(3), dp(2))
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.rgb(28, 34, 34), Color.rgb(15, 22, 22))
-            ).apply {
-                cornerRadius = dp(22).toFloat()
-                setStroke(dp(1), Color.rgb(70, 79, 77))
-            }
-            elevation = dp(5).toFloat()
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER
+            setPadding(dp(5),dp(4),dp(5),dp(4)); background = surface(Color.WHITE,22,Color.rgb(225,231,241)); elevation=dp(8).toFloat()
         }
-
-        fun navItem(icon: String, label: String, active: Boolean, action: () -> Unit): LinearLayout {
-            val item = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                setPadding(dp(1), dp(1), dp(1), dp(1))
-                setOnClickListener { action() }
-            }
-            item.addView(View(this).apply {
-                background = if (active) rounded(Color.rgb(226, 195, 111), 2) else null
-            }, LinearLayout.LayoutParams(dp(50), dp(2)))
-            item.addView(DashboardIconView(this, icon, if (active) Color.rgb(226, 195, 111) else Color.rgb(154, 164, 166)),
-                LinearLayout.LayoutParams(dp(24), dp(25)))
-            item.addView(TextView(this).apply {
-                text = label
-                textSize = 9.5f
-                gravity = Gravity.CENTER
-                maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setTextColor(if (active) Color.rgb(226, 195, 111) else Color.rgb(154, 164, 166))
-            }, LinearLayout.LayoutParams(-1, dp(17)))
+        fun navItem(icon: String, text: String, action: () -> Unit): LinearLayout {
+            val item=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER; setPadding(0,dp(5),0,dp(4)); setOnClickListener{action()} }
+            item.addView(DashboardIconView(this,icon,blue),LinearLayout.LayoutParams(dp(23),dp(23)))
+            item.addView(label(text,9.5f,muted,true).apply{gravity=Gravity.CENTER;setPadding(0,dp(4),0,0)})
             return item
         }
-
-        nav.addView(navItem("home", "Обзор", true) { showHome() }, LinearLayout.LayoutParams(0, dp(50), 1f))
-        nav.addView(navItem("boxes", "Склады", false) { showWarehouses() }, LinearLayout.LayoutParams(0, dp(50), 1f))
-        nav.addView(navItem("transfer", "Операции", false) { showMovement("TRANSFER", "Переміщення") }, LinearLayout.LayoutParams(0, dp(50), 1f))
-        nav.addView(navItem("journal", "История", false) { showJournal() }, LinearLayout.LayoutParams(0, dp(50), 1f))
-        nav.addView(navItem("settings", "Ещё", false) { showBackupMenu() }, LinearLayout.LayoutParams(0, dp(50), 1f))
-        root.addView(nav, LinearLayout.LayoutParams(-1, dp(58)).apply {
-            leftMargin = dp(12); rightMargin = dp(12); bottomMargin = dp(5)
-        })
-
+        nav.addView(navItem("home","Огляд"){showHome()},LinearLayout.LayoutParams(0,dp(52),1f))
+        nav.addView(navItem("boxes","Склади"){showWarehouses()},LinearLayout.LayoutParams(0,dp(52),1f))
+        nav.addView(navItem("transfer","Операції"){showMovement("TRANSFER","Переміщення")},LinearLayout.LayoutParams(0,dp(52),1f))
+        nav.addView(navItem("journal","Журнал"){showJournal()},LinearLayout.LayoutParams(0,dp(52),1f))
+        nav.addView(navItem("settings","Система"){showBackupMenu()},LinearLayout.LayoutParams(0,dp(52),1f))
+        root.addView(nav,LinearLayout.LayoutParams(-1,dp(64)).apply{leftMargin=dp(14);rightMargin=dp(14);topMargin=dp(5);bottomMargin=dp(5)})
+        buildTab(0)
         setAnimatedContentView(root)
     }
 
